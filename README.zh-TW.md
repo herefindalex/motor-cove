@@ -1,5 +1,7 @@
 # MotorCove
 
+[![CI](https://github.com/herefindalex/motor-cove/actions/workflows/ci.yml/badge.svg)](https://github.com/herefindalex/motor-cove/actions/workflows/ci.yml)
+
 [English](README.md)
 
 MotorCove 是刻意縮小業務範圍的 EVM 工程沙盒，以 ERC-721 車輛數位收藏品交易為情境，
@@ -16,8 +18,9 @@ API、Indexer 與維護工具共用 `@motorcove/database`，統一管理環境�
 `pnpm verify` 與 `pnpm test:e2e`。
 
 Browser E2E 將僅限 loopback 的本地 demo connector 與可注入故障的 EIP-1193 測試 adapter
-分開；它不是實際的瀏覽器錢包擴充功能測試。手動 MetaMask、GitHub 遠端設定、公開鏈與
-外部安全稽核尚未驗證。完整的 required／implemented／verified 分界請見
+分開；它不是實際的瀏覽器錢包擴充功能測試。已發布的原始碼已通過 repository 的 GitHub
+Actions workflow；branch protection、reviewer identities、手動 MetaMask、公開鏈與外部安全
+稽核尚未驗證。完整的 required／implemented／verified 分界請見
 [實作狀態](docs/implementation-status.md)。存在程式或測試檔不等於已通過驗證。
 
 ## 架構一覽
@@ -60,7 +63,7 @@ flowchart LR
 | Backend  | Fastify、Zod、generated OpenAPI                          | 唯讀 query API 與 runtime provenance               |
 | Data     | SQLite、better-sqlite3、Drizzle ORM／Kit                 | Catalog、事件證據、projection、migration、recovery |
 | Quality  | Vitest、Playwright、Storybook、architecture／docs checks | Unit 到本機 real-stack 證據與依賴規則              |
-| Delivery | pnpm workspace、GitHub Actions workflow                  | 可重現的本機 gate 與已宣告的 CI jobs               |
+| Delivery | pnpm workspace、GitHub Actions workflow                  | 可重現的本機 gate 與已執行的遠端 CI                |
 
 Workspace 固定使用 Node 24.21.0 與 pnpm 12.5.1。精確版本、實際用途、理由及取捨見
 [Technology choices](docs/technology-choices.md)與[本機工具鏈紀錄](docs/toolchain.md)。

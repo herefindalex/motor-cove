@@ -14,9 +14,9 @@ Remaining limits are named on the item that owns them.
 - [x] **P4:** Catch-up, replay, rebuild, reindex, replacement/reorg recovery, reset, backup catch-up,
       and anchored sale/token reconciliation. Local process and controlled SQLite fault cases passed;
       hardware power loss and public-network history remain outside local evidence.
-- [x] **P5:** Local and declared CI gates, ownership, collaboration docs, demo, and evidence.
-      Remote branch protection, final reviewer identities, and manual wallet evidence remain
-      owner-controlled checks.
+- [x] **P5:** Local and remote CI gates, ownership, collaboration docs, demo, and evidence.
+      Remote CI passed for the published recovery revision. Branch protection, final reviewer
+      identities, and manual wallet evidence remain owner-controlled checks.
 
 ## Database D0–D5
 

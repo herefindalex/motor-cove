@@ -40,8 +40,9 @@ and contributor handoffs.
   durability.
 - Manual MetaMask prompts and provider-specific behavior are not verified. Browser automation uses a
   controlled EIP-1193 adapter.
-- Local workflow files and gates are verified; remote GitHub Actions, branch protection, and
-  repository reviewer identities can only be observed after publication and owner configuration.
+- The published source passed the repository's GitHub Actions workflow. Branch protection,
+  required-review settings, and repository reviewer identities still require owner configuration
+  and remain unverified.
 
 ## Non-goals
 

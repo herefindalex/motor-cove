@@ -58,10 +58,12 @@ evidence matches exactly; conflicting content stops the run.
 
 ## Stop and recovery behavior
 
-Checkpoint hash change, unavailable checkpoint history, parent discontinuity, mismatched log block
-hash, completed-block content conflict, or end-anchor change stops ingestion. Detection is
-implemented; generic automatic repair is intentionally absent. Operators classify the source and
-choose catch-up, rebuild, reindex, restore, or a new deployment.
+Checkpoint hash change, a provider-confirmed missing checkpoint block, parent discontinuity,
+mismatched log block hash, completed-block content conflict, or end-anchor change stops ingestion
+with `RECOVERY_REQUIRED`. A timeout or connection failure instead keeps the checkpoint, marks the
+read model `STALE`, and retries with bounded backoff. Generic automatic repair is intentionally
+absent. Operators classify integrity failures and choose catch-up, rebuild, reindex, restore, or a
+new deployment.
 
 Rebuild replays verified local raw evidence into a new projection build and preserves catalog data.
 Reindex obtains canonical headers and logs again. Reconciliation compares contract state and

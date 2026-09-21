@@ -18,12 +18,14 @@ implementation verification remain separate.
 | Documentation           | 18 capabilities, 48 commands, bilingual parity, public reachability, DOC/DB IDs, and 8 invalid fixtures passed.                                                                                                                                                                                                                                    | Mermaid visual rendering and independent contributor onboarding remain manual checks.                                                         |
 
 The full `pnpm verify` gate passed generation, database checks, formatting, documentation,
-architecture, typecheck, lint, 13 Foundry tests, 116 unit/component/database tests, 26 integration
+architecture, typecheck, lint, 13 Foundry tests, 117 unit/component/database tests, 27 integration
 tests, and all 7 workspace builds. `pnpm test:e2e` passed separately.
 
-GitHub run URLs, branch rules, CODEOWNERS identities, manual wallet evidence, prior-schema upgrade,
-hardware power loss, and public-network behavior were unavailable or intentionally not executed in
-this local task.
+GitHub Actions run
+[`35618386503`](https://github.com/herefindalex/motor-cove/actions/runs/35618386503) passed docs smoke,
+`pnpm verify`, and `pnpm test:e2e` for commit `6ca3f91`. Branch rules, CODEOWNERS identities, manual
+wallet evidence, prior-schema upgrade, hardware power loss, and public-network behavior remain
+unverified or intentionally unexecuted.
 
 See the [testing strategy](../testing/strategy.md),
 [scenario catalog](../testing/scenario-catalog.md), and

@@ -59,7 +59,6 @@ in `_meta/commands.json` owns the table.
 ## Status vocabulary
 
 - `implemented`: the root script and called entry exist. Verification is a separate record.
-- `implemented`: the root script and called entry exist. Verification is a separate record.
 - `gap`: the script is absent downstream or does not meet its documented contract.
 
 `db:restore` and `demo:reset` are destructive commands. The documented `--yes` flag is only an

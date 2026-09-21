@@ -19,7 +19,7 @@ configuration, and local tool output in [toolchain](toolchain.md).
 | Playwright 1.63                       | Browser E2E against the isolated local stack                 | Covers visible transaction and recovery flows                  | Automated EIP-1193 adapter is not a manual wallet test                                    |
 | Storybook 10                          | Isolated UI-state development                                | Shows controlled component states                              | Fixtures are illustrative and are not chain evidence                                      |
 | pnpm 12.5.1                           | Pinned workspace package manager                             | Deterministic workspace and lockfile                           | Root scripts remain project commands, not pnpm built-ins                                  |
-| GitHub Actions                        | Declared remote CI workflow                                  | Mirrors local verify and E2E gates                             | File presence does not prove a remote run passed                                          |
+| GitHub Actions                        | Executed remote CI workflow                                  | Mirrors local docs smoke, verify, and E2E gates                | One passing run does not prove branch protection or required-review settings              |
 | TypeScript architecture checker       | Import graph and negative fixtures                           | Enforces selected dependency directions without a framework    | Static imports are checked; runtime isolation still depends on composition                |
 
 Proposed or excluded tools such as Postgres, The Graph, SIWE, Kubernetes, ethers, and RainbowKit are

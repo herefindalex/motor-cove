@@ -13,6 +13,7 @@ This page answers which team role owns each database surface and which consumers
 
 Schema changes require Database, API, Indexer, and QA impact review. A provider may publish a schema
 and migration before consumers switch; end-to-end completion still waits for consumer integration
-and compatible data. The current workspace is in exactly that intermediate state.
+and compatible data. The current schema, reader, writer, API, and Indexer consumers are integrated;
+future schema changes must preserve that same provider-consumer gate.
 
 See [dependency rules](dependency-rules.md) and [change recipes](../onboarding/change-recipes.md).

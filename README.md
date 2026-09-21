@@ -1,5 +1,7 @@
 # MotorCove
 
+[![CI](https://github.com/herefindalex/motor-cove/actions/workflows/ci.yml/badge.svg)](https://github.com/herefindalex/motor-cove/actions/workflows/ci.yml)
+
 [繁體中文](README.zh-TW.md)
 
 MotorCove is a deliberately small EVM engineering sandbox for an ERC-721 vehicle collectible sale.
@@ -17,8 +19,9 @@ environment paths, Drizzle migrations, advisory locks, projections, catalog seed
 and reset. The current source tree passed `pnpm verify` and `pnpm test:e2e` locally.
 
 The browser E2E suite separates a loopback-only local demo connector from a controlled EIP-1193
-fault-injection adapter. It does not exercise a real browser-wallet extension. Manual MetaMask
-behavior, remote GitHub settings, public networks, and external security review are not verified. See
+fault-injection adapter. It does not exercise a real browser-wallet extension. The published source
+has passed the repository's GitHub Actions workflow; branch protection, reviewer identities, manual
+MetaMask behavior, public networks, and external security review are not verified. See
 [implementation status](docs/implementation-status.md) for required, implemented, and verified
 states. A file or test being present is not a pass result.
 
@@ -64,7 +67,7 @@ scenarios, verification records, and limits.
 | Backend  | Fastify, Zod, generated OpenAPI                             | Readonly query API and runtime provenance                         |
 | Data     | SQLite, better-sqlite3, Drizzle ORM and Kit                 | Catalog data, event evidence, projections, migrations, recovery   |
 | Quality  | Vitest, Playwright, Storybook, architecture and docs checks | Unit through local real-stack evidence and dependency enforcement |
-| Delivery | pnpm workspace, GitHub Actions workflow                     | Reproducible local gates and declared CI jobs                     |
+| Delivery | pnpm workspace, GitHub Actions workflow                     | Reproducible local gates and executed remote CI                   |
 
 The workspace pins Node 24.21.0 and pnpm 12.5.1. Exact versions and reasons are in
 [technology choices](docs/technology-choices.md) and the measured [toolchain](docs/toolchain.md).

@@ -9,7 +9,7 @@
       "code": ["apps/web/src/main.tsx", "apps/web/src/app/App.tsx", "apps/web/vite.config.ts"],
       "scenarios": ["SALE-001", "ARCH-001"],
       "verification": ["RUN-WORKSPACE-VERIFY"],
-      "limits": "The local gate applies to the recorded dirty source fingerprint; later source changes require a rerun."
+      "limits": "The recorded local and remote gates apply to commit 6ca3f91; later material source changes require a rerun."
     },
     {
       "id": "CAP-02",
@@ -230,8 +230,8 @@
         ".github/workflows/ci.yml"
       ],
       "scenarios": ["REL-001"],
-      "verification": ["RUN-GENERATE-CHECK"],
-      "limits": "No remote CI run or branch-protection setting was inspected."
+      "verification": ["RUN-GENERATE-CHECK", "RUN-CI"],
+      "limits": "GitHub Actions passed for commit 6ca3f91. Branch protection and required-review settings were not inspected."
     },
     {
       "id": "CAP-15",

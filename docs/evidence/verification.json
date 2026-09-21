@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "unavailable-uncommitted-worktree",
+    "revision": "6ca3f91cc9144479eba05a432b8f6f947bfe0ecc",
     "dirty": true,
-    "capturedAt": "2026-09-21T15:19:50Z",
-    "sourceFingerprint": "sha256:7b1a1ac9e641829d4056344af20d8df0939ed71291cf742b8d9c3218a1e2e4d6",
+    "capturedAt": "2026-09-21T16:00:48.672Z",
+    "sourceFingerprint": "sha256:1519023bdd13025416818e3a2e218993301dd59f2434caed62713f06d23eec30",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Evidence was captured from an uncommitted worktree using only loopback Anvil and temporary managed SQLite environments. Manual MetaMask, public networks, prior-schema upgrade, hardware power loss, full host-filesystem exhaustion, remote CI, and repository settings remain unverified.",
+    "limits": "Local gate evidence was captured from the pre-commit source fingerprint later published as commit 6ca3f91; RUN-CI separately records the successful remote run for that commit. Manual MetaMask, public networks, prior-schema upgrade, hardware power loss, full host-filesystem exhaustion, branch protection, and repository reviewer settings remain unverified.",
     "sourceFingerprintMethod": "SHA-256 over sorted NUL-separated repository-relative paths and file bytes from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -44,9 +44,9 @@
       "command": "pnpm test:db",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "3 files, 18 tests passed: numeric and identity constraints, readonly API boundary, missing metadata, lock competition and SIGKILL release, markers, SQLITE_BUSY, bounded SQLITE_FULL, reset ownership, and CLI refusal",
+      "result": "4 files, 21 tests passed: numeric and identity constraints, readonly API boundary, missing metadata, lock competition and SIGKILL release, markers, active/failed projection maintenance, SQLITE_BUSY, bounded SQLITE_FULL, reset ownership, and CLI refusal",
       "limitations": "SQLITE_FULL uses SQLite max_page_count rather than exhausting the host filesystem. The reset refusal matrix does not prove resistance to a malicious loopback Anvil impersonator.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "executedAt": "2026-09-21T15:52:24.155Z"
     },
     {
       "id": "RUN-DB-SEEDS",
@@ -99,7 +99,7 @@
       "status": "executed/pass",
       "result": "4 Playwright scenarios passed: real local fund/complete/withdraw, expire/refund/reclaim, rejection and lost-response recovery, reload with projection catch-up; graceful harness teardown left no local process or state directory",
       "limitations": "Fault injection uses a controlled EIP-1193 adapter; manual MetaMask behavior is not verified.",
-      "executedAt": "2026-09-21T15:19:50Z"
+      "executedAt": "2026-09-21T16:00:48.672Z"
     },
     {
       "id": "RUN-INTEGRATION",
@@ -192,9 +192,9 @@
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generation, database check, formatting, docs, architecture, typecheck, lint, 13 Foundry tests, 116 unit/component/database tests, 27 integration tests, and all 7 workspace builds passed",
-      "limitations": "The gate is local. It does not establish manual MetaMask behavior, public-network safety, remote GitHub Actions, branch protection, hardware power-loss durability, or a prior-schema upgrade.",
-      "executedAt": "2026-09-21T15:19:50Z"
+      "result": "Generation, database check, formatting, docs, architecture, typecheck, lint, 13 Foundry tests, 117 unit/component/database tests, 27 integration tests, and all 7 workspace builds passed",
+      "limitations": "The gate does not establish manual MetaMask behavior, public-network safety, branch protection, hardware power-loss durability, or a prior-schema upgrade.",
+      "executedAt": "2026-09-21T16:00:48.672Z"
     },
     {
       "id": "RUN-DOCS-CHECK",
@@ -205,7 +205,7 @@
       "status": "executed/pass",
       "result": "18 capabilities and 48 commands generated; bilingual parity, public reachability, evidence IDs, and 8 negative fixtures passed",
       "limitations": "Mermaid visual rendering and independent contributor onboarding remain manual checks.",
-      "executedAt": "2026-09-21T15:19:50Z"
+      "executedAt": "2026-09-21T16:00:48.672Z"
     },
     {
       "id": "RUN-WEB-COMPONENT",
@@ -272,6 +272,18 @@
       "result": "3 real Anvil/SQLite integration files and 6 tests passed concurrently with isolated roots, environment IDs, databases, locks, ports, deployments, and signer nonce spaces",
       "limitations": "Parallel workers share the same host and repository dependencies; the evidence is local process isolation, not cross-host isolation.",
       "scenarios": ["DB-54"]
+    },
+    {
+      "id": "RUN-CI",
+      "scenarios": ["REL-001", "ARCH-001"],
+      "level": "REMOTE-CI",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35618386503)",
+      "workingDirectory": "GitHub-hosted ubuntu-latest runner",
+      "status": "executed/pass",
+      "result": "Remote verify job passed dependency installation, docs smoke, pnpm verify, pnpm test:e2e, and graceful browser diagnostics handling for commit 6ca3f91.",
+      "executedAt": "2026-09-21T15:26:40Z",
+      "limitations": "One push-triggered run; branch protection, required reviews, manual MetaMask, and public-network behavior remain separate evidence.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35618386503"
     }
   ]
 }

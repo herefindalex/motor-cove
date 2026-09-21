@@ -1,7 +1,8 @@
 # Implementation status
 
-Status captured on 2026-09-21 from the local source tree before its first publication. Capability
-metadata and the verification JSON are the machine-readable sources; this page is the human summary.
+Status captured on 2026-09-21 from committed source and its successful GitHub Actions run.
+Capability metadata and the verification JSON are the machine-readable sources; this page is the
+human summary.
 
 | Area                   | Required behavior                                                                                                                                 | Implemented                                                                                                                                       | Current local evidence                                                                                                                                                                                                                                           |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -10,18 +11,18 @@ metadata and the verification JSON are the machine-readable sources; this page i
 | API                    | Readonly query API with validated wire schemas, selector observation, and provenance                                                              | Database reader plus Zod/OpenAPI contracts                                                                                                        | 12 API contract tests, readonly boundary tests, one-snapshot concurrency, and real local convergence passed.                                                                                                                                                     |
 | Indexer                | Ordered source evidence, atomic commit, catch-up, replay, rebuild/reindex, version gates                                                          | Pure projectors plus EVM/SQLite adapters, exclusive projection maintenance, checkpoint seam validation, and transport retry                       | Same-history recanonicalization, real Anvil orphan/reinclude and reindex, restore catch-up, reconciliation, controlled RPC failure, graceful stop, and child-process `SIGKILL` cases passed.                                                                     |
 | Database               | One migration history, managed environments, role exports, locks/marker, seed, backup/restore                                                     | `@motorcove/database` is the only runtime database package; projection rebuild/reindex share its exclusive lock and durable marker path           | Migration failure rollback, source digest, lock kill, active/failed projection maintenance, busy/full faults, seed conflict, backup/restore, and deployment reset detection passed. DB-03 remains open because no prior schema release exists.                   |
-| Documentation delivery | Navigable scope/architecture/operations, provider-consumer contracts, local/CI gates, evidence discipline                                         | Bilingual entry, public docs, generated maps, docs/architecture checks, and CI workflow                                                           | Docs, architecture, format, typecheck, lint, complete verify, and E2E gates passed locally; remote settings remain unobserved.                                                                                                                                   |
+| Documentation delivery | Navigable scope/architecture/operations, provider-consumer contracts, local/CI gates, evidence discipline                                         | Bilingual entry, public docs, generated maps, docs/architecture checks, and CI workflow                                                           | Docs smoke, complete verify, and E2E passed locally and in GitHub Actions; branch protection and required-review settings remain unobserved.                                                                                                                     |
 
 ## Current executed gates
 
 - `pnpm verify`: generation, database contract, formatting, docs, architecture, typecheck, lint,
-  13 Foundry tests, 116 unit/component/database tests, 27 integration tests, and all 7 workspace
+  13 Foundry tests, 117 unit/component/database tests, 27 integration tests, and all 7 workspace
   builds passed.
 - `pnpm test:e2e`: 4 local Playwright scenarios passed against Anvil, managed SQLite, API,
   Indexer, and Web. Normal settlement used the loopback demo connector; fault injection used a
   controlled EIP-1193 provider.
 - `pnpm test:migrations`: 1 file and 9 tests passed.
-- `pnpm test:db`: 3 files and 18 tests passed.
+- `pnpm test:db`: 4 files and 21 tests passed.
 - `pnpm test:seeds`: 1 file and 4 tests passed.
 - `pnpm test:recovery`: 1 file and 4 tests passed.
 - The focused chain/database recovery run passed 2 files and 7 tests.
@@ -43,6 +44,6 @@ See exact commands, timestamps, environments, and limits in
 3. Hardware power-loss and full host-filesystem exhaustion remain unverified. Current evidence is
    bounded SQLite page exhaustion, transactional rollback, WAL recovery, and harness-owned
    `SIGKILL`.
-4. Manual MetaMask behavior, public-network behavior, remote GitHub Actions, branch protection, and
-   final reviewer identities require owner-controlled external environments. They are not local
-   implementation claims.
+4. Manual MetaMask behavior, public-network behavior, branch protection, and final reviewer
+   identities require owner-controlled external environments. They are not local implementation
+   claims. GitHub Actions run `35618386503` passed for commit `6ca3f91`.

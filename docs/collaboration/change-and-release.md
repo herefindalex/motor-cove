@@ -11,8 +11,9 @@ annotations, recipes, implementation status, and verification records. Schema ch
 preservation and restore. Projector changes state rebuild requirements. Deployment changes state
 identity compatibility.
 
-Recommended GitHub settings include required CI, resolved conversations, protected default branch,
-no force pushes, and real CODEOWNERS review. None were inspected or modified in this task. A workflow
-file and local pass do not prove a remote run or branch rule.
+Recommended GitHub settings include required CI, resolved conversations, a protected default branch,
+no force pushes, and real CODEOWNERS review. GitHub Actions run `35618386503` passed the declared
+docs smoke, verify, and E2E gates. Branch protection, required reviews, and CODEOWNERS enforcement
+were not inspected or modified; a successful workflow run does not prove those repository rules.
 
 See [testing strategy](../testing/strategy.md) and [delivery workflow](delivery-workflow.md).

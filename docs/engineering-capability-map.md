@@ -7,7 +7,7 @@ status fields; `docs:generate` owns the table below.
 <!-- GENERATED:CAPABILITIES:START -->
 | ID | Capability | Implementation | Evidence | Main limit |
 | --- | --- | --- | --- | --- |
-| CAP-01 | React, Vite, and TypeScript | implemented | RUN-WORKSPACE-VERIFY: executed/pass | The local gate applies to the recorded dirty source fingerprint; later source changes require a rerun. |
+| CAP-01 | React, Vite, and TypeScript | implemented | RUN-WORKSPACE-VERIFY: executed/pass | The recorded local and remote gates apply to commit 6ca3f91; later material source changes require a rerun. |
 | CAP-02 | Frontend architecture | implemented | RUN-ARCHITECTURE: executed/pass | The checker covers parsed source imports; it is not a runtime isolation mechanism. |
 | CAP-03 | Wallet connectivity | implemented | RUN-WEB-COMPONENT: executed/pass<br>RUN-E2E: executed/pass | Missing-provider and connector-selection component tests passed. Browser settlement uses the loopback demo connector; fault injection uses a controlled provider. Manual MetaMask smoke testing is not recorded. |
 | CAP-04 | Network validation and switching | implemented | RUN-E2E: executed/pass | Only local chain ID 31337 is in scope. |
@@ -20,7 +20,7 @@ status fields; `docs:generate` owns the table below.
 | CAP-11 | Database lifecycle | partial | RUN-DB-MIGRATIONS: executed/pass<br>RUN-DB-BOUNDARIES: executed/pass<br>RUN-DB-SEEDS: executed/pass<br>RUN-DB-RECOVERY: executed/pass<br>RUN-CHAIN-SEED-JOURNAL: executed/pass<br>RUN-INTEGRATION: executed/pass | A real process kill in the broadcast-to-hash persistence window and other listed database fault-injection cases remain incomplete. |
 | CAP-12 | Cross-team interface contracts | implemented | RUN-GENERATE-CHECK: executed/pass<br>RUN-API-CONTRACT: executed/pass | Generated artifacts require a current drift check after provider changes. |
 | CAP-13 | Failure diagnosis and recovery | partial | RUN-TRANSACTION-RECOVERY: executed/pass<br>RUN-INDEXER-KILL: executed/pass<br>RUN-INTEGRATION: executed/pass<br>RUN-DB-RECOVERY: executed/pass | Parallel and some process/filesystem fault cases remain unverified. |
-| CAP-14 | Release management | partial | RUN-GENERATE-CHECK: executed/pass | No remote CI run or branch-protection setting was inspected. |
+| CAP-14 | Release management | partial | RUN-GENERATE-CHECK: executed/pass<br>RUN-CI: executed/pass | GitHub Actions passed for commit 6ca3f91. Branch protection and required-review settings were not inspected. |
 | CAP-15 | Code review and delivery quality | implemented | RUN-ARCHITECTURE: executed/pass | Repository artifacts describe a collaboration model; they do not prove a multi-person team used it or that remote settings are enabled. |
 | CAP-16 | Roadmap and dependency management | implemented | source inspection only | Planning artifacts are examples and current-state records, not historical sprint evidence. |
 | CAP-17 | Onboarding and mentoring support | implemented | RUN-DOCS-CHECK: executed/pass | These artifacts support onboarding; they do not prove mentoring sessions occurred. |

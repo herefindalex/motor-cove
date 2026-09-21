@@ -37,8 +37,9 @@ tools make failures reproducible across contributor and CI environments.
 ## Consequences
 
 ABI, OpenAPI, schema, and manifest changes trigger generation, consumer typecheck/build, integration
-tests, and documentation/evidence review. Remote CI configuration is declared in the repository,
-but a workflow file alone is not evidence that GitHub executed it.
+tests, and documentation/evidence review. Remote CI configuration is declared in the repository and
+the published recovery revision passed it. A passing run remains separate from branch protection,
+required-review, and public-network evidence.
 
 ## Code and tests
 
