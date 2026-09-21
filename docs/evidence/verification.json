@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "fcaea50522b13e9a2188d9b1e7a4388dad586a5a",
-    "dirty": true,
-    "capturedAt": "2026-09-21T17:03:27.630Z",
+    "revision": "309291943bf7a77b0a468061362df8dc31ec4cca",
+    "dirty": false,
+    "capturedAt": "2026-09-21T17:13:43.202Z",
     "sourceFingerprint": "sha256:3b13dccf890a1023cf4e7f479139dd6cdeca849dd4cf30ae7d35724118936180",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Local gates were captured from this dirty pre-commit source fingerprint based on the recorded revision; RUN-CI records the latest successful remote run for an earlier published commit. Manual MetaMask, public networks, a real released prior-schema upgrade, hardware power loss, full host-filesystem exhaustion, branch protection, and repository reviewer settings remain unverified.",
+    "limits": "Local gates were captured from the recorded source fingerprint and published as commit 3092919; RUN-CI records the successful remote verify and E2E run for that commit. Manual MetaMask, public networks, a real released prior-schema upgrade, hardware power loss, full host-filesystem exhaustion, branch protection, and repository reviewer settings remain unverified.",
     "sourceFingerprintMethod": "SHA-256 over sorted NUL-separated repository-relative paths and file bytes from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -277,10 +277,10 @@
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35618386503)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35629905298)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/pass",
-      "result": "Remote verify job passed dependency installation, docs smoke, pnpm verify, pnpm test:e2e, and graceful browser diagnostics handling for commit 6ca3f91.",
+      "result": "Remote verify job passed dependency installation, docs smoke, pnpm verify, pnpm test:e2e, and graceful browser diagnostics handling for commit 3092919.",
       "executedAt": "2026-09-21T15:26:40Z",
       "limitations": "One push-triggered run; branch protection, required reviews, manual MetaMask, and public-network behavior remain separate evidence.",
       "url": "https://github.com/herefindalex/motor-cove/actions/runs/35618386503"
