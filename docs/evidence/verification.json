@@ -3,8 +3,8 @@
   "sourceContext": {
     "revision": "unavailable-uncommitted-worktree",
     "dirty": true,
-    "capturedAt": "2026-09-21T12:56:11.060Z",
-    "sourceFingerprint": "sha256:c30ab659847e5f04d52f725fc3208792c4c60eb672c19f36a0dbd5fc5e3f1780",
+    "capturedAt": "2026-09-21T13:00:15.170Z",
+    "sourceFingerprint": "sha256:29ad7f7725e74b650f1106533ddc81283ba45cc09f0a8baa6152df7c55d5f5c7",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
     "limits": "Evidence was captured from an uncommitted worktree using only loopback Anvil and temporary managed SQLite environments. Manual MetaMask, public networks, prior-schema upgrade, hardware power loss, full host-filesystem exhaustion, remote CI, and repository settings remain unverified.",
     "sourceFingerprintMethod": "SHA-256 over sorted NUL-separated repository-relative paths and file bytes from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
