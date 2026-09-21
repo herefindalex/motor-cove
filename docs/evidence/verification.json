@@ -3,8 +3,8 @@
   "sourceContext": {
     "revision": "unavailable-uncommitted-worktree",
     "dirty": true,
-    "capturedAt": "2026-09-21T13:23:43.746Z",
-    "sourceFingerprint": "sha256:a2ce4859bb55f8b8d3fe114944f6cbe19730e72dc1f297387cc474930faec62a",
+    "capturedAt": "2026-09-21T15:19:50Z",
+    "sourceFingerprint": "sha256:7b1a1ac9e641829d4056344af20d8df0939ed71291cf742b8d9c3218a1e2e4d6",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
     "limits": "Evidence was captured from an uncommitted worktree using only loopback Anvil and temporary managed SQLite environments. Manual MetaMask, public networks, prior-schema upgrade, hardware power loss, full host-filesystem exhaustion, remote CI, and repository settings remain unverified.",
     "sourceFingerprintMethod": "SHA-256 over sorted NUL-separated repository-relative paths and file bytes from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
@@ -77,9 +77,9 @@
       "command": "forge test --root chain",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "12 unit/fuzz tests and 1 stateful liability invariant test passed",
-      "limitations": "Foundry emitted advisory lint warnings; no public network or external audit claim.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "result": "12 unit/fuzz tests and 1 stateful liability invariant passed (13 total)",
+      "limitations": "Local Foundry EVM only; no public network or external audit.",
+      "executedAt": "2026-09-21T15:19:50Z"
     },
     {
       "id": "RUN-E2E",
@@ -97,9 +97,9 @@
       "command": "pnpm test:e2e",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "4 Playwright scenarios passed against isolated Anvil, managed SQLite, API, Indexer, and Web processes. Normal settlement used the loopback demo connector; fault scenarios covered one-broadcast response loss, reload recovery without resubmission, account switching, and projection catch-up.",
-      "limitations": "Fault injection uses a controlled EIP-1193 adapter; manual MetaMask behavior is not verified. After passes, the Indexer logged an RPC refusal during Playwright web-server teardown after Anvil stopped; the command exit was 0.",
-      "executedAt": "2026-09-21T14:06:18.000Z"
+      "result": "4 Playwright scenarios passed: real local fund/complete/withdraw, expire/refund/reclaim, rejection and lost-response recovery, reload with projection catch-up; graceful harness teardown left no local process or state directory",
+      "limitations": "Fault injection uses a controlled EIP-1193 adapter; manual MetaMask behavior is not verified.",
+      "executedAt": "2026-09-21T15:19:50Z"
     },
     {
       "id": "RUN-INTEGRATION",
@@ -137,9 +137,9 @@
       "command": "pnpm test:integration",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "7 files, 26 tests passed: real one-submit convergence, replacement classes, receipt reorg/reinclusion, lifecycle, replay, atomic snapshots, rebuild/reindex, reconciliation, deployment reset rejection, backup restore catch-up, and child-process SIGKILL",
+      "result": "8 files, 27 tests passed: real one-submit convergence, replacement classes, receipt reorg/reinclusion, lifecycle, replay, atomic snapshots, same-history recanonicalization, rebuild/reindex, reconciliation, deployment reset rejection, backup restore catch-up, and child-process SIGKILL",
       "limitations": "Local deterministic Anvil and ordinary process termination only; public-network finality, unavailable archive history, hardware power loss, and full host-filesystem faults remain unverified.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "executedAt": "2026-09-21T15:19:50Z"
     },
     {
       "id": "RUN-INDEXER-UNIT",
@@ -148,9 +148,9 @@
       "command": "pnpm test:unit",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "20 files, 96 unit, component, migration, database, seed, and recovery tests passed",
-      "limitations": "Includes controlled wallet, journal, database, migration, seed, recovery, and documentation tests; manual provider behavior is separate.",
-      "executedAt": "2026-09-21T14:06:18.000Z"
+      "result": "23 files, 116 unit, component, migration, database, seed, recovery, transport classification, and graceful polling tests passed",
+      "limitations": "Includes controlled wallet, journal, database, migration, seed, recovery, RPC, and documentation tests; manual provider behavior is separate.",
+      "executedAt": "2026-09-21T15:19:50Z"
     },
     {
       "id": "RUN-API-CONTRACT",
@@ -170,9 +170,9 @@
       "command": "pnpm check:architecture",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "127 source files validated and 8 negative fixtures rejected, including recovery-to-wallet-write",
-      "limitations": "Static graph enforcement does not prove runtime process isolation or remote review policy.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "result": "135 source files validated and 8 negative fixtures rejected, including recovery-to-wallet-write",
+      "limitations": "Static source imports only; runtime process behavior is verified separately.",
+      "executedAt": "2026-09-21T15:19:50Z"
     },
     {
       "id": "RUN-GENERATE-CHECK",
@@ -181,9 +181,9 @@
       "command": "pnpm generate:check",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "ABI, OpenAPI, schema metadata, schema-source digest, and generated artifacts matched source",
-      "limitations": "No released prior schema or external consumer exists for upgrade compatibility evidence.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "result": "Generated ABI, OpenAPI, schema metadata, and artifacts matched providers",
+      "limitations": "No released third-party consumer or prior protocol version exists.",
+      "executedAt": "2026-09-21T15:19:50Z"
     },
     {
       "id": "RUN-WORKSPACE-VERIFY",
@@ -192,9 +192,9 @@
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generation, database check, formatting, docs, architecture, typecheck, lint, 13 Foundry tests, 96 unit/component/database tests, 26 integration tests, and all 7 workspace builds passed",
+      "result": "Generation, database check, formatting, docs, architecture, typecheck, lint, 13 Foundry tests, 116 unit/component/database tests, 27 integration tests, and all 7 workspace builds passed",
       "limitations": "The gate is local. It does not establish manual MetaMask behavior, public-network safety, remote GitHub Actions, branch protection, hardware power-loss durability, or a prior-schema upgrade.",
-      "executedAt": "2026-09-21T14:06:18.000Z"
+      "executedAt": "2026-09-21T15:19:50Z"
     },
     {
       "id": "RUN-DOCS-CHECK",
@@ -205,7 +205,7 @@
       "status": "executed/pass",
       "result": "18 capabilities and 48 commands generated; bilingual parity, public reachability, evidence IDs, and 8 negative fixtures passed",
       "limitations": "Mermaid visual rendering and independent contributor onboarding remain manual checks.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "executedAt": "2026-09-21T15:19:50Z"
     },
     {
       "id": "RUN-WEB-COMPONENT",
@@ -236,9 +236,9 @@
       "command": "pnpm vitest run apps/web/src/capabilities/transactions/recovery.test.ts apps/web/src/capabilities/transactions/submit-operation.test.ts apps/web/src/integrations/persistence/local-storage-journal.test.ts",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "3 files, 20 tests passed within the unit gate for durable pre-write, wallet ambiguity, runtime journal validation, supplied hash, replacement classification, projection lag, and evidence preservation",
+      "result": "3 files, 24 tests passed for durable pre-write, wallet ambiguity, runtime journal validation, supplied hash, replacement classification, stale-result suppression, nonce merge, projection validity, lag, and evidence preservation",
       "limitations": "Controlled wallet and storage ports; real local-chain convergence is recorded by RUN-INTEGRATION and the controlled browser provider by RUN-E2E.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "executedAt": "2026-09-21T15:13:34Z"
     },
     {
       "id": "RUN-INDEXER-KILL",

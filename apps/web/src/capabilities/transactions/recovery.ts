@@ -63,23 +63,40 @@ export type RecoveryResult =
   | { kind: 'REFLECTED' }
   | { kind: 'INCONSISTENT' }
   | { kind: 'REJECTED_CANDIDATE'; reason: string }
+  | { kind: 'SUPERSEDED' }
   | { kind: 'UNAVAILABLE'; reason: string };
+
+function latestEntry(entry: JournalEntry, journal: TransactionJournal): JournalEntry {
+  return (
+    journal
+      .load(entry.deploymentId)
+      .find((candidate) => candidate.clientOperationId === entry.clientOperationId) ?? entry
+  );
+}
 
 function update(
   entry: JournalEntry,
   ports: RecoveryPorts,
   values: Partial<JournalEntry>,
-): JournalEntry {
-  const next = { ...entry, ...values, updatedAt: new Date().toISOString() };
+  verificationRequestId?: string,
+): { entry: JournalEntry; applied: boolean } {
+  const current = latestEntry(entry, ports.journal);
+  if (
+    verificationRequestId !== undefined &&
+    current.verificationRequestId !== verificationRequestId
+  )
+    return { entry: current, applied: false };
+  const next = { ...current, ...values, updatedAt: new Date().toISOString() };
   ports.journal.save(next);
-  return next;
+  return { entry: next, applied: true };
 }
 
 export async function resumeJournalEntry(
-  entry: JournalEntry,
+  requestedEntry: JournalEntry,
   ports: RecoveryPorts,
   candidateHash?: `0x${string}`,
 ): Promise<RecoveryResult> {
+  const entry = latestEntry(requestedEntry, ports.journal);
   const storedHash = entry.currentTxHash ?? entry.originalTxHash;
   const transactionHash = candidateHash ?? storedHash;
   if (!transactionHash) {
@@ -90,53 +107,70 @@ export async function resumeJournalEntry(
     });
     return { kind: 'HASH_REQUIRED' };
   }
+  const verifiedHash = transactionHash as `0x${string}`;
 
-  update(entry, ports, { verificationAvailability: 'VERIFYING' });
-  const inspected = await ports.chain.inspectFunding(entry, transactionHash as `0x${string}`);
+  const verificationRequestId = crypto.randomUUID();
+  const verifying = update(entry, ports, {
+    verificationAvailability: 'VERIFYING',
+    verificationRequestId,
+  }).entry;
+  const apply = (values: Partial<JournalEntry>) =>
+    update(verifying, ports, values, verificationRequestId);
+  const inspected = await ports.chain.inspectFunding(verifying, verifiedHash);
+
   if (inspected.kind === 'UNAVAILABLE') {
-    update(entry, ports, {
+    const result = apply({
       verificationAvailability: 'UNAVAILABLE',
       lastErrorCategory: inspected.reason,
     });
+    if (!result.applied) return { kind: 'SUPERSEDED' };
     return { kind: 'UNAVAILABLE', reason: inspected.reason };
   }
   if (inspected.kind === 'INTENT_MISMATCH') {
-    update(entry, ports, {
+    const result = apply({
       verificationAvailability: 'AVAILABLE',
       lastVerifiedAt: new Date().toISOString(),
       lastErrorCategory: `CANDIDATE_REJECTED:${inspected.reason}`,
     });
+    if (!result.applied) return { kind: 'SUPERSEDED' };
     return { kind: 'REJECTED_CANDIDATE', reason: inspected.reason };
   }
   if (inspected.kind === 'NONCANONICAL') {
-    update(entry, ports, {
+    const result = apply({
       status: 'ORPHANED',
+      projectionObservation: 'INCONSISTENT',
       verificationAvailability: 'AVAILABLE',
       lastVerifiedAt: new Date().toISOString(),
       lastErrorCategory: 'RECEIPT_BLOCK_NONCANONICAL',
     });
+    if (!result.applied) return { kind: 'SUPERSEDED' };
     return { kind: 'INCONSISTENT' };
   }
   if (inspected.kind === 'REPLACED_OR_CANCELLED') {
-    update(entry, ports, {
+    const result = apply({
       currentTxHash: inspected.replacementHash,
       replacementKind: inspected.replacementKind,
       status: 'REPLACED_OR_CANCELLED',
+      projectionObservation: 'INCONSISTENT',
       verificationAvailability: 'AVAILABLE',
       lastVerifiedAt: new Date().toISOString(),
       lastErrorCategory: `TRANSACTION_${inspected.replacementKind}`,
     });
+    if (!result.applied) return { kind: 'SUPERSEDED' };
     return { kind: 'INCONSISTENT' };
   }
 
-  const association = candidateHash ? 'INTENT_MATCH' : (entry.association ?? 'EXACT_SUBMISSION');
+  const association = candidateHash
+    ? 'INTENT_MATCH'
+    : (verifying.association ?? 'EXACT_SUBMISSION');
   const evidenceSource = candidateHash
     ? 'USER_SUPPLIED'
-    : (entry.evidenceSource ?? 'WALLET_RETURNED');
+    : (verifying.evidenceSource ?? 'WALLET_RETURNED');
+
   if (inspected.kind === 'PENDING') {
-    update(entry, ports, {
-      currentTxHash: transactionHash,
-      ...(entry.originalTxHash ? {} : { originalTxHash: transactionHash }),
+    const result = apply({
+      currentTxHash: verifiedHash,
+      ...(verifying.originalTxHash ? {} : { originalTxHash: verifiedHash }),
       association,
       evidenceSource,
       status: 'SUBMITTED',
@@ -144,13 +178,14 @@ export async function resumeJournalEntry(
       lastVerifiedAt: new Date().toISOString(),
       lastErrorCategory: 'RECEIPT_NOT_AVAILABLE',
     });
+    if (!result.applied) return { kind: 'SUPERSEDED' };
     return { kind: 'PENDING' };
   }
 
   if (inspected.kind === 'INCLUDED_REVERTED') {
-    update(entry, ports, {
+    const result = apply({
       currentTxHash: inspected.transactionHash,
-      ...(entry.originalTxHash ? {} : { originalTxHash: transactionHash }),
+      ...(verifying.originalTxHash ? {} : { originalTxHash: verifiedHash }),
       association,
       evidenceSource,
       receiptStatus: 'REVERTED',
@@ -162,12 +197,13 @@ export async function resumeJournalEntry(
       lastVerifiedAt: new Date().toISOString(),
       lastErrorCategory: undefined,
     });
+    if (!result.applied) return { kind: 'SUPERSEDED' };
     return { kind: 'REVERTED' };
   }
 
-  const withChainEvidence = update(entry, ports, {
+  const chainEvidenceResult = apply({
     currentTxHash: inspected.transactionHash,
-    ...(entry.originalTxHash ? {} : { originalTxHash: transactionHash }),
+    ...(verifying.originalTxHash ? {} : { originalTxHash: verifiedHash }),
     association,
     evidenceSource,
     receiptStatus: 'SUCCESS',
@@ -182,12 +218,20 @@ export async function resumeJournalEntry(
     lastVerifiedAt: new Date().toISOString(),
     lastErrorCategory: undefined,
   });
+  if (!chainEvidenceResult.applied) return { kind: 'SUPERSEDED' };
+  const withChainEvidence = chainEvidenceResult.entry;
 
   if (!withChainEvidence.saleId) {
-    update(withChainEvidence, ports, {
-      projectionObservation: 'INCONSISTENT',
-      lastErrorCategory: 'FUNDING_SALE_ID_MISSING',
-    });
+    const result = update(
+      withChainEvidence,
+      ports,
+      {
+        projectionObservation: 'INCONSISTENT',
+        lastErrorCategory: 'FUNDING_SALE_ID_MISSING',
+      },
+      verificationRequestId,
+    );
+    if (!result.applied) return { kind: 'SUPERSEDED' };
     return { kind: 'INCONSISTENT' };
   }
 
@@ -209,21 +253,33 @@ export async function resumeJournalEntry(
           : observation.eventLookup === 'MATCHED' && observation.projectionEffect === 'CONSISTENT'
             ? 'REFLECTED'
             : 'INCONSISTENT';
-    update(withChainEvidence, ports, {
-      projectionObservation,
-      lastVerifiedAt: new Date().toISOString(),
-      verificationAvailability: 'AVAILABLE',
-      lastErrorCategory:
-        projectionObservation === 'INCONSISTENT' ? 'PROJECTION_EVIDENCE_MISMATCH' : undefined,
-    });
+    const result = update(
+      withChainEvidence,
+      ports,
+      {
+        projectionObservation,
+        lastVerifiedAt: new Date().toISOString(),
+        verificationAvailability: 'AVAILABLE',
+        lastErrorCategory:
+          projectionObservation === 'INCONSISTENT' ? 'PROJECTION_EVIDENCE_MISMATCH' : undefined,
+      },
+      verificationRequestId,
+    );
+    if (!result.applied) return { kind: 'SUPERSEDED' };
     if (projectionObservation === 'REFLECTED') return { kind: 'REFLECTED' };
     if (projectionObservation === 'NOT_REACHED') return { kind: 'SYNCING' };
     return { kind: 'INCONSISTENT' };
   } catch (error) {
-    update(withChainEvidence, ports, {
-      verificationAvailability: 'UNAVAILABLE',
-      lastErrorCategory: 'PROJECTION_OBSERVATION_UNAVAILABLE',
-    });
+    const result = update(
+      withChainEvidence,
+      ports,
+      {
+        verificationAvailability: 'UNAVAILABLE',
+        lastErrorCategory: 'PROJECTION_OBSERVATION_UNAVAILABLE',
+      },
+      verificationRequestId,
+    );
+    if (!result.applied) return { kind: 'SUPERSEDED' };
     return { kind: 'UNAVAILABLE', reason: error instanceof Error ? error.message : String(error) };
   }
 }

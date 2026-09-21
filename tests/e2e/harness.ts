@@ -77,11 +77,7 @@ execFileSync('corepack', ['pnpm', '--filter', '@motorcove/indexer', 'exec', 'tsx
   env: { ...environment, MOTORCOVE_INDEXER_ONCE: '1' },
   stdio: 'inherit',
 });
-const indexer = start(
-  process.execPath,
-  [resolve(root, 'node_modules/tsx/dist/cli.mjs'), 'apps/indexer/src/main.ts'],
-  true,
-);
+const indexer = start(process.execPath, ['--import', 'tsx', 'apps/indexer/src/main.ts'], true);
 if (!indexer.pid) throw new Error('Indexer process did not expose a PID');
 writeFileSync(`${state}/indexer.pid`, String(indexer.pid));
 start('corepack', ['pnpm', '--filter', '@motorcove/api', 'exec', 'tsx', 'src/main.ts']);
@@ -99,26 +95,45 @@ start('corepack', [
 ]);
 await wait('http://127.0.0.1:15173');
 console.log('MotorCove E2E harness ready');
-const cleanup = () => {
-  for (const child of children.reverse()) {
-    if (child.pid && processGroups.has(child.pid)) {
-      try {
-        process.kill(-child.pid, 'SIGTERM');
-      } catch {
-        /* already stopped */
-      }
-    } else child.kill('SIGTERM');
+const waitForExit = (child: ChildProcess, milliseconds: number) =>
+  child.exitCode !== null
+    ? Promise.resolve()
+    : Promise.race([
+        new Promise<void>((resolveExit) => child.once('exit', () => resolveExit())),
+        new Promise<void>((resolveTimeout) => setTimeout(resolveTimeout, milliseconds)),
+      ]);
+
+const signal = (child: ChildProcess, signalName: NodeJS.Signals, processGroup = false) => {
+  if (!child.pid) return;
+  try {
+    if (processGroup && processGroups.has(child.pid)) process.kill(-child.pid, signalName);
+    else child.kill(signalName);
+  } catch {
+    /* already stopped */
   }
-  rmSync(state, { recursive: true, force: true });
 };
-process.on('SIGINT', () => {
-  cleanup();
-  process.exit(0);
-});
-process.on('SIGTERM', () => {
-  cleanup();
-  process.exit(0);
-});
+
+let cleanupPromise: Promise<void> | undefined;
+const cleanup = () => {
+  cleanupPromise ??= (async () => {
+    for (const child of children.reverse()) {
+      signal(child, 'SIGTERM');
+      await waitForExit(child, 3_000);
+      if (child.exitCode === null) {
+        signal(child, 'SIGKILL', true);
+        await waitForExit(child, 3_000);
+      }
+    }
+    rmSync(state, { recursive: true, force: true });
+  })();
+  return cleanupPromise;
+};
+
+const shutdown = () => {
+  void cleanup().finally(() => process.exit(0));
+};
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 anvil.on('exit', (code) => {
   if (code && code !== 0) process.exit(code);
 });

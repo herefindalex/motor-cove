@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { FundingObservationResponse } from '@motorcove/api-contracts';
-import type { JournalEntry } from './model.js';
+import { isProjectionCurrentlyReflected, type JournalEntry } from './model.js';
 import type { TransactionJournal } from './ports.js';
 import {
   resumeJournalEntry,
@@ -219,4 +219,82 @@ describe('read-only transaction recovery', () => {
       expect(fixture.readObservation).toHaveBeenCalledTimes(0);
     },
   );
+
+  it('does not let a slow unavailable result replace newer reflected evidence', async () => {
+    let resolveInspection: ((value: InspectedFundingTransaction) => void) | undefined;
+    const inspection = new Promise<InspectedFundingTransaction>((resolve) => {
+      resolveInspection = resolve;
+    });
+    const fixture = ports(included);
+    fixture.recoveryPorts.chain.inspectFunding = vi.fn(async () => inspection);
+    const original = entry({ originalTxHash: hash, currentTxHash: hash, status: 'SUBMITTED' });
+    fixture.recoveryPorts.journal.save(original);
+
+    const slow = resumeJournalEntry(original, fixture.recoveryPorts);
+    await vi.waitFor(() => expect(fixture.saved[0]?.verificationAvailability).toBe('VERIFYING'));
+    const verifying = fixture.saved[0];
+    if (!verifying) throw new Error('verification marker was not saved');
+    fixture.recoveryPorts.journal.save({
+      ...verifying,
+      verificationRequestId: 'newer-request',
+      verificationAvailability: 'AVAILABLE',
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+      receiptBlockNumber: '105',
+      receiptBlockHash: blockHash,
+      projectionObservation: 'REFLECTED',
+    });
+
+    resolveInspection?.({ kind: 'UNAVAILABLE', transactionHash: hash, reason: 'RPC_UNAVAILABLE' });
+    await expect(slow).resolves.toEqual({ kind: 'SUPERSEDED' });
+    expect(fixture.saved[0]).toMatchObject({
+      verificationRequestId: 'newer-request',
+      status: 'INCLUDED_SUCCESS',
+      projectionObservation: 'REFLECTED',
+      verificationAvailability: 'AVAILABLE',
+    });
+  });
+
+  it('retains historical receipt evidence but withdraws current reflection after a reorg', async () => {
+    const fixture = ports({ kind: 'NONCANONICAL', transactionHash: hash });
+    const previouslyReflected = entry({
+      originalTxHash: hash,
+      currentTxHash: hash,
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+      receiptBlockNumber: '105',
+      receiptBlockHash: blockHash,
+      projectionObservation: 'REFLECTED',
+    });
+
+    expect(isProjectionCurrentlyReflected(previouslyReflected)).toBe(true);
+    await expect(resumeJournalEntry(previouslyReflected, fixture.recoveryPorts)).resolves.toEqual({
+      kind: 'INCONSISTENT',
+    });
+    expect(fixture.saved[0]).toMatchObject({
+      status: 'ORPHANED',
+      receiptStatus: 'SUCCESS',
+      receiptBlockHash: blockHash,
+      projectionObservation: 'INCONSISTENT',
+    });
+    expect(isProjectionCurrentlyReflected(fixture.saved[0]!)).toBe(false);
+  });
+
+  it('restores current reflection after an orphaned operation is verified on canonical history', async () => {
+    const fixture = ports(included);
+    const orphaned = entry({
+      originalTxHash: hash,
+      currentTxHash: hash,
+      status: 'ORPHANED',
+      receiptStatus: 'SUCCESS',
+      receiptBlockNumber: '105',
+      receiptBlockHash: blockHash,
+      projectionObservation: 'INCONSISTENT',
+    });
+
+    await expect(resumeJournalEntry(orphaned, fixture.recoveryPorts)).resolves.toEqual({
+      kind: 'REFLECTED',
+    });
+    expect(isProjectionCurrentlyReflected(fixture.saved[0]!)).toBe(true);
+  });
 });

@@ -64,6 +64,8 @@ recorded in [chain seed ambiguity](adr/0004-chain-seed-ambiguity.md). Funding ob
 read-only reload behavior are recorded in
 [transaction convergence](adr/0005-transaction-convergence.md). Browser review without an extension
 is bounded by the [local demo wallet decision](adr/0006-local-demo-wallet-boundary.md).
+Concurrent maintenance, browser evidence, and RPC failure semantics are recorded in
+[recovery evidence](adr/0007-concurrent-recovery-evidence.md).
 
 ## Evaluate current evidence
 

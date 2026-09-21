@@ -97,12 +97,20 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
       .run(reason, new Date().toISOString(), this.deploymentId);
   }
 
+  async markStale(reason: string): Promise<void> {
+    this.db
+      .prepare(
+        "UPDATE indexer_runtime_status SET projection_status='STALE',recovery_reason=?,worker_heartbeat_at=? WHERE deployment_id=?",
+      )
+      .run(reason, new Date().toISOString(), this.deploymentId);
+  }
+
   observe(head: bigint): void {
     const now = new Date().toISOString();
     this.db
       .prepare(
         `UPDATE indexer_runtime_status
-         SET projection_status=CASE WHEN projection_status='UNINITIALIZED' THEN 'SYNCING' ELSE projection_status END,
+         SET projection_status=CASE WHEN projection_status IN ('UNINITIALIZED','STALE') THEN 'SYNCING' ELSE projection_status END,
              last_observed_head=?,last_observed_at=?,last_rpc_success_at=?,worker_heartbeat_at=?
          WHERE deployment_id=?`,
       )
@@ -116,6 +124,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
   ): Promise<void> {
     this.commitFaultHook?.('BEFORE_BEGIN');
     this.db.transaction(() => {
+      const recanonicalizedBlocks = new Set<string>();
       for (const header of headers) {
         const blockEvents = events
           .filter((event) => event.blockNumber === header.number)
@@ -127,9 +136,10 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
         const existing = this.db
           .prepare(
             `SELECT observed_log_count AS observedLogCount,
-                    observed_log_digest AS observedLogDigest,
-                    log_scope_hash AS logScopeHash,
-                    parent_hash AS parentHash
+            observed_log_digest AS observedLogDigest,
+            log_scope_hash AS logScopeHash,
+            parent_hash AS parentHash,
+            is_canonical AS isCanonical
              FROM indexed_blocks WHERE deployment_id=? AND block_hash=?`,
           )
           .get(this.deploymentId, header.hash) as
@@ -138,6 +148,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
               observedLogDigest: string;
               logScopeHash: string;
               parentHash: string;
+              isCanonical: number;
             }
           | undefined;
         if (existing) {
@@ -148,6 +159,16 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
             existing.parentHash !== header.parentHash
           )
             throw new Error('COMPLETED_BLOCK_CONTENT_MISMATCH');
+          if (existing.isCanonical !== 1) {
+            this.db
+              .prepare(
+                `UPDATE indexed_blocks
+                 SET is_canonical=1,scan_complete=1
+                 WHERE deployment_id=? AND block_hash=?`,
+              )
+              .run(this.deploymentId, header.hash.toLowerCase());
+            recanonicalizedBlocks.add(header.hash.toLowerCase());
+          }
         } else {
           this.db
             .prepare(
@@ -169,7 +190,8 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
         }
       }
 
-      for (const ordered of events) this.recordEvent(ordered);
+      for (const ordered of events)
+        this.recordEvent(ordered, recanonicalizedBlocks.has(ordered.blockHash.toLowerCase()));
       this.commitFaultHook?.('AFTER_EVENT_WRITES');
 
       this.db
@@ -318,7 +340,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
     })();
   }
 
-  private recordEvent(ordered: OrderedEvent): void {
+  private recordEvent(ordered: OrderedEvent, applyExisting = false): void {
     const rawEnvelopeDigest = digest(eventEnvelope(ordered));
     const decodedJson = stringify(ordered.event);
     const existing = this.db
@@ -337,6 +359,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
         existing.decoderVersion !== DECODER_VERSION
       )
         throw new Error('EVENT_IDENTITY_CONTENT_MISMATCH');
+      if (applyExisting) this.applyEvent(ordered);
       return;
     }
     this.db

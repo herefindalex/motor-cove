@@ -40,12 +40,16 @@ avoids silently choosing a canonical branch or destroying evidence during a loca
 Sale state, claim state, token reclaim, transaction observation, and projection freshness stay
 separate in UI, API, and tests. Rebuild preserves catalog data. Reset, migration, restore, rebuild,
 and reindex remain distinct guarded commands.
+Rebuild and reindex use the exclusive maintenance gate and a durable operation marker. Reindex
+restores canonical membership and reapplies already stored events when the selected chain history
+has the same block hashes; source evidence remains append-only.
 
 ## Code and tests
 
 - `chain/src/MotorCoveEscrow.sol` and `chain/test`
 - `packages/database/src` and `apps/indexer/src`
 - `tests/integration/indexer-store.test.ts`, `tests/integration/real-stack.test.ts`, and
-  `tests/recovery/backup-restore.test.ts`
+  `tests/integration/reindex-canonical.test.ts`
+- `tests/recovery/backup-restore.test.ts` and `tests/database/projection-maintenance.test.ts`
 - [Escrow protocol](../protocol/escrow.md), [database architecture](../architecture/database.md),
   and [indexing recovery](../flows/indexing-and-recovery.md)

@@ -12,6 +12,10 @@ export { registerDeployment, type DeploymentRegistration } from './deployment-re
 export { seedCatalog, catalogSeedDigest, type CatalogSeedSet } from './catalog-seed.js';
 export { migrateEnvironment } from './migration-operation.js';
 export {
+  runProjectionMaintenance,
+  type ProjectionMaintenanceOptions,
+} from './projection-operation.js';
+export {
   inspectEnvironment,
   verifyDatabase,
   loadSchemaContract,

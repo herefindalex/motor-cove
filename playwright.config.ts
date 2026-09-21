@@ -13,6 +13,7 @@ export default defineConfig({
     url: 'http://127.0.0.1:15173',
     timeout: 90_000,
     reuseExistingServer: false,
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 15_000 },
   },
   reporter: [['list'], ['html', { open: 'never' }]],
 });

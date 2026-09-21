@@ -120,7 +120,11 @@ export async function submitOperation(
 
   try {
     const nonce = await action.readNonce(hash);
-    journal.save({ ...submitted, updatedAt: new Date().toISOString(), nonce });
+    const current =
+      journal
+        .load(context.deploymentId)
+        .find((entry) => entry.clientOperationId === submitted.clientOperationId) ?? submitted;
+    journal.save({ ...current, updatedAt: new Date().toISOString(), nonce });
   } catch {
     // Optional enrichment cannot erase the already durable hash.
   }

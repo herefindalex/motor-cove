@@ -12,7 +12,7 @@
     "doctor": "tsx tooling/scripts/doctor.ts",
     "dev:chain": "anvil --host 127.0.0.1 --port 8545 --chain-id 31337",
     "dev:bootstrap": "corepack pnpm --filter @motorcove/indexer run bootstrap",
-    "dev:full": "concurrently -k -n api,indexer,web 'corepack pnpm dev:api' 'corepack pnpm dev:indexer' 'corepack pnpm dev:ui'",
+    "dev:full": "concurrently -n api,indexer,web 'corepack pnpm dev:api' 'corepack pnpm dev:indexer' 'corepack pnpm dev:ui'",
     "dev:ui": "corepack pnpm --filter @motorcove/web run dev",
     "dev:api": "corepack pnpm --filter @motorcove/api run dev",
     "dev:indexer": "corepack pnpm --filter @motorcove/indexer run dev",

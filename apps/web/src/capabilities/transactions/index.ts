@@ -1,4 +1,8 @@
-export { journalEntrySchema, transactionObservationSchema } from './model.js';
+export {
+  isProjectionCurrentlyReflected,
+  journalEntrySchema,
+  transactionObservationSchema,
+} from './model.js';
 export type { JournalEntry, SubmissionResult, TransactionObservation } from './model.js';
 export type { JournalLoadIssue, TransactionJournal } from './ports.js';
 export { submitOperation } from './submit-operation.js';

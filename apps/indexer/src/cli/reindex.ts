@@ -1,5 +1,5 @@
 import { motorCoveEscrowAbi } from '@motorcove/chain-artifacts';
-import { openProjectionWriter } from '@motorcove/database/projection-writer';
+import { runProjectionMaintenance } from '@motorcove/database/maintenance';
 import { createPublicClient, http, keccak256, type Address } from 'viem';
 import { ViemChainReader } from '../adapters/evm/viem-chain-reader.js';
 import { SqliteProjectionStore } from '../adapters/sqlite/sqlite-projection-store.js';
@@ -40,46 +40,49 @@ if (
 
 const target = await client.getBlock();
 if (!target.hash) throw new Error('REINDEX_TARGET_HASH_MISSING');
-const writer = await openProjectionWriter(config.environment);
-try {
-  const store = new SqliteProjectionStore(
-    writer.database,
-    config.manifest.deploymentId,
-    config.manifest.nft.address,
-    logScopeHash(config.manifest),
-  );
-  store.rewindFrom(fromBlock);
-  const rebuild = store.rebuildFromJournal();
-  const chain = new ViemChainReader(client, nft, escrow);
-  for (let attempt = 0; attempt < 1_000; attempt += 1) {
-    const checkpoint = await store.checkpoint();
-    if (checkpoint && checkpoint.number >= target.number) break;
-    await ingestRange(
-      chain,
-      store,
-      config.batchSize,
-      BigInt(config.manifest.scanStartBlock),
-      config.indexingDepth,
+const operation = await runProjectionMaintenance(config.environment, {
+  operationType: 'REINDEX_PROJECTION',
+  expectedDeploymentId: config.manifest.deploymentId,
+  run: async (database) => {
+    const store = new SqliteProjectionStore(
+      database,
+      config.manifest.deploymentId,
+      config.manifest.nft.address,
+      logScopeHash(config.manifest),
     );
-  }
-  const checkpoint = await store.checkpoint();
-  if (
-    !checkpoint ||
-    checkpoint.number < target.number ||
-    !store.hasCanonicalBlock(target.number, target.hash)
-  )
-    throw new Error('REINDEX_CATCHUP_INCOMPLETE');
-  console.log(
-    JSON.stringify({
-      service: 'reindex',
-      status: 'complete',
-      deploymentId: config.manifest.deploymentId,
-      fromBlock: fromBlock.toString(),
-      targetBlock: target.number.toString(),
-      targetHash: target.hash,
-      ...rebuild,
-    }),
-  );
-} finally {
-  await writer.close();
-}
+    store.rewindFrom(fromBlock);
+    const rebuild = store.rebuildFromJournal();
+    const chain = new ViemChainReader(client, nft, escrow);
+    for (let attempt = 0; attempt < 1_000; attempt += 1) {
+      const checkpoint = await store.checkpoint();
+      if (checkpoint && checkpoint.number >= target.number) break;
+      await ingestRange(
+        chain,
+        store,
+        config.batchSize,
+        BigInt(config.manifest.scanStartBlock),
+        config.indexingDepth,
+      );
+    }
+    const checkpoint = await store.checkpoint();
+    if (
+      !checkpoint ||
+      checkpoint.number < target.number ||
+      !store.hasCanonicalBlock(target.number, target.hash)
+    )
+      throw new Error('REINDEX_CATCHUP_INCOMPLETE');
+    return rebuild;
+  },
+});
+console.log(
+  JSON.stringify({
+    service: 'reindex',
+    status: 'complete',
+    operationId: operation.operationId,
+    deploymentId: config.manifest.deploymentId,
+    fromBlock: fromBlock.toString(),
+    targetBlock: target.number.toString(),
+    targetHash: target.hash,
+    ...operation.result,
+  }),
+);

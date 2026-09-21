@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BlockHeader, ChainReader, ProjectionUnitOfWork } from '../ports/index.js';
-import { ingestRange } from './ingest-range.js';
+import { ChainTransportUnavailableError, ingestRange } from './ingest-range.js';
 
 const hash = (number: bigint): `0x${string}` => `0x${number.toString(16).padStart(64, '0')}`;
 
@@ -13,16 +13,19 @@ function header(number: bigint): BlockHeader {
   };
 }
 
-function store() {
+function store(checkpoint: BlockHeader | null = null) {
   const commits: Array<{ headers: readonly BlockHeader[]; checkpoint: BlockHeader }> = [];
+  const recoveries: string[] = [];
   const unit: ProjectionUnitOfWork = {
-    checkpoint: async () => null,
+    checkpoint: async () => checkpoint,
     commit: async (headers, _events, checkpoint) => {
       commits.push({ headers, checkpoint });
     },
-    markRecoveryRequired: async () => undefined,
+    markRecoveryRequired: async (reason) => {
+      recoveries.push(reason);
+    },
   };
-  return { unit, commits };
+  return { unit, commits, recoveries };
 }
 
 describe('ingestRange', () => {
@@ -63,5 +66,77 @@ describe('ingestRange', () => {
 
     expect(ranges).toEqual(['0:7']);
     expect(target.commits[0]?.checkpoint.number).toBe(7n);
+  });
+
+  it('rejects a new batch that no longer joins the durable checkpoint', async () => {
+    const durable = header(100n);
+    const forked = { ...header(101n), parentHash: hash(999n) };
+    const chain: ChainReader = {
+      getHead: async () => forked,
+      getBlock: async (number) => (number === durable.number ? durable : forked),
+      getEvents: async () => [],
+    };
+    const target = store(durable);
+
+    await expect(ingestRange(chain, target.unit, 8n)).rejects.toThrow(
+      'RECOVERY_REQUIRED: checkpoint parent discontinuity',
+    );
+    expect(target.commits).toHaveLength(0);
+    expect(target.recoveries).toEqual(['CHECKPOINT_PARENT_DISCONTINUITY']);
+  });
+
+  it('classifies a checkpoint RPC timeout as transport without requesting recovery', async () => {
+    const durable = header(100n);
+    const chain: ChainReader = {
+      getHead: async () => header(101n),
+      getBlock: async () => {
+        throw new Error('request timed out');
+      },
+      getEvents: async () => [],
+    };
+    const target = store(durable);
+
+    await expect(ingestRange(chain, target.unit, 8n)).rejects.toBeInstanceOf(
+      ChainTransportUnavailableError,
+    );
+    expect(target.commits).toHaveLength(0);
+    expect(target.recoveries).toEqual([]);
+  });
+
+  it('requires recovery when the provider confirms the checkpoint block is gone', async () => {
+    const durable = header(100n);
+    const missing = Object.assign(new Error('Block 100 could not be found.'), {
+      name: 'BlockNotFoundError',
+    });
+    const chain: ChainReader = {
+      getHead: async () => header(99n),
+      getBlock: async () => {
+        throw missing;
+      },
+      getEvents: async () => [],
+    };
+    const target = store(durable);
+
+    await expect(ingestRange(chain, target.unit, 8n)).rejects.toThrow(
+      'RECOVERY_REQUIRED: checkpoint block unavailable',
+    );
+    expect(target.recoveries).toEqual(['CHECKPOINT_BLOCK_UNAVAILABLE']);
+  });
+
+  it('does not retry a deterministic chain adapter failure as transport', async () => {
+    const chain: ChainReader = {
+      getHead: async () => {
+        throw new Error('DECODER_CONTRACT_MISMATCH');
+      },
+      getBlock: async (number) => header(number),
+      getEvents: async () => [],
+    };
+    const target = store();
+
+    await expect(ingestRange(chain, target.unit)).rejects.toThrow('DECODER_CONTRACT_MISMATCH');
+    await expect(ingestRange(chain, target.unit)).rejects.not.toBeInstanceOf(
+      ChainTransportUnavailableError,
+    );
+    expect(target.recoveries).toEqual([]);
   });
 });

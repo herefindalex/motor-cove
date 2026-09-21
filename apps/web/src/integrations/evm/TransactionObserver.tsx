@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePublicClient } from 'wagmi';
 import {
+  isProjectionCurrentlyReflected,
   resumeJournalEntry,
   type JournalEntry,
   type TransactionJournal,
@@ -18,6 +19,7 @@ export function TransactionObserver({
   const client = usePublicClient();
   const [entries, setEntries] = useState<readonly JournalEntry[]>(() => journal.load(deploymentId));
   const [candidates, setCandidates] = useState<Record<string, string>>({});
+  const inFlight = useRef(new Set<string>());
   const chain = useMemo(() => (client ? createFundingChainReader(client) : undefined), [client]);
 
   useEffect(() => {
@@ -29,24 +31,30 @@ export function TransactionObserver({
   const recheck = useCallback(
     async (entry: JournalEntry, candidateHash?: `0x${string}`) => {
       if (!chain) return;
-      await resumeJournalEntry(
-        entry,
-        {
-          chain,
-          observation: {
-            observeFunding: (input) =>
-              motorCoveApi.fundingObservation(input.saleId, {
-                deploymentId: input.deploymentId,
-                observeTxHash: input.observeTxHash,
-                observeBlockNumber: input.observeBlockNumber,
-                observeBlockHash: input.observeBlockHash,
-                observeLogIndex: input.observeLogIndex,
-              }),
+      if (inFlight.current.has(entry.clientOperationId)) return;
+      inFlight.current.add(entry.clientOperationId);
+      try {
+        await resumeJournalEntry(
+          entry,
+          {
+            chain,
+            observation: {
+              observeFunding: (input) =>
+                motorCoveApi.fundingObservation(input.saleId, {
+                  deploymentId: input.deploymentId,
+                  observeTxHash: input.observeTxHash,
+                  observeBlockNumber: input.observeBlockNumber,
+                  observeBlockHash: input.observeBlockHash,
+                  observeLogIndex: input.observeLogIndex,
+                }),
+            },
+            journal,
           },
-          journal,
-        },
-        candidateHash,
-      );
+          candidateHash,
+        );
+      } finally {
+        inFlight.current.delete(entry.clientOperationId);
+      }
     },
     [chain, journal],
   );
@@ -99,7 +107,7 @@ export function TransactionObserver({
             {entry.projectionObservation === 'NOT_REACHED' && (
               <p>Payment executed on-chain. Marketplace data is syncing.</p>
             )}
-            {entry.projectionObservation === 'REFLECTED' && (
+            {isProjectionCurrentlyReflected(entry) && (
               <p>This funding payment is reflected in the marketplace projection.</p>
             )}
             {entry.verificationAvailability === 'UNAVAILABLE' && (

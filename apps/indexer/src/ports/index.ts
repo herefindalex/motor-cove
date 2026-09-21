@@ -12,6 +12,7 @@ export interface ChainReader {
 }
 export interface ProjectionUnitOfWork {
   checkpoint(): Promise<BlockHeader | null>;
+  observe?(head: bigint): void;
   commit(
     headers: readonly BlockHeader[],
     events: readonly OrderedEvent[],

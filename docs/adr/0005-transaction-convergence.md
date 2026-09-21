@@ -24,6 +24,11 @@ provenance from one read transaction. A consistent funding effect accepts `FUNDE
 Keep the existing Indexer transaction boundary. A test-only synchronous fault hook provides exact
 pre-BEGIN, pre-COMMIT, and post-COMMIT process barriers for child-process `SIGKILL` tests.
 
+Assign each asynchronous verification a generation ID and merge its result into the latest saved
+journal entry only while that generation remains current. Nonce enrichment also reloads the latest
+entry and changes only the nonce. Define current projection success with one selector that requires
+included success, a successful receipt, and a reflected projection together.
+
 ## Consequences
 
 - Reload, polling, candidate-hash verification, and projection retry cannot submit transactions.
@@ -33,6 +38,7 @@ pre-BEGIN, pre-COMMIT, and post-COMMIT process barriers for child-process `SIGKI
   replacement receipt can satisfy the original intent.
 - Orphaned receipt evidence remains visible as `NONCANONICAL`; same-hash reinclusion must establish a
   new canonical receipt and event identity.
+- A slow verification or nonce lookup cannot replace newer receipt or projection evidence.
 - Selector requests cannot mutate Indexer health or database state.
 - WAL process-kill evidence is recorded separately from graceful rollback and hardware power loss.
 

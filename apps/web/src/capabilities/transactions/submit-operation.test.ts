@@ -119,6 +119,38 @@ describe('submitOperation', () => {
     expect(store.entries[0]?.status).toBe('SUBMITTED');
   });
 
+  it('adds a slow nonce result to the latest journal evidence without regressing status', async () => {
+    const store = journal();
+    let resolveNonce: ((nonce: number) => void) | undefined;
+    const nonce = new Promise<number>((resolve) => {
+      resolveNonce = resolve;
+    });
+    const { action, context } = fixture({ readNonce: async () => nonce });
+
+    const submission = submitOperation(context, action, store.port);
+    await vi.waitFor(() => expect(store.entries[0]?.status).toBe('SUBMITTED'));
+    const submitted = store.entries[0];
+    if (!submitted) throw new Error('submitted entry was not saved');
+    store.port.save({
+      ...submitted,
+      updatedAt: new Date().toISOString(),
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+      receiptBlockNumber: '105',
+      receiptBlockHash: `0x${'5'.repeat(64)}`,
+      projectionObservation: 'REFLECTED',
+    });
+
+    resolveNonce?.(9);
+    await expect(submission).resolves.toEqual({ kind: 'submitted', hash });
+    expect(store.entries[0]).toMatchObject({
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+      projectionObservation: 'REFLECTED',
+      nonce: 9,
+    });
+  });
+
   it('rechecks context after simulation and keeps wallet call count at zero', async () => {
     const store = journal();
     let checks = 0;

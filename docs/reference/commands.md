@@ -66,5 +66,10 @@ in `_meta/commands.json` owns the table.
 operator confirmation; it must never bypass local-chain, ownership, identity, or path guards.
 No quickstart should use them on an existing environment.
 
+`dev:full` supervises API, Indexer, and Web independently. A fatal Indexer integrity error does not
+terminate the readonly API or Web process; inspect system status, stop the remaining services, and
+run the documented recovery command. `ops:rebuild` and `ops:reindex` require exclusive maintenance
+access and leave a failed marker when interrupted.
+
 Project commands wrap tool behavior. `db:check` is not a claim that Drizzle Kit alone verifies live
 schema, constraints, data, and historical checksums.

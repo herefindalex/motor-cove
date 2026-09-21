@@ -51,6 +51,7 @@ export const journalEntrySchema = z.object({
   association: z.enum(['EXACT_SUBMISSION', 'INTENT_MATCH']).optional(),
   replacementKind: z.enum(['REPRICED', 'CANCELLED', 'DIFFERENT_CALL']).optional(),
   lastVerifiedAt: z.string().datetime().optional(),
+  verificationRequestId: z.string().min(1).optional(),
   verificationAvailability: z.enum(['VERIFYING', 'AVAILABLE', 'UNAVAILABLE']).optional(),
   projectionObservation: z
     .enum(['NOT_REACHED', 'REFLECTED', 'INCONSISTENT', 'UNVERIFIABLE'])
@@ -60,6 +61,14 @@ export const journalEntrySchema = z.object({
 });
 
 export type JournalEntry = z.infer<typeof journalEntrySchema>;
+
+export function isProjectionCurrentlyReflected(entry: JournalEntry): boolean {
+  return (
+    entry.status === 'INCLUDED_SUCCESS' &&
+    entry.receiptStatus === 'SUCCESS' &&
+    entry.projectionObservation === 'REFLECTED'
+  );
+}
 
 export type SubmissionResult =
   | { kind: 'submitted'; hash: `0x${string}` }
