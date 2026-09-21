@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "aff6fdef6fef923aa3d07fe2a1ef4687e0ff77d1",
+    "revision": "00fbc749700e6510c8228b10a1216df8a1a073f7",
     "dirty": true,
-    "capturedAt": "2026-09-21T23:17:51.462Z",
+    "capturedAt": "2026-09-21T23:26:54.000Z",
     "sourceFingerprint": "sha256:f2b5e0b1d84b17d95fb3d91aaaa67c8f073ddd6a0eb02a4e9481b73e2a842cfd",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Captured from the dirty pre-commit workspace after local verification. Public networks, real user wallets, user databases, manual MetaMask behavior, hardware power loss, and cross-device journal coordination were not exercised.",
+    "limits": "Captured in an evidence-only follow-up workspace whose source fingerprint matches commit 00fbc749700e6510c8228b10a1216df8a1a073f7; RUN-CI verifies that commit. Public networks, real user wallets, user databases, manual MetaMask behavior, hardware power loss, and cross-device journal coordination were not exercised.",
     "sourceFingerprintMethod": "SHA-256 over sorted NUL-separated repository-relative paths and file bytes from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -277,13 +277,13 @@
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35629905298)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35667161153)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/pass",
-      "result": "Remote verify job passed dependency installation, docs smoke, pnpm verify, pnpm test:e2e, and graceful browser diagnostics handling for commit 3092919.",
-      "executedAt": "2026-09-21T15:26:40Z",
+      "result": "Remote verify job passed frozen dependency installation, docs smoke, pnpm verify, pnpm test:e2e, and graceful browser diagnostics handling for commit 00fbc749700e6510c8228b10a1216df8a1a073f7.",
+      "executedAt": "2026-09-21T23:26:54Z",
       "limitations": "One push-triggered run; branch protection, required reviews, manual MetaMask, and public-network behavior remain separate evidence.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35618386503"
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35667161153"
     }
   ]
 }
