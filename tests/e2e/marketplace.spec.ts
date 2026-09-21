@@ -128,22 +128,19 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test('uses the explicit test EIP-1193 adapter for real fund, complete, and withdraw transactions', async ({
+test('uses the explicit local demo wallet for real fund, complete, and withdraw transactions', async ({
   page,
 }) => {
   await page.goto('/');
   await expect(page.getByText('Apex GT')).toBeVisible();
-  await page.getByRole('button', { name: 'Connect wallet' }).click();
+  await page.getByRole('button', { name: 'Use local buyer' }).click();
   await expect(page.getByRole('button', { name: 'Fund exactly' })).toBeEnabled();
   await page.getByRole('button', { name: 'Fund exactly' }).click();
   await expect(page.getByText('FUNDED')).toBeVisible();
   await page.getByRole('button', { name: 'Complete sale' }).click();
   await expect(page.getByText('COMPLETED')).toBeVisible();
-  await page.evaluate(async () =>
-    (
-      window as unknown as { __motorCoveTestWallet: { select(index: number): Promise<void> } }
-    ).__motorCoveTestWallet.select(1),
-  );
+  await page.getByRole('button', { name: 'Disconnect' }).click();
+  await page.getByRole('button', { name: 'Use local seller' }).click();
   await expect(page.getByRole('button', { name: 'Withdraw proceeds' })).toBeEnabled();
   await page.getByRole('button', { name: 'Withdraw proceeds' }).click();
   await expect(page.getByText('WITHDRAWN')).toBeVisible();

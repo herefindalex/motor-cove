@@ -29,16 +29,18 @@
     {
       "id": "CAP-03",
       "name": "Wallet connectivity",
-      "behavior": "Connects an injected EIP-1193 wallet and tracks connection and account lifecycle.",
+      "behavior": "Connects an injected EIP-1193 wallet or an explicitly enabled loopback demo connector and tracks connection and account lifecycle.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/app/composition.tsx",
         "apps/web/src/capabilities/wallet",
-        "apps/web/src/capabilities/transactions/ui/TransactionTimeline.test.tsx"
+        "apps/web/src/capabilities/transactions/ui/TransactionTimeline.test.tsx",
+        "apps/web/src/capabilities/wallet/ui/WalletPanel.test.tsx",
+        "apps/web/src/integrations/evm/local-demo-connectors.ts"
       ],
       "scenarios": ["TX-001", "TX-002"],
       "verification": ["RUN-WEB-COMPONENT", "RUN-E2E"],
-      "limits": "Automated component and browser tests use controlled adapters. Manual MetaMask smoke testing is not recorded."
+      "limits": "Missing-provider and connector-selection component tests passed. Browser settlement uses the loopback demo connector; fault injection uses a controlled provider. Manual MetaMask smoke testing is not recorded."
     },
     {
       "id": "CAP-04",
@@ -85,7 +87,7 @@
       ],
       "scenarios": ["TX-002", "IDX-001"],
       "verification": ["RUN-API-CONTRACT", "RUN-E2E"],
-      "limits": "Automated browser coverage uses a test wallet adapter; manual injected-wallet behavior remains unverified."
+      "limits": "Automated browser coverage separates the local demo connector from controlled provider faults; manual injected-wallet behavior remains unverified."
     },
     {
       "id": "CAP-08",

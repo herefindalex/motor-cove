@@ -9,11 +9,11 @@ status fields; `docs:generate` owns the table below.
 | --- | --- | --- | --- | --- |
 | CAP-01 | React, Vite, and TypeScript | implemented | RUN-WORKSPACE-VERIFY: executed/pass | The local gate applies to the recorded dirty source fingerprint; later source changes require a rerun. |
 | CAP-02 | Frontend architecture | implemented | RUN-ARCHITECTURE: executed/pass | The checker covers parsed source imports; it is not a runtime isolation mechanism. |
-| CAP-03 | Wallet connectivity | implemented | RUN-WEB-COMPONENT: executed/pass<br>RUN-E2E: executed/pass | Automated component and browser tests use controlled adapters. Manual MetaMask smoke testing is not recorded. |
+| CAP-03 | Wallet connectivity | implemented | RUN-WEB-COMPONENT: executed/pass<br>RUN-E2E: executed/pass | Missing-provider and connector-selection component tests passed. Browser settlement uses the loopback demo connector; fault injection uses a controlled provider. Manual MetaMask smoke testing is not recorded. |
 | CAP-04 | Network validation and switching | implemented | RUN-E2E: executed/pass | Only local chain ID 31337 is in scope. |
 | CAP-05 | Smart-contract interaction | implemented | RUN-CONTRACTS: executed/pass<br>RUN-E2E: executed/pass | No public-chain deployment or external wallet-provider compatibility claim. |
 | CAP-06 | Transaction lifecycle | implemented | RUN-TRANSACTION-RECOVERY: executed/pass<br>RUN-INTEGRATION: executed/pass<br>RUN-E2E: executed/pass | Automated recovery uses local Anvil or controlled ports; real MetaMask response loss and every replacement variant remain unverified. |
-| CAP-07 | Frontend state and API integration | implemented | RUN-API-CONTRACT: executed/pass<br>RUN-E2E: executed/pass | Automated browser coverage uses a test wallet adapter; manual injected-wallet behavior remains unverified. |
+| CAP-07 | Frontend state and API integration | implemented | RUN-API-CONTRACT: executed/pass<br>RUN-E2E: executed/pass | Automated browser coverage separates the local demo connector from controlled provider faults; manual injected-wallet behavior remains unverified. |
 | CAP-08 | Digital-asset escrow | implemented | RUN-CONTRACTS: executed/pass | Local test assets and test ETH only; contracts have not received an external security audit. |
 | CAP-09 | EVM integration literacy | implemented | RUN-INTEGRATION: executed/pass | Anvil behavior does not establish public-network finality or archive-RPC support. |
 | CAP-10 | Event-driven backend | implemented | RUN-INDEXER-UNIT: executed/pass<br>RUN-INDEXER-KILL: executed/pass<br>RUN-INTEGRATION: executed/pass | Automatic recovery across arbitrary canonical branch changes is outside the implemented scope. |

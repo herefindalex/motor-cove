@@ -15,6 +15,7 @@ const environment = {
   MOTORCOVE_WEB_ORIGIN: 'http://127.0.0.1:15173',
   VITE_MOTORCOVE_API_URL: 'http://127.0.0.1:13001',
   VITE_MOTORCOVE_RPC_URL: 'http://127.0.0.1:19545',
+  VITE_MOTORCOVE_DEMO_WALLET: '1',
 };
 const children: ChildProcess[] = [];
 const processGroups = new Set<number>();

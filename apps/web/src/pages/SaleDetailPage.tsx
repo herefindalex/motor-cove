@@ -87,6 +87,8 @@ export function SaleDetailPage() {
       <section className="wallet-row">
         <WalletPanel
           state={wallet.state}
+          connectors={wallet.connectors}
+          error={wallet.error}
           pending={wallet.pending}
           onConnect={wallet.connect}
           onDisconnect={wallet.disconnect}

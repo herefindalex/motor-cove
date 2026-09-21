@@ -62,7 +62,8 @@ Architecture decisions are recorded in [system boundaries](adr/0001-system-bound
 [compatibility, tools, and secrets](adr/0003-compatibility-and-tools.md). Bootstrap retry semantics are
 recorded in [chain seed ambiguity](adr/0004-chain-seed-ambiguity.md). Funding observation and
 read-only reload behavior are recorded in
-[transaction convergence](adr/0005-transaction-convergence.md).
+[transaction convergence](adr/0005-transaction-convergence.md). Browser review without an extension
+is bounded by the [local demo wallet decision](adr/0006-local-demo-wallet-boundary.md).
 
 ## Evaluate current evidence
 

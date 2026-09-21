@@ -1,24 +1,41 @@
-import type { WalletState } from '../model.js';
+import type { WalletConnectorChoice, WalletState } from '../model.js';
 export function WalletPanel({
   state,
+  connectors,
+  error,
   pending,
   onConnect,
   onDisconnect,
   onSwitch,
 }: {
   state: WalletState;
+  connectors: readonly WalletConnectorChoice[];
+  error?: string | undefined;
   pending: boolean;
-  onConnect(): void;
+  onConnect(connectorId: string): void;
   onDisconnect(): void;
   onSwitch(): void;
 }) {
   if (state.kind === 'unavailable')
-    return <div className="wallet danger">No injected wallet detected.</div>;
+    return (
+      <div className="wallet danger" role="status">
+        No injected wallet detected. Use a browser wallet, or start the explicit local demo wallet.
+      </div>
+    );
   if (state.kind === 'disconnected')
     return (
-      <button onClick={onConnect} disabled={pending}>
-        Connect wallet
-      </button>
+      <div className="wallet">
+        {connectors.map((connector) => (
+          <button key={connector.id} onClick={() => onConnect(connector.id)} disabled={pending}>
+            {connector.buttonLabel}
+          </button>
+        ))}
+        {error && (
+          <span className="danger" role="alert">
+            {error}
+          </span>
+        )}
+      </div>
     );
   if (state.kind === 'wrong-network')
     return (

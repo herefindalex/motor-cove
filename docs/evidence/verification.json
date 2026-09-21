@@ -97,9 +97,9 @@
       "command": "pnpm test:e2e",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "4 Playwright scenarios passed against isolated Anvil, managed SQLite, API, Indexer, and Web processes, including one-broadcast response loss, reload recovery without resubmission, account switching, and projection catch-up",
-      "limitations": "Uses an explicit test EIP-1193 adapter; manual MetaMask behavior is not verified. After the passes, Indexer logged an RPC refusal during Playwright web-server teardown after Anvil stopped; command exit was 0.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "result": "4 Playwright scenarios passed against isolated Anvil, managed SQLite, API, Indexer, and Web processes. Normal settlement used the loopback demo connector; fault scenarios covered one-broadcast response loss, reload recovery without resubmission, account switching, and projection catch-up.",
+      "limitations": "Fault injection uses a controlled EIP-1193 adapter; manual MetaMask behavior is not verified. After passes, the Indexer logged an RPC refusal during Playwright web-server teardown after Anvil stopped; the command exit was 0.",
+      "executedAt": "2026-09-21T14:06:18.000Z"
     },
     {
       "id": "RUN-INTEGRATION",
@@ -148,9 +148,9 @@
       "command": "pnpm test:unit",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "17 files, 84 unit, component, migration, database, seed, and recovery tests passed",
+      "result": "20 files, 96 unit, component, migration, database, seed, and recovery tests passed",
       "limitations": "Includes controlled wallet, journal, database, migration, seed, recovery, and documentation tests; manual provider behavior is separate.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "executedAt": "2026-09-21T14:06:18.000Z"
     },
     {
       "id": "RUN-API-CONTRACT",
@@ -192,9 +192,9 @@
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generation, database check, formatting, docs, architecture, typecheck, lint, 13 Foundry tests, 84 unit/component/database tests, 26 integration tests, and all 7 workspace builds passed",
+      "result": "Generation, database check, formatting, docs, architecture, typecheck, lint, 13 Foundry tests, 96 unit/component/database tests, 26 integration tests, and all 7 workspace builds passed",
       "limitations": "The gate is local. It does not establish manual MetaMask behavior, public-network safety, remote GitHub Actions, branch protection, hardware power-loss durability, or a prior-schema upgrade.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "executedAt": "2026-09-21T14:06:18.000Z"
     },
     {
       "id": "RUN-DOCS-CHECK",

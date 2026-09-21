@@ -15,8 +15,9 @@ API、Indexer 與維護工具共用 `@motorcove/database`，統一管理環境�
 鎖、projection、catalog seed、備份、還原及 reset。目前原始碼已在本機通過
 `pnpm verify` 與 `pnpm test:e2e`。
 
-Browser E2E 使用明確的測試錢包 adapter；手動 MetaMask、GitHub 遠端設定、公開鏈與外部
-安全稽核尚未驗證。完整的 required／implemented／verified 分界請見
+Browser E2E 將僅限 loopback 的本地 demo connector 與可注入故障的 EIP-1193 測試 adapter
+分開；它不是實際的瀏覽器錢包擴充功能測試。手動 MetaMask、GitHub 遠端設定、公開鏈與
+外部安全稽核尚未驗證。完整的 required／implemented／verified 分界請見
 [實作狀態](docs/implementation-status.md)。存在程式或測試檔不等於已通過驗證。
 
 ## 架構一覽
@@ -86,12 +87,13 @@ Anvil ready 後，在第二個 terminal：
 nvm use
 export MOTORCOVE_ENV=demo-local
 pnpm dev:bootstrap
-pnpm dev:full
+VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
 ```
 
-開啟 <http://127.0.0.1:5173>。Injected wallet 只加入 `http://127.0.0.1:8545`、chain ID
-`31337`，並只匯入 Anvil 測試帳號。Complete、cancel/reclaim、expiry/refund/reclaim、stale
-projection 與 recovery 的完整步驟見[繁中 demo walkthrough](docs/demo/walkthrough.zh-TW.md)。
+開啟 <http://127.0.0.1:5173>，選擇 **Use local buyer** 或 **Use local seller**。此開發模式只
+接受 loopback RPC，使用 Anvil 已解鎖的測試帳號，不會把私鑰放進 Web bundle。若要測試
+injected wallet，啟動時不要設定該 flag。Complete、cancel/reclaim、expiry/refund/reclaim、
+stale projection 與 recovery 的完整步驟見[繁中 demo walkthrough](docs/demo/walkthrough.zh-TW.md)。
 
 以下命令不會啟動鏈或開啟受管理環境：
 

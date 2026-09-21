@@ -8,3 +8,8 @@ export type WalletState =
       requiredChainId: number;
     }
   | { kind: 'connected'; account: `0x${string}`; chainId: number };
+
+export interface WalletConnectorChoice {
+  id: string;
+  buttonLabel: string;
+}

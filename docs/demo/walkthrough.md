@@ -2,62 +2,74 @@
 
 [繁體中文](walkthrough.zh-TW.md)
 
-This guide offers three review paths and labels current product gaps. Use a fresh owned environment;
-do not reset an existing environment or present an unexecuted scenario as evidence.
+This guide covers the normal transaction path, recovery evidence, and team delivery boundaries. Use
+a fresh owned environment from the [local development runbook](../runbooks/local-development.md).
+Never reset an existing environment or present an unexecuted scenario as evidence.
 
-## 1. Core transaction path
+## 1. Completed sale with the local demo wallet
 
-**Status:** implemented and verified by the current contract, real-stack, and Playwright runs.
+**Status:** implemented and exercised by Playwright against real local Anvil, Indexer, SQLite, API,
+and web processes. The connector uses unlocked Anvil test accounts; it is not a MetaMask test.
 
-1. Inspect `SALE-001`: approval and listing are two transactions.
-2. Inspect `SALE-002`: exact-value funding, receipt state, and API provenance remain separate.
-3. Inspect `SALE-003`: completion transfers the NFT and creates a claim; seller withdrawal is later.
-4. Inspect `SALE-004` and `SALE-005`: token reclaim and buyer refund remain independent actions.
+Start `dev:full` with `VITE_MOTORCOVE_DEMO_WALLET=1`, then open
+<http://127.0.0.1:5173>.
 
-Visible evidence should include transaction timeline, sale state, claim state, and projection block.
-This path does not prove manual MetaMask compatibility or public-chain behavior.
+1. Choose **Use local buyer**.
+2. Find **Apex GT** in `LISTED` state and click **Fund exactly**.
+3. Watch the transaction timeline progress independently through wallet request, transaction hash,
+   receipt, and projection evidence. Wait for the marketplace card to show `FUNDED`.
+4. Click **Complete sale** and wait for `COMPLETED`. Completion transfers the NFT and creates the
+   seller's proceeds claim; it does not withdraw the proceeds.
+5. Click **Disconnect**, choose **Use local seller**, and click **Withdraw proceeds**.
+6. Confirm the seller claim shows `WITHDRAWN`.
 
-## 2. Failure and recovery path
+The visible evidence should include the transaction timeline, sale state, claim state, and indexed
+block. Receipt success may appear before the Indexer projection catches up.
 
-**Status:** wallet rejection, stale/catch-up, read-only hash recovery, SQLite rebuild/reindex,
-pre/post-COMMIT process kill, and real-stack rebuild/reconciliation scenarios passed in the current
-worktree.
+## 2. Other contract outcomes
 
-1. Trigger test-only wallet rejection and confirm it differs from an unknown submission.
-2. Pause only the managed Indexer process; the API may keep reading the last snapshot and show lag.
-3. Fund on the local Anvil chain and retain the returned hash. A selector query should report
-   `NOT_REACHED`; the UI says the payment executed while marketplace data is syncing.
-4. Reload the saved journal. Choose **Recheck evidence**; recovery validates the original account,
-   escrow, calldata, value, receipt, and `SaleFunded` log and makes zero submission calls.
-5. Resume the same Indexer and observe `SCANNED + MATCHED + CONSISTENT` without a second payment.
-6. For a missing hash, copy a candidate from wallet activity. A mismatched candidate is rejected;
-   the recovery button never sends a transaction.
-7. Use the [recovery flow](../flows/indexing-and-recovery.md) to choose catch-up, rebuild, or reindex.
+- **Approve and list:** connect as the seller, approve an unescrowed asset, wait for inclusion, then
+  create a sale. Approval and listing are separate transactions.
+- **Cancel and reclaim:** the seller cancels a `LISTED` sale, then reclaims the NFT separately.
+- **Expire, refund, and reclaim:** a buyer funds a sale; after advancing local Anvil time beyond the
+  deadline, any account expires it. The buyer withdraws the refund and the seller reclaims the NFT as
+  separate operations.
 
-The automated convergence case is:
+These paths correspond to `SALE-001` through `SALE-005` in the
+[scenario catalog](../testing/scenario-catalog.md).
+
+## 3. Failure and recovery path
+
+**Status:** automated evidence covers controlled wallet rejection, response loss after one broadcast,
+read-only hash recovery, stale/catch-up projection, SQLite rebuild/reindex, process-kill recovery,
+and reconciliation. Manual browser-wallet failure behavior remains unverified.
+
+1. Run the Playwright rejection scenario and confirm rejection produces `REJECTED`, not `SUBMITTED`
+   or `UNKNOWN`.
+2. Stop only the managed Indexer process. The API may continue serving its last snapshot and must
+   expose lag rather than claim freshness.
+3. Submit a local Anvil transaction and retain its hash. Receipt evidence can lead projection state.
+4. Reload the saved journal and use **Recheck evidence**. Recovery verifies account, contract,
+   calldata, value, receipt, matching event, and projection without submitting again.
+5. Resume the same Indexer and observe convergence without a second payment.
+
+Focused recovery commands create their own temporary environments and ports:
 
 ```bash
 pnpm vitest run tests/integration/transaction-convergence.test.ts
 pnpm vitest run tests/integration/indexer-kill-recovery.test.ts
 ```
 
-Both commands create isolated temporary environments and ports. The second command targets only its
-own child PID with `SIGKILL` and keeps WAL/SHM files for normal SQLite recovery.
+## 4. Team delivery path
 
-Do not run maintenance while API or Indexer holds the service gate. A command existing is not proof
-that its recovery path passed.
-
-## 3. Team delivery path
-
-**Status:** repository planning artifact; it is not historical team evidence.
-
-1. Start with the [SALE-002 work package](../collaboration/delivery-workflow.md).
-2. Follow the protocol ABI through the frontend gateway, Indexer decoder/projector, and API consumer.
-3. Inspect negative architecture fixtures, consumer tests, generated artifacts, and migration gates.
-4. Use the async handoff template to record ready work, blockers, acceptance, and evidence.
+Start from a scenario such as `SALE-002`, then trace the contract ABI through the frontend gateway,
+Indexer decoder/projector, API response, and documentation evidence. Inspect negative architecture
+fixtures, consumer tests, generated artifacts, and migration gates before claiming the work is ready.
+Use the [delivery workflow](../collaboration/delivery-workflow.md) for handoff fields and evidence.
 
 ## Cleanup
 
-Stop only processes started for the demo. Temporary test suites remove their own roots. Preserve the
-selected environment when it is failure evidence. Follow [local development](../runbooks/local-development.md)
-and [acceptance evidence](acceptance-evidence.md).
+Stop only the processes started for this demo. Preserve a failed environment when its state is needed
+for diagnosis. Temporary test suites remove their own roots. Destructive demo reset is limited to a
+disposable MotorCove-owned environment and requires the separate
+[local reset runbook](../runbooks/local-reset.md).

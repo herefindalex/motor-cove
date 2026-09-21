@@ -16,8 +16,9 @@ lifecycle are implemented. Runtime services use one `@motorcove/database` interf
 environment paths, Drizzle migrations, advisory locks, projections, catalog seeds, backup, restore,
 and reset. The current source tree passed `pnpm verify` and `pnpm test:e2e` locally.
 
-The browser E2E suite uses an explicit test wallet adapter. Manual MetaMask behavior, remote GitHub
-settings, public networks, and external security review are not verified. See
+The browser E2E suite separates a loopback-only local demo connector from a controlled EIP-1193
+fault-injection adapter. It does not exercise a real browser-wallet extension. Manual MetaMask
+behavior, remote GitHub settings, public networks, and external security review are not verified. See
 [implementation status](docs/implementation-status.md) for required, implemented, and verified
 states. A file or test being present is not a pass result.
 
@@ -90,12 +91,14 @@ After Anvil is ready, use a second terminal:
 nvm use
 export MOTORCOVE_ENV=demo-local
 pnpm dev:bootstrap
-pnpm dev:full
+VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
 ```
 
-Open <http://127.0.0.1:5173>. Add `http://127.0.0.1:8545` with chain ID `31337` to an injected
-wallet and import only an Anvil test account. Follow the [demo walkthrough](docs/demo/walkthrough.md)
-for complete, cancel/reclaim, expiry/refund/reclaim, stale projection, and recovery paths.
+Open <http://127.0.0.1:5173> and choose **Use local buyer** or **Use local seller**. This explicit
+development mode works only with a loopback RPC and uses unlocked Anvil test accounts without
+placing private keys in the web bundle. Leave the flag unset to exercise an injected wallet instead.
+Follow the [demo walkthrough](docs/demo/walkthrough.md) for the transaction sequence and the
+cancel/reclaim, expiry/refund/reclaim, stale projection, and recovery paths.
 
 To inspect without starting a chain or opening a managed environment:
 

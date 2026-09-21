@@ -6,6 +6,7 @@ const meta = {
   args: {
     pending: false,
     state: { kind: 'disconnected' },
+    connectors: [{ id: 'injected', buttonLabel: 'Connect wallet' }],
     onConnect: () => undefined,
     onDisconnect: () => undefined,
     onSwitch: () => undefined,

@@ -63,9 +63,10 @@ and calldata summary before opening the wallet.
 
 `apps/web/src/features/trading/model/amount.test.ts` covers pure amount rules.
 `TransactionTimeline.test.tsx` covers rendered wallet-rejection semantics with React Testing
-Library. `tests/e2e/marketplace.spec.ts` covers the local browser path, reload, account/network
-changes, and stale/catch-up behavior with an explicit test EIP-1193 adapter. Manual MetaMask behavior
-has not been recorded.
+Library. `WalletPanel.test.tsx` covers missing-provider and connector-choice rendering.
+`tests/e2e/marketplace.spec.ts` uses the loopback demo connector for normal settlement and a
+controlled EIP-1193 provider for reload, account/network changes, and stale/catch-up behavior.
+Manual MetaMask behavior has not been recorded.
 
 See [wallet and network flow](../flows/wallet-and-network.md),
 [transaction lifecycle](../protocol/transaction-lifecycle.md), and
