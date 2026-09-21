@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "sourceContext": {
     "revision": "309291943bf7a77b0a468061362df8dc31ec4cca",
-    "dirty": false,
+    "dirty": true,
     "capturedAt": "2026-09-21T17:13:43.202Z",
     "sourceFingerprint": "sha256:3b13dccf890a1023cf4e7f479139dd6cdeca849dd4cf30ae7d35724118936180",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Local gates were captured from the recorded source fingerprint and published as commit 3092919; RUN-CI records the successful remote verify and E2E run for that commit. Manual MetaMask, public networks, a real released prior-schema upgrade, hardware power loss, full host-filesystem exhaustion, branch protection, and repository reviewer settings remain unverified.",
+    "limits": "Local gates were captured from the recorded pre-commit source fingerprint and published as commit 3092919; the evidence file itself is excluded from that fingerprint. RUN-CI records the successful remote verify and E2E run for that commit. Manual MetaMask, public networks, a real released prior-schema upgrade, hardware power loss, full host-filesystem exhaustion, branch protection, and repository reviewer settings remain unverified.",
     "sourceFingerprintMethod": "SHA-256 over sorted NUL-separated repository-relative paths and file bytes from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
