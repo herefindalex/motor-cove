@@ -1,0 +1,284 @@
+{
+  "formatVersion": 1,
+  "capabilities": [
+    {
+      "id": "CAP-01",
+      "name": "React, Vite, and TypeScript",
+      "behavior": "Builds a strict TypeScript React application with routed marketplace, sale, and inspector pages.",
+      "implementation": "implemented",
+      "code": ["apps/web/src/main.tsx", "apps/web/src/app/App.tsx", "apps/web/vite.config.ts"],
+      "scenarios": ["SALE-001", "ARCH-001"],
+      "verification": ["RUN-WORKSPACE-VERIFY"],
+      "limits": "The local gate applies to the recorded dirty source fingerprint; later source changes require a rerun."
+    },
+    {
+      "id": "CAP-02",
+      "name": "Frontend architecture",
+      "behavior": "Separates feature use cases, long-lived capabilities, and SDK adapters and checks dependency direction.",
+      "implementation": "implemented",
+      "code": [
+        "apps/web/src/features",
+        "apps/web/src/capabilities",
+        "apps/web/src/integrations",
+        "tooling/architecture/check.mjs"
+      ],
+      "scenarios": ["ARCH-001"],
+      "verification": ["RUN-ARCHITECTURE"],
+      "limits": "The checker covers parsed source imports; it is not a runtime isolation mechanism."
+    },
+    {
+      "id": "CAP-03",
+      "name": "Wallet connectivity",
+      "behavior": "Connects an injected EIP-1193 wallet and tracks connection and account lifecycle.",
+      "implementation": "implemented",
+      "code": [
+        "apps/web/src/app/composition.tsx",
+        "apps/web/src/capabilities/wallet",
+        "apps/web/src/capabilities/transactions/ui/TransactionTimeline.test.tsx"
+      ],
+      "scenarios": ["TX-001", "TX-002"],
+      "verification": ["RUN-WEB-COMPONENT", "RUN-E2E"],
+      "limits": "Automated component and browser tests use controlled adapters. Manual MetaMask smoke testing is not recorded."
+    },
+    {
+      "id": "CAP-04",
+      "name": "Network validation and switching",
+      "behavior": "Checks local chain identity and surfaces wrong-network or rejected switch outcomes.",
+      "implementation": "implemented",
+      "code": ["apps/web/src/capabilities/wallet", "apps/web/src/integrations/evm"],
+      "scenarios": ["TX-001", "REL-001"],
+      "verification": ["RUN-E2E"],
+      "limits": "Only local chain ID 31337 is in scope."
+    },
+    {
+      "id": "CAP-05",
+      "name": "Smart-contract interaction",
+      "behavior": "Uses generated ABIs, simulates writes, and keeps approval separate from listing.",
+      "implementation": "implemented",
+      "code": [
+        "apps/web/src/integrations/evm/use-escrow-gateway.ts",
+        "packages/chain-artifacts/src/generated"
+      ],
+      "scenarios": ["SALE-001", "SALE-002"],
+      "verification": ["RUN-CONTRACTS", "RUN-E2E"],
+      "limits": "No public-chain deployment or external wallet-provider compatibility claim."
+    },
+    {
+      "id": "CAP-06",
+      "name": "Transaction lifecycle",
+      "behavior": "Durably records immutable intent before wallet submission and recovers receipt, event, and projection observations through read-only ports.",
+      "implementation": "implemented",
+      "code": ["apps/web/src/capabilities/transactions", "apps/web/src/integrations/persistence"],
+      "scenarios": ["TX-001", "TX-002"],
+      "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E"],
+      "limits": "Automated recovery uses local Anvil or controlled ports; real MetaMask response loss and every replacement variant remain unverified."
+    },
+    {
+      "id": "CAP-07",
+      "name": "Frontend state and API integration",
+      "behavior": "Keeps query cache, wallet state, form state, transaction journal, and projection provenance in separate owners.",
+      "implementation": "implemented",
+      "code": [
+        "apps/web/src/app/composition.tsx",
+        "apps/web/src/integrations/http",
+        "apps/web/src/capabilities/transactions"
+      ],
+      "scenarios": ["TX-002", "IDX-001"],
+      "verification": ["RUN-API-CONTRACT", "RUN-E2E"],
+      "limits": "Automated browser coverage uses a test wallet adapter; manual injected-wallet behavior remains unverified."
+    },
+    {
+      "id": "CAP-08",
+      "name": "Digital-asset escrow",
+      "behavior": "Escrows ERC-721 assets and separates completion, pull claims, refunds, withdrawal, and token reclaim.",
+      "implementation": "implemented",
+      "code": ["chain/src/MotorCoveEscrow.sol", "chain/src/VehicleNFT.sol"],
+      "scenarios": ["SALE-001", "SALE-002", "SALE-003", "SALE-004", "SALE-005"],
+      "verification": ["RUN-CONTRACTS"],
+      "limits": "Local test assets and test ETH only; contracts have not received an external security audit."
+    },
+    {
+      "id": "CAP-09",
+      "name": "EVM integration literacy",
+      "behavior": "Validates receipts, logs, block identity, deployment identity, ABI hashes, and runtime code on a local EVM.",
+      "implementation": "implemented",
+      "code": [
+        "apps/indexer/src/adapters/evm",
+        "apps/web/src/integrations/evm/inspect-funding-transaction.ts",
+        "packages/chain-artifacts/src/manifest.ts"
+      ],
+      "scenarios": ["IDX-003", "REL-001"],
+      "verification": ["RUN-INTEGRATION"],
+      "limits": "Anvil behavior does not establish public-network finality or archive-RPC support."
+    },
+    {
+      "id": "CAP-10",
+      "name": "Event-driven backend",
+      "behavior": "Reads bounded log ranges, orders events, applies pure projectors, and advances a checkpoint.",
+      "implementation": "implemented",
+      "code": [
+        "apps/indexer/src/application/ingest-range.ts",
+        "apps/indexer/src/domain/projectors",
+        "apps/indexer/src/adapters/sqlite/sqlite-projection-store.ts"
+      ],
+      "scenarios": ["IDX-001", "IDX-002", "IDX-003", "IDX-004"],
+      "verification": ["RUN-INDEXER-UNIT", "RUN-INDEXER-KILL", "RUN-INTEGRATION"],
+      "limits": "Automatic recovery across arbitrary canonical branch changes is outside the implemented scope."
+    },
+    {
+      "id": "CAP-11",
+      "name": "Database lifecycle",
+      "behavior": "Uses native Drizzle history, managed environments, connection roles, locks, markers, catalog seed, backup, and restore.",
+      "implementation": "partial",
+      "code": [
+        "packages/database",
+        "tooling/db",
+        "tests/migrations",
+        "tests/database",
+        "tests/seeds",
+        "tests/recovery",
+        "apps/indexer/src/cli/chain-seed-journal.ts",
+        "apps/indexer/src/cli/bootstrap.ts",
+        "apps/indexer/src/cli/chain-seed-journal.test.ts",
+        "tests/integration/real-stack.test.ts",
+        "docs/adr/0004-chain-seed-ambiguity.md"
+      ],
+      "scenarios": [
+        "DB-01",
+        "DB-02",
+        "DB-05",
+        "DB-07",
+        "DB-08",
+        "DB-09",
+        "DB-10",
+        "DB-11",
+        "DB-12",
+        "DB-13",
+        "DB-14",
+        "DB-16",
+        "DB-17",
+        "DB-18",
+        "DB-19",
+        "DB-21",
+        "DB-23",
+        "DB-24",
+        "DB-25",
+        "DB-47",
+        "DB-48",
+        "DB-50",
+        "DB-26",
+        "DB-27",
+        "DB-28",
+        "DB-30"
+      ],
+      "verification": [
+        "RUN-DB-MIGRATIONS",
+        "RUN-DB-BOUNDARIES",
+        "RUN-DB-SEEDS",
+        "RUN-DB-RECOVERY",
+        "RUN-CHAIN-SEED-JOURNAL",
+        "RUN-INTEGRATION"
+      ],
+      "limits": "A real process kill in the broadcast-to-hash persistence window and other listed database fault-injection cases remain incomplete."
+    },
+    {
+      "id": "CAP-12",
+      "name": "Cross-team interface contracts",
+      "behavior": "Publishes ABI, deployment, HTTP wire, database, and package export contracts for consumers.",
+      "implementation": "implemented",
+      "code": [
+        "packages/chain-artifacts",
+        "packages/api-contracts",
+        "packages/database/package.json",
+        "tooling/scripts/generate.ts"
+      ],
+      "scenarios": ["ARCH-001", "REL-001"],
+      "verification": ["RUN-GENERATE-CHECK", "RUN-API-CONTRACT"],
+      "limits": "Generated artifacts require a current drift check after provider changes."
+    },
+    {
+      "id": "CAP-13",
+      "name": "Failure diagnosis and recovery",
+      "behavior": "Exposes projection status, selector-scoped funding evidence, read-only journal recovery, anchored reconciliation, maintenance markers, and recovery commands.",
+      "implementation": "partial",
+      "code": [
+        "apps/web/src/pages/InspectorPage.tsx",
+        "apps/web/src/capabilities/transactions/recovery.ts",
+        "apps/api/src/modules/system",
+        "packages/database/src/reader/sales-reader.ts",
+        "packages/database/src/maintenance"
+      ],
+      "scenarios": ["TX-001", "TX-002", "IDX-003", "IDX-004", "REC-001", "DB-09", "DB-50"],
+      "verification": [
+        "RUN-TRANSACTION-RECOVERY",
+        "RUN-INDEXER-KILL",
+        "RUN-INTEGRATION",
+        "RUN-DB-RECOVERY"
+      ],
+      "limits": "Parallel and some process/filesystem fault cases remain unverified."
+    },
+    {
+      "id": "CAP-14",
+      "name": "Release management",
+      "behavior": "Tracks generated artifacts, deployment manifests, schema contracts, and local readiness gates.",
+      "implementation": "partial",
+      "code": [
+        "tooling/scripts/release-metadata.ts",
+        "packages/database/schema-contract.json",
+        ".github/workflows/ci.yml"
+      ],
+      "scenarios": ["REL-001"],
+      "verification": ["RUN-GENERATE-CHECK"],
+      "limits": "No remote CI run or branch-protection setting was inspected."
+    },
+    {
+      "id": "CAP-15",
+      "name": "Code review and delivery quality",
+      "behavior": "Provides local CI commands, negative architecture fixtures, a PR template, and review responsibilities.",
+      "implementation": "implemented",
+      "code": [
+        ".github/workflows/ci.yml",
+        ".github/pull_request_template.md",
+        "tooling/architecture",
+        "CONTRIBUTING.md"
+      ],
+      "scenarios": ["ARCH-001"],
+      "verification": ["RUN-ARCHITECTURE"],
+      "limits": "Repository artifacts describe a collaboration model; they do not prove a multi-person team used it or that remote settings are enabled."
+    },
+    {
+      "id": "CAP-16",
+      "name": "Roadmap and dependency management",
+      "behavior": "Maps P0–P5, D0–D5, DOC-P0–P5, blockers, and provider-consumer exit gates without inventing delivery metrics.",
+      "implementation": "implemented",
+      "code": ["docs/implementation-plan.md", "docs/collaboration/delivery-workflow.md"],
+      "scenarios": ["SALE-002", "REL-001"],
+      "verification": [],
+      "limits": "Planning artifacts are examples and current-state records, not historical sprint evidence."
+    },
+    {
+      "id": "CAP-17",
+      "name": "Onboarding and mentoring support",
+      "behavior": "Gives role-based entry paths, safe first changes, recipes, tests, and review checks.",
+      "implementation": "implemented",
+      "code": ["CONTRIBUTING.md", "docs/onboarding/README.md", "docs/onboarding/change-recipes.md"],
+      "scenarios": ["ARCH-001"],
+      "verification": ["RUN-DOCS-CHECK"],
+      "limits": "These artifacts support onboarding; they do not prove mentoring sessions occurred."
+    },
+    {
+      "id": "CAP-18",
+      "name": "Remote cross-functional collaboration",
+      "behavior": "Defines async handoff, ownership, interface impact, blockers, and consumer acceptance gates.",
+      "implementation": "implemented",
+      "code": [
+        "docs/collaboration/ownership-and-contracts.md",
+        "docs/collaboration/parallel-development.md",
+        "docs/collaboration/delivery-workflow.md"
+      ],
+      "scenarios": ["SALE-002", "REL-001"],
+      "verification": ["RUN-DOCS-CHECK"],
+      "limits": "No claim is made about an actual remote team, review event, or delivery history."
+    }
+  ]
+}

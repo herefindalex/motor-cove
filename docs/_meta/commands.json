@@ -1,0 +1,389 @@
+{
+  "formatVersion": 1,
+  "commands": [
+    {
+      "name": "doctor",
+      "command": "pnpm doctor",
+      "status": "implemented",
+      "effect": "read-only diagnostics",
+      "prerequisite": "workspace dependencies installed",
+      "runbook": "../reference/commands.md"
+    },
+    {
+      "name": "dev:chain",
+      "command": "pnpm dev:chain",
+      "status": "implemented",
+      "effect": "starts loopback Anvil",
+      "prerequisite": "port 8545 free",
+      "runbook": "../runbooks/local-development.md"
+    },
+    {
+      "name": "dev:bootstrap",
+      "command": "pnpm dev:bootstrap",
+      "status": "implemented",
+      "effect": "deploys contracts, registers the deployment, seeds catalog data, and catches up projections",
+      "prerequisite": "loopback Anvil and a selected owned environment",
+      "runbook": "../runbooks/seeding-and-bootstrap.md"
+    },
+    {
+      "name": "dev:full",
+      "command": "pnpm dev:full",
+      "status": "implemented",
+      "effect": "starts API, Indexer, and Web",
+      "prerequisite": "bootstrap complete for the selected environment",
+      "runbook": "../runbooks/local-development.md"
+    },
+    {
+      "name": "dev:ui",
+      "command": "pnpm dev:ui",
+      "status": "implemented",
+      "effect": "starts only the Vite Web process",
+      "prerequisite": "bootstrap complete for the selected environment",
+      "runbook": "../runbooks/local-development.md"
+    },
+    {
+      "name": "dev:api",
+      "command": "pnpm dev:api",
+      "status": "implemented",
+      "effect": "starts only the readonly API process",
+      "prerequisite": "initialized owned environment",
+      "runbook": "../runbooks/local-development.md"
+    },
+    {
+      "name": "dev:indexer",
+      "command": "pnpm dev:indexer",
+      "status": "implemented",
+      "effect": "starts only the normal Indexer writer",
+      "prerequisite": "bootstrap complete; no maintenance operation",
+      "runbook": "../runbooks/indexer-recovery.md"
+    },
+    {
+      "name": "storybook",
+      "command": "pnpm storybook",
+      "status": "implemented",
+      "effect": "starts isolated UI development server",
+      "prerequisite": "workspace dependencies installed",
+      "runbook": "../technology-choices.md"
+    },
+    {
+      "name": "generate",
+      "command": "pnpm generate",
+      "status": "implemented",
+      "effect": "updates ABI, OpenAPI, and generated artifacts",
+      "prerequisite": "provider source change reviewed",
+      "runbook": "../onboarding/change-recipes.md"
+    },
+    {
+      "name": "generate:check",
+      "command": "pnpm generate:check",
+      "status": "implemented",
+      "effect": "read-only generated artifact drift check",
+      "prerequisite": "contracts compiled when Solidity changed",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "check:architecture",
+      "command": "pnpm check:architecture",
+      "status": "implemented",
+      "effect": "checks dependency graph and negative fixtures",
+      "prerequisite": "workspace dependencies installed",
+      "runbook": "../architecture/dependency-rules.md"
+    },
+    {
+      "name": "check",
+      "command": "pnpm check",
+      "status": "implemented",
+      "effect": "runs format, docs, architecture, typecheck, and lint gates",
+      "prerequisite": "workspace dependencies installed",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "lint",
+      "command": "pnpm lint",
+      "status": "implemented",
+      "effect": "runs ESLint with zero warnings allowed",
+      "prerequisite": "workspace dependencies installed",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "format:check",
+      "command": "pnpm format:check",
+      "status": "implemented",
+      "effect": "read-only Prettier conformance check",
+      "prerequisite": "workspace dependencies installed",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "test:unit",
+      "command": "pnpm test:unit",
+      "status": "implemented",
+      "effect": "runs TypeScript unit, component, database, seed, and recovery suites except integration/E2E",
+      "prerequisite": "workspace dependencies installed",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "test:components",
+      "command": "pnpm test:components",
+      "status": "implemented",
+      "effect": "runs React component tests with Vitest and JSDOM",
+      "prerequisite": "workspace dependencies installed",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "test:contracts",
+      "command": "pnpm test:contracts",
+      "status": "implemented",
+      "effect": "runs Foundry unit, fuzz, and invariant tests",
+      "prerequisite": "Foundry installed",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "test:integration",
+      "command": "pnpm test:integration",
+      "status": "implemented",
+      "effect": "runs SQLite and isolated real-Anvil integration suites",
+      "prerequisite": "Foundry and workspace dependencies installed; test ports free",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "test:e2e",
+      "command": "pnpm test:e2e",
+      "status": "implemented",
+      "effect": "starts isolated local Anvil and app processes",
+      "prerequisite": "ports available and Foundry installed",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "build",
+      "command": "pnpm build",
+      "status": "implemented",
+      "effect": "builds all workspace packages and applications",
+      "prerequisite": "workspace dependencies installed",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "release:metadata",
+      "command": "pnpm release:metadata",
+      "status": "implemented",
+      "effect": "writes local release-readiness metadata without publishing",
+      "prerequisite": "verification commands completed",
+      "runbook": "../collaboration/change-and-release.md"
+    },
+    {
+      "name": "verify",
+      "command": "pnpm verify",
+      "status": "implemented",
+      "effect": "local generated, docs, architecture, test, and build gate",
+      "prerequisite": "Foundry and Node toolchain",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "ops:reconcile",
+      "command": "pnpm ops:reconcile",
+      "status": "implemented",
+      "effect": "writes an anchored chain/projection comparison report",
+      "prerequisite": "MOTORCOVE_ENV set; Indexer stopped",
+      "runbook": "../runbooks/reconciliation.md"
+    },
+    {
+      "name": "ops:rebuild",
+      "command": "pnpm ops:rebuild",
+      "status": "implemented",
+      "effect": "atomically rebuilds projections from verified local evidence",
+      "prerequisite": "MOTORCOVE_ENV set; API and Indexer stopped",
+      "runbook": "../runbooks/projection-rebuild-and-reindex.md"
+    },
+    {
+      "name": "demo:advance-time",
+      "command": "pnpm demo:advance-time --seconds <n>",
+      "status": "implemented",
+      "effect": "advances and mines time on verified loopback Anvil",
+      "prerequisite": "local Anvil running on chain ID 31337",
+      "runbook": "../demo/walkthrough.md"
+    },
+    {
+      "name": "demo:reset",
+      "command": "pnpm demo:reset -- --yes",
+      "status": "implemented",
+      "effect": "resets loopback Anvil and removes generated state from the selected owned environment",
+      "prerequisite": "MOTORCOVE_ENV set; stopped services; disposable environment only",
+      "runbook": "../runbooks/local-reset.md"
+    },
+    {
+      "name": "db:generate",
+      "command": "pnpm db:generate --name <name>",
+      "status": "implemented",
+      "effect": "changes migration artifacts and schema contract",
+      "prerequisite": "reviewed schema change",
+      "runbook": "../runbooks/database-migrations.md"
+    },
+    {
+      "name": "db:check",
+      "command": "pnpm db:check",
+      "status": "implemented",
+      "effect": "temporary DB only",
+      "prerequisite": "dependencies installed",
+      "runbook": "../runbooks/database-migrations.md"
+    },
+    {
+      "name": "db:status",
+      "command": "pnpm db:status --env <id>",
+      "status": "implemented",
+      "effect": "read-only; does not create environment",
+      "prerequisite": "safe environment slug",
+      "runbook": "../runbooks/database-migrations.md"
+    },
+    {
+      "name": "db:plan",
+      "command": "pnpm db:plan --env <id>",
+      "status": "implemented",
+      "effect": "read-only migration plan",
+      "prerequisite": "safe environment slug",
+      "runbook": "../runbooks/database-migrations.md"
+    },
+    {
+      "name": "db:migrate",
+      "command": "pnpm db:migrate --env <id>",
+      "status": "implemented",
+      "effect": "maintenance write; creates owned environment when absent",
+      "prerequisite": "API and Indexer stopped",
+      "runbook": "../runbooks/database-migrations.md"
+    },
+    {
+      "name": "db:verify",
+      "command": "pnpm db:verify --env <id>",
+      "status": "implemented",
+      "effect": "coordinated read-only verification",
+      "prerequisite": "owned initialized environment",
+      "runbook": "../runbooks/database-migrations.md"
+    },
+    {
+      "name": "db:backup",
+      "command": "pnpm db:backup --env <id>",
+      "status": "implemented",
+      "effect": "writes verified snapshot bundle",
+      "prerequisite": "API and Indexer stopped",
+      "runbook": "../runbooks/backup-restore-and-recovery.md"
+    },
+    {
+      "name": "db:restore",
+      "command": "pnpm db:restore --env <id> --backup <id> --yes",
+      "status": "implemented",
+      "effect": "destructive maintenance with quarantine",
+      "prerequisite": "verified backup and stopped services",
+      "runbook": "../runbooks/backup-restore-and-recovery.md"
+    },
+    {
+      "name": "seed:catalog",
+      "command": "pnpm seed:catalog --env <id> --set motorcove-local-catalog",
+      "status": "implemented",
+      "effect": "maintenance write; no chain transaction",
+      "prerequisite": "registered deployment manifest",
+      "runbook": "../runbooks/seeding-and-bootstrap.md"
+    },
+    {
+      "name": "seed:dev",
+      "command": "pnpm seed:dev",
+      "status": "implemented",
+      "effect": "runs the local bootstrap profile",
+      "prerequisite": "MOTORCOVE_ENV set; loopback Anvil; owned environment",
+      "runbook": "../runbooks/seeding-and-bootstrap.md"
+    },
+    {
+      "name": "seed:demo",
+      "command": "pnpm seed:demo",
+      "status": "implemented",
+      "effect": "runs the local demo bootstrap profile",
+      "prerequisite": "MOTORCOVE_ENV set; loopback Anvil; owned environment",
+      "runbook": "../runbooks/seeding-and-bootstrap.md"
+    },
+    {
+      "name": "seed:test",
+      "command": "pnpm seed:test",
+      "status": "implemented",
+      "effect": "runs the isolated test bootstrap profile",
+      "prerequisite": "test harness environment and loopback Anvil",
+      "runbook": "../runbooks/seeding-and-bootstrap.md"
+    },
+    {
+      "name": "ops:recover",
+      "command": "pnpm ops:recover --env <id> [--complete]",
+      "status": "implemented",
+      "effect": "inspects or completes verified marker recovery",
+      "prerequisite": "owned environment",
+      "runbook": "../runbooks/backup-restore-and-recovery.md"
+    },
+    {
+      "name": "ops:reindex",
+      "command": "pnpm ops:reindex -- --yes",
+      "status": "implemented",
+      "effect": "rewinds source evidence, refetches canonical history, and rebuilds projections",
+      "prerequisite": "MOTORCOVE_ENV set; stopped services; verified loopback deployment",
+      "runbook": "../runbooks/projection-rebuild-and-reindex.md"
+    },
+    {
+      "name": "test:migrations",
+      "command": "pnpm test:migrations",
+      "status": "implemented",
+      "effect": "runs native migration history and drift tests in temporary SQLite environments",
+      "prerequisite": "native SQLite driver installed",
+      "runbook": "../runbooks/database-migrations.md"
+    },
+    {
+      "name": "test:db",
+      "command": "pnpm test:db",
+      "status": "implemented",
+      "effect": "runs database ownership, locking, constraints, and reset-boundary tests",
+      "prerequisite": "native SQLite driver installed",
+      "runbook": "../testing/database-acceptance-matrix.md"
+    },
+    {
+      "name": "test:seeds",
+      "command": "pnpm test:seeds",
+      "status": "implemented",
+      "effect": "runs catalog seed identity and idempotency tests",
+      "prerequisite": "native SQLite driver installed",
+      "runbook": "../runbooks/seeding-and-bootstrap.md"
+    },
+    {
+      "name": "test:recovery",
+      "command": "pnpm test:recovery",
+      "status": "implemented",
+      "effect": "runs backup, restore, and maintenance marker recovery tests",
+      "prerequisite": "native SQLite driver installed",
+      "runbook": "../runbooks/backup-restore-and-recovery.md"
+    },
+    {
+      "name": "docs:generate",
+      "command": "pnpm docs:generate",
+      "status": "implemented",
+      "effect": "updates generated Markdown regions",
+      "prerequisite": "metadata valid",
+      "runbook": "../reference/commands.md"
+    },
+    {
+      "name": "docs:generate:check",
+      "command": "pnpm docs:generate:check",
+      "status": "implemented",
+      "effect": "read-only generated Markdown drift check",
+      "prerequisite": "metadata valid",
+      "runbook": "../testing/strategy.md"
+    },
+    {
+      "name": "docs:check",
+      "command": "pnpm docs:check",
+      "status": "implemented",
+      "effect": "read-only docs consistency checks",
+      "prerequisite": "dependencies installed",
+      "runbook": "../reference/commands.md"
+    },
+    {
+      "name": "docs:smoke",
+      "command": "pnpm docs:smoke",
+      "status": "implemented",
+      "effect": "temporary SQLite test environments only",
+      "prerequisite": "native driver installed",
+      "runbook": "../testing/strategy.md"
+    }
+  ]
+}

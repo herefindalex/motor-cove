@@ -1,0 +1,1876 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MotorCove read API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health/live": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Process is live"
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Read model is ready"
+          },
+          "503": {
+            "description": "Read model is not ready"
+          }
+        }
+      }
+    },
+    "/v1/config": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Public deployment config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/vehicles": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Vehicle catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VehiclesEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Read model unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sales": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Projected sales",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Read model unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sales/{saleId}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "saleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9]\\d*)$"
+            }
+          },
+          {
+            "name": "deploymentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[0-9a-fA-F]{64}$"
+            }
+          },
+          {
+            "name": "observeTxHash",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[0-9a-fA-F]{64}$"
+            }
+          },
+          {
+            "name": "observeBlockNumber",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9]\\d*)$"
+            }
+          },
+          {
+            "name": "observeBlockHash",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[0-9a-fA-F]{64}$"
+            }
+          },
+          {
+            "name": "observeLogIndex",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Projected sale or selector-scoped funding observation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SaleEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FundingObservationEnvelope"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sale not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Deployment mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Read model unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/system/status": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Indexer status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatusEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Read model unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/system/events": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Recent canonical events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Read model unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/system/reconciliation": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Latest reconciliation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Read model unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PublicConfig": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "deploymentId": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "chainId": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)$"
+          },
+          "protocolVersion": {
+            "type": "string"
+          },
+          "nftAddress": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "escrowAddress": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "fundingPeriodSeconds": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)$"
+          }
+        },
+        "required": [
+          "deploymentId",
+          "chainId",
+          "protocolVersion",
+          "nftAddress",
+          "escrowAddress",
+          "fundingPeriodSeconds"
+        ],
+        "additionalProperties": false
+      },
+      "Sale": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "saleId": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)$"
+          },
+          "tokenId": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)$"
+          },
+          "seller": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{40}$"
+          },
+          "buyer": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{40}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "priceWei": {
+            "type": "string",
+            "pattern": "^(0|[1-9]\\d*)$"
+          },
+          "fundedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "LISTED",
+              "FUNDED",
+              "COMPLETED",
+              "CANCELLED",
+              "EXPIRED"
+            ]
+          },
+          "tokenReclaimed": {
+            "type": "boolean"
+          },
+          "metadataStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "MISSING"
+            ]
+          },
+          "catalogId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "claim": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "SELLER_PROCEEDS",
+                      "BUYER_REFUND"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "NONE",
+                      "CLAIMABLE",
+                      "WITHDRAWN"
+                    ]
+                  },
+                  "beneficiary": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{40}$"
+                  },
+                  "amountWei": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9]\\d*)$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "status",
+                  "beneficiary",
+                  "amountWei"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "saleId",
+          "tokenId",
+          "seller",
+          "buyer",
+          "priceWei",
+          "fundedAt",
+          "expiresAt",
+          "status",
+          "tokenReclaimed",
+          "metadataStatus",
+          "catalogId",
+          "claim"
+        ],
+        "additionalProperties": false
+      },
+      "SaleEnvelope": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "saleId": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "tokenId": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "seller": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{40}$"
+              },
+              "buyer": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{40}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "priceWei": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "fundedAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^(0|[1-9]\\d*)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "expiresAt": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^(0|[1-9]\\d*)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "LISTED",
+                  "FUNDED",
+                  "COMPLETED",
+                  "CANCELLED",
+                  "EXPIRED"
+                ]
+              },
+              "tokenReclaimed": {
+                "type": "boolean"
+              },
+              "metadataStatus": {
+                "type": "string",
+                "enum": [
+                  "AVAILABLE",
+                  "MISSING"
+                ]
+              },
+              "catalogId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "claim": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "SELLER_PROCEEDS",
+                          "BUYER_REFUND"
+                        ]
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "NONE",
+                          "CLAIMABLE",
+                          "WITHDRAWN"
+                        ]
+                      },
+                      "beneficiary": {
+                        "type": "string",
+                        "pattern": "^0x[0-9a-fA-F]{40}$"
+                      },
+                      "amountWei": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9]\\d*)$"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "status",
+                      "beneficiary",
+                      "amountWei"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "saleId",
+              "tokenId",
+              "seller",
+              "buyer",
+              "priceWei",
+              "fundedAt",
+              "expiresAt",
+              "status",
+              "tokenReclaimed",
+              "metadataStatus",
+              "catalogId",
+              "claim"
+            ],
+            "additionalProperties": false
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "indexedBlockNumber": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "indexedBlockHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "projectorVersion": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "projectionBuildId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "logScopeHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              }
+            },
+            "required": [
+              "deploymentId",
+              "indexedBlockNumber",
+              "indexedBlockHash",
+              "projectorVersion",
+              "projectionBuildId",
+              "logScopeHash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data",
+          "provenance"
+        ],
+        "additionalProperties": false
+      },
+      "FundingObservationEnvelope": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "sale": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "saleId": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9]\\d*)$"
+                      },
+                      "tokenId": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9]\\d*)$"
+                      },
+                      "seller": {
+                        "type": "string",
+                        "pattern": "^0x[0-9a-fA-F]{40}$"
+                      },
+                      "buyer": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^0x[0-9a-fA-F]{40}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "priceWei": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9]\\d*)$"
+                      },
+                      "fundedAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^(0|[1-9]\\d*)$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "expiresAt": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^(0|[1-9]\\d*)$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "LISTED",
+                          "FUNDED",
+                          "COMPLETED",
+                          "CANCELLED",
+                          "EXPIRED"
+                        ]
+                      },
+                      "tokenReclaimed": {
+                        "type": "boolean"
+                      },
+                      "metadataStatus": {
+                        "type": "string",
+                        "enum": [
+                          "AVAILABLE",
+                          "MISSING"
+                        ]
+                      },
+                      "catalogId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "claim": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "SELLER_PROCEEDS",
+                                  "BUYER_REFUND"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "NONE",
+                                  "CLAIMABLE",
+                                  "WITHDRAWN"
+                                ]
+                              },
+                              "beneficiary": {
+                                "type": "string",
+                                "pattern": "^0x[0-9a-fA-F]{40}$"
+                              },
+                              "amountWei": {
+                                "type": "string",
+                                "pattern": "^(0|[1-9]\\d*)$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "status",
+                              "beneficiary",
+                              "amountWei"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "saleId",
+                      "tokenId",
+                      "seller",
+                      "buyer",
+                      "priceWei",
+                      "fundedAt",
+                      "expiresAt",
+                      "status",
+                      "tokenReclaimed",
+                      "metadataStatus",
+                      "catalogId",
+                      "claim"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "freshness": {
+                "type": "object",
+                "properties": {
+                  "projectionStatus": {
+                    "type": "string",
+                    "enum": [
+                      "UNINITIALIZED",
+                      "SYNCING",
+                      "CURRENT",
+                      "STALE",
+                      "REBUILD_REQUIRED",
+                      "REBUILDING",
+                      "RECOVERY_REQUIRED"
+                    ]
+                  },
+                  "lastObservedHead": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^(0|[1-9]\\d*)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lagBlocks": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^(0|[1-9]\\d*)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastObservedAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "lastRpcSuccessAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "workerHeartbeatAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "recoveryReason": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "projectionStatus",
+                  "lastObservedHead",
+                  "lagBlocks",
+                  "lastObservedAt",
+                  "lastRpcSuccessAt",
+                  "workerHeartbeatAt",
+                  "recoveryReason"
+                ],
+                "additionalProperties": false
+              },
+              "observation": {
+                "type": "object",
+                "properties": {
+                  "requestEcho": {
+                    "type": "object",
+                    "properties": {
+                      "transactionHash": {
+                        "type": "string",
+                        "pattern": "^0x[0-9a-fA-F]{64}$"
+                      },
+                      "blockNumber": {
+                        "type": "string",
+                        "pattern": "^(0|[1-9]\\d*)$"
+                      },
+                      "blockHash": {
+                        "type": "string",
+                        "pattern": "^0x[0-9a-fA-F]{64}$"
+                      },
+                      "logIndex": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "transactionHash",
+                      "blockNumber",
+                      "blockHash",
+                      "logIndex"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "coverage": {
+                    "type": "string",
+                    "enum": [
+                      "NOT_REACHED",
+                      "SCANNED",
+                      "UNVERIFIABLE"
+                    ]
+                  },
+                  "observedHeaderAtRequestedHeight": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "blockNumber": {
+                            "type": "string",
+                            "pattern": "^(0|[1-9]\\d*)$"
+                          },
+                          "blockHash": {
+                            "type": "string",
+                            "pattern": "^0x[0-9a-fA-F]{64}$"
+                          },
+                          "canonical": {
+                            "type": "boolean"
+                          },
+                          "scanComplete": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "blockNumber",
+                          "blockHash",
+                          "canonical",
+                          "scanComplete"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "eventLookup": {
+                    "type": "string",
+                    "enum": [
+                      "NOT_FOUND",
+                      "MATCHED",
+                      "NONCANONICAL",
+                      "SELECTOR_MISMATCH"
+                    ]
+                  },
+                  "matchedEvent": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "transactionHash": {
+                            "type": "string",
+                            "pattern": "^0x[0-9a-fA-F]{64}$"
+                          },
+                          "blockNumber": {
+                            "type": "string",
+                            "pattern": "^(0|[1-9]\\d*)$"
+                          },
+                          "blockHash": {
+                            "type": "string",
+                            "pattern": "^0x[0-9a-fA-F]{64}$"
+                          },
+                          "logIndex": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "emitter": {
+                            "type": "string",
+                            "pattern": "^0x[0-9a-fA-F]{40}$"
+                          },
+                          "saleId": {
+                            "type": "string",
+                            "pattern": "^(0|[1-9]\\d*)$"
+                          },
+                          "buyer": {
+                            "type": "string",
+                            "pattern": "^0x[0-9a-fA-F]{40}$"
+                          },
+                          "amountWei": {
+                            "type": "string",
+                            "pattern": "^(0|[1-9]\\d*)$"
+                          },
+                          "fundedAt": {
+                            "type": "string",
+                            "pattern": "^(0|[1-9]\\d*)$"
+                          },
+                          "expiresAt": {
+                            "type": "string",
+                            "pattern": "^(0|[1-9]\\d*)$"
+                          }
+                        },
+                        "required": [
+                          "transactionHash",
+                          "blockNumber",
+                          "blockHash",
+                          "logIndex",
+                          "emitter",
+                          "saleId",
+                          "buyer",
+                          "amountWei",
+                          "fundedAt",
+                          "expiresAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "projectionEffect": {
+                    "type": "string",
+                    "enum": [
+                      "NOT_ASSESSED",
+                      "CONSISTENT",
+                      "INCONSISTENT"
+                    ]
+                  }
+                },
+                "required": [
+                  "requestEcho",
+                  "coverage",
+                  "observedHeaderAtRequestedHeight",
+                  "eventLookup",
+                  "matchedEvent",
+                  "projectionEffect"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "sale",
+              "freshness",
+              "observation"
+            ],
+            "additionalProperties": false
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "indexedBlockNumber": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "indexedBlockHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "projectorVersion": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "projectionBuildId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "logScopeHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              }
+            },
+            "required": [
+              "deploymentId",
+              "indexedBlockNumber",
+              "indexedBlockHash",
+              "projectorVersion",
+              "projectionBuildId",
+              "logScopeHash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data",
+          "provenance"
+        ],
+        "additionalProperties": false
+      },
+      "SalesEnvelope": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "saleId": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9]\\d*)$"
+                },
+                "tokenId": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9]\\d*)$"
+                },
+                "seller": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-fA-F]{40}$"
+                },
+                "buyer": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-fA-F]{40}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "priceWei": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9]\\d*)$"
+                },
+                "fundedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^(0|[1-9]\\d*)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "expiresAt": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^(0|[1-9]\\d*)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "LISTED",
+                    "FUNDED",
+                    "COMPLETED",
+                    "CANCELLED",
+                    "EXPIRED"
+                  ]
+                },
+                "tokenReclaimed": {
+                  "type": "boolean"
+                },
+                "metadataStatus": {
+                  "type": "string",
+                  "enum": [
+                    "AVAILABLE",
+                    "MISSING"
+                  ]
+                },
+                "catalogId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "claim": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "SELLER_PROCEEDS",
+                            "BUYER_REFUND"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "CLAIMABLE",
+                            "WITHDRAWN"
+                          ]
+                        },
+                        "beneficiary": {
+                          "type": "string",
+                          "pattern": "^0x[0-9a-fA-F]{40}$"
+                        },
+                        "amountWei": {
+                          "type": "string",
+                          "pattern": "^(0|[1-9]\\d*)$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "status",
+                        "beneficiary",
+                        "amountWei"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "saleId",
+                "tokenId",
+                "seller",
+                "buyer",
+                "priceWei",
+                "fundedAt",
+                "expiresAt",
+                "status",
+                "tokenReclaimed",
+                "metadataStatus",
+                "catalogId",
+                "claim"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "indexedBlockNumber": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "indexedBlockHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "projectorVersion": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "projectionBuildId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "logScopeHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              }
+            },
+            "required": [
+              "deploymentId",
+              "indexedBlockNumber",
+              "indexedBlockHash",
+              "projectorVersion",
+              "projectionBuildId",
+              "logScopeHash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data",
+          "provenance"
+        ],
+        "additionalProperties": false
+      },
+      "Vehicle": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "catalogId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tokenId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "imagePath": {
+            "type": "string"
+          },
+          "currentOwner": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{40}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metadataStatus": {
+            "type": "string",
+            "const": "AVAILABLE"
+          }
+        },
+        "required": [
+          "catalogId",
+          "tokenId",
+          "name",
+          "description",
+          "imagePath",
+          "currentOwner",
+          "metadataStatus"
+        ],
+        "additionalProperties": false
+      },
+      "VehiclesEnvelope": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "catalogId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "tokenId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^(0|[1-9]\\d*)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "imagePath": {
+                  "type": "string"
+                },
+                "currentOwner": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-fA-F]{40}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "metadataStatus": {
+                  "type": "string",
+                  "const": "AVAILABLE"
+                }
+              },
+              "required": [
+                "catalogId",
+                "tokenId",
+                "name",
+                "description",
+                "imagePath",
+                "currentOwner",
+                "metadataStatus"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "indexedBlockNumber": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "indexedBlockHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "projectorVersion": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "projectionBuildId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "logScopeHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              }
+            },
+            "required": [
+              "deploymentId",
+              "indexedBlockNumber",
+              "indexedBlockHash",
+              "projectorVersion",
+              "projectionBuildId",
+              "logScopeHash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data",
+          "provenance"
+        ],
+        "additionalProperties": false
+      },
+      "SystemStatusEnvelope": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "projectionStatus": {
+                "type": "string",
+                "enum": [
+                  "UNINITIALIZED",
+                  "SYNCING",
+                  "CURRENT",
+                  "STALE",
+                  "REBUILD_REQUIRED",
+                  "REBUILDING",
+                  "RECOVERY_REQUIRED"
+                ]
+              },
+              "lastObservedHead": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^(0|[1-9]\\d*)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lagBlocks": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^(0|[1-9]\\d*)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lastObservedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "lastRpcSuccessAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "workerHeartbeatAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recoveryReason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "projectionStatus",
+              "lastObservedHead",
+              "lagBlocks",
+              "lastObservedAt",
+              "lastRpcSuccessAt",
+              "workerHeartbeatAt",
+              "recoveryReason"
+            ],
+            "additionalProperties": false
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "indexedBlockNumber": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "indexedBlockHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "projectorVersion": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "projectionBuildId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "logScopeHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              }
+            },
+            "required": [
+              "deploymentId",
+              "indexedBlockNumber",
+              "indexedBlockHash",
+              "projectorVersion",
+              "projectionBuildId",
+              "logScopeHash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data",
+          "provenance"
+        ],
+        "additionalProperties": false
+      },
+      "EventsEnvelope": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "blockNumber": {
+                  "type": "string",
+                  "pattern": "^(0|[1-9]\\d*)$"
+                },
+                "blockHash": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-fA-F]{64}$"
+                },
+                "transactionHash": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-fA-F]{64}$"
+                },
+                "logIndex": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "eventName": {
+                  "type": "string"
+                },
+                "decoded": {}
+              },
+              "required": [
+                "blockNumber",
+                "blockHash",
+                "transactionHash",
+                "logIndex",
+                "eventName",
+                "decoded"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "indexedBlockNumber": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "indexedBlockHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "projectorVersion": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "projectionBuildId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "logScopeHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              }
+            },
+            "required": [
+              "deploymentId",
+              "indexedBlockNumber",
+              "indexedBlockHash",
+              "projectorVersion",
+              "projectionBuildId",
+              "logScopeHash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data",
+          "provenance"
+        ],
+        "additionalProperties": false
+      },
+      "ReconciliationEnvelope": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "comparison": {
+                    "type": "string",
+                    "enum": [
+                      "MATCH",
+                      "MISMATCH",
+                      "UNVERIFIABLE"
+                    ]
+                  },
+                  "freshness": {
+                    "type": "string",
+                    "enum": [
+                      "CURRENT",
+                      "PROJECTION_LAGGING",
+                      "HEAD_UNKNOWN"
+                    ]
+                  },
+                  "blockNumber": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^(0|[1-9]\\d*)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "blockHash": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^0x[0-9a-fA-F]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "projectorVersion": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9]\\d*)$"
+                  },
+                  "projectionBuildId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "logScopeHash": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{64}$"
+                  },
+                  "scope": {},
+                  "differences": {
+                    "type": "array",
+                    "items": {}
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "comparison",
+                  "freshness",
+                  "blockNumber",
+                  "blockHash",
+                  "projectorVersion",
+                  "projectionBuildId",
+                  "logScopeHash",
+                  "scope",
+                  "differences",
+                  "createdAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "deploymentId": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "indexedBlockNumber": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "indexedBlockHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              },
+              "projectorVersion": {
+                "type": "string",
+                "pattern": "^(0|[1-9]\\d*)$"
+              },
+              "projectionBuildId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "logScopeHash": {
+                "type": "string",
+                "pattern": "^0x[0-9a-fA-F]{64}$"
+              }
+            },
+            "required": [
+              "deploymentId",
+              "indexedBlockNumber",
+              "indexedBlockHash",
+              "projectorVersion",
+              "projectionBuildId",
+              "logScopeHash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data",
+          "provenance"
+        ],
+        "additionalProperties": false
+      },
+      "ApiError": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "requestId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "requestId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

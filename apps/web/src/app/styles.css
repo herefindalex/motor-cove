@@ -1,0 +1,204 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #e8eef5;
+  background: #071019;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 1100px;
+  margin: auto;
+  padding: 2rem;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #284052;
+  padding-bottom: 1rem;
+}
+header div,
+nav {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+header span,
+aside {
+  color: #75d6b1;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+}
+nav a {
+  color: #b7c9d8;
+  text-decoration: none;
+}
+nav a.active {
+  color: white;
+}
+aside {
+  margin: 1.5rem 0;
+  padding: 0.8rem;
+  border: 1px solid #275946;
+  background: #0b281f;
+}
+section {
+  background: #101d28;
+  border: 1px solid #24394a;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+button {
+  border: 0;
+  border-radius: 8px;
+  background: #63d9ad;
+  color: #062018;
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+button.secondary {
+  background: #25394a;
+  color: #e8eef5;
+}
+.wallet-row,
+.wallet,
+.section-title,
+.actions,
+.assets {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.section-title {
+  justify-content: space-between;
+}
+.wallet-row {
+  justify-content: space-between;
+}
+.wallet-row output {
+  color: #85d9ba;
+  overflow-wrap: anywhere;
+}
+.provenance {
+  color: #8da4b6;
+  font-size: 0.85rem;
+}
+.cards {
+  display: grid;
+  gap: 1rem;
+}
+.card {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 1.25rem;
+  border: 1px solid #294253;
+  border-radius: 10px;
+  padding: 1rem;
+}
+.vehicle-art {
+  min-height: 140px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #173448, #132119);
+  color: #75d6b1;
+  font-size: 1.4rem;
+  letter-spacing: 0.15em;
+}
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 99px;
+  background: #2d4252;
+  font-size: 0.75rem;
+}
+.badge.listed {
+  background: #1e5542;
+}
+.badge.funded {
+  background: #604f1c;
+}
+.badge.completed {
+  background: #254c72;
+}
+dl {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  margin: 0.5rem 0;
+}
+dt {
+  color: #8da4b6;
+}
+dd {
+  margin: 0;
+}
+.notice {
+  color: #f3cc6b;
+}
+.danger {
+  border-color: #9e4545;
+  color: #ffb6b6;
+}
+label {
+  display: grid;
+  gap: 0.4rem;
+  max-width: 260px;
+}
+input {
+  background: #071019;
+  color: white;
+  border: 1px solid #355064;
+  border-radius: 7px;
+  padding: 0.6rem;
+}
+.asset {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 180px;
+  padding: 1rem;
+  border: 1px solid #294253;
+  border-radius: 8px;
+}
+.inspector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+.inspector div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: #0a1620;
+}
+.inspector span {
+  color: #8da4b6;
+  text-transform: capitalize;
+}
+.inspector strong {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  main {
+    padding: 1rem;
+  }
+  header {
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  header div,
+  nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .card {
+    grid-template-columns: 1fr;
+  }
+}

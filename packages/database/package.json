@@ -1,0 +1,26 @@
+{
+  "name": "@motorcove/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./environment": "./src/connection/environment.ts",
+    "./reader": "./src/reader/index.ts",
+    "./projection-writer": "./src/projection-writer/index.ts",
+    "./seeds": "./src/seeds/local-catalog.ts",
+    "./maintenance": "./src/maintenance/index.ts",
+    "./types": "./src/types/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "better-sqlite3": "13.0.3",
+    "drizzle-orm": "0.45.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.12",
+    "drizzle-kit": "0.31.10"
+  }
+}

@@ -1,0 +1,26 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24.21.0, cache: pnpm }
+      - uses: pnpm/action-setup@v4
+        with: { version: 12.5.1, run_install: false }
+      - uses: foundry-rs/foundry-toolchain@v1
+        with: { version: v1.8.3 }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm docs:smoke
+      - run: pnpm verify
+      - run: pnpm test:e2e
+      - name: Upload browser diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          {
+            name: playwright-diagnostics,
+            path: "playwright-report\ntest-results",
+            if-no-files-found: ignore,
+          }

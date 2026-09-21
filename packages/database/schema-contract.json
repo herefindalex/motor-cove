@@ -1,0 +1,20 @@
+{
+  "formatVersion": 1,
+  "contractVersion": "1",
+  "toolchain": {
+    "drizzleOrm": "0.45.2",
+    "drizzleKit": "0.31.10",
+    "betterSqlite3": "13.0.3"
+  },
+  "migrations": [
+    {
+      "id": "0000_initial",
+      "createdAt": 1789968302978,
+      "hash": "dcd47800a557be1ccd214b17607e62466561ebcb3d6ea3666559fede6d061c97"
+    }
+  ],
+  "migrationBundleDigest": "c35ee0f6bc89329ea1acba18e74598567495803f76e2583f88139bd7dccc2354",
+  "schemaFingerprint": "086027dd663ba1d2fc8a74557d5492e9599a59fe251df1134a8760450a5bda1f",
+  "schemaSourceDigest": "88dc0de0a20f4fa89320fa1f1cf2ecd5ea8323eae1b8bb1c566d28b70653247b",
+  "requiredProjectorVersion": "1"
+}

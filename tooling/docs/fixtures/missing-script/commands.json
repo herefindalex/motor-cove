@@ -1,0 +1,5 @@
+{
+  "commands": [
+    { "name": "does:not:exist", "command": "pnpm does:not:exist", "status": "implemented" }
+  ]
+}

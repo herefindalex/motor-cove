@@ -1,0 +1,25 @@
+{
+  "name": "@motorcove/indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "bootstrap": "tsx src/cli/bootstrap.ts",
+    "rebuild": "tsx src/cli/rebuild.ts",
+    "reconcile": "tsx src/cli/reconcile.ts",
+    "reindex": "tsx src/cli/reindex.ts",
+    "reset": "tsx src/cli/reset.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@motorcove/chain-artifacts": "workspace:*",
+    "@motorcove/database": "workspace:*",
+    "better-sqlite3": "13.0.3",
+    "viem": "2.56.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.12"
+  }
+}

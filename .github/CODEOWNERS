@@ -1,0 +1,3 @@
+# Configure real GitHub users/teams before enabling required CODEOWNERS review.
+# Ownership mapping and required cross-contract review are documented in:
+# docs/collaboration/ownership-and-contracts.md

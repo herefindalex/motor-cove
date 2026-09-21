@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+chain/out
+deployments/local
+docs/internal
+packages/chain-artifacts/src/generated
+packages/api-contracts/generated
+docs/engineering-capability-map.md
+docs/reference/commands.md
+chain

@@ -1,0 +1,146 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePublicClient } from 'wagmi';
+import {
+  resumeJournalEntry,
+  type JournalEntry,
+  type TransactionJournal,
+} from '../../capabilities/transactions/index.js';
+import { motorCoveApi } from '../http/motorcove-api.js';
+import { createFundingChainReader } from './inspect-funding-transaction.js';
+
+export function TransactionObserver({
+  deploymentId,
+  journal,
+}: {
+  deploymentId: string;
+  journal: TransactionJournal;
+}) {
+  const client = usePublicClient();
+  const [entries, setEntries] = useState<readonly JournalEntry[]>(() => journal.load(deploymentId));
+  const [candidates, setCandidates] = useState<Record<string, string>>({});
+  const chain = useMemo(() => (client ? createFundingChainReader(client) : undefined), [client]);
+
+  useEffect(() => {
+    const refresh = () => setEntries(journal.load(deploymentId));
+    refresh();
+    return journal.subscribe(refresh);
+  }, [deploymentId, journal]);
+
+  const recheck = useCallback(
+    async (entry: JournalEntry, candidateHash?: `0x${string}`) => {
+      if (!chain) return;
+      await resumeJournalEntry(
+        entry,
+        {
+          chain,
+          observation: {
+            observeFunding: (input) =>
+              motorCoveApi.fundingObservation(input.saleId, {
+                deploymentId: input.deploymentId,
+                observeTxHash: input.observeTxHash,
+                observeBlockNumber: input.observeBlockNumber,
+                observeBlockHash: input.observeBlockHash,
+                observeLogIndex: input.observeLogIndex,
+              }),
+          },
+          journal,
+        },
+        candidateHash,
+      );
+    },
+    [chain, journal],
+  );
+
+  useEffect(() => {
+    if (!chain) return;
+    let stopped = false;
+    const observe = async () => {
+      const recoverable = journal
+        .load(deploymentId)
+        .filter(
+          (entry) =>
+            entry.action === 'FUND_SALE' &&
+            ['AWAITING_WALLET', 'SUBMITTED', 'INCLUDED_SUCCESS', 'UNKNOWN', 'ORPHANED'].includes(
+              entry.status,
+            ),
+        );
+      for (const entry of recoverable) {
+        if (stopped) return;
+        if (entry.status === 'UNKNOWN' && !entry.currentTxHash && !entry.originalTxHash) continue;
+        await recheck(entry);
+      }
+    };
+    void observe();
+    const timer = window.setInterval(() => void observe(), 3_000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [chain, deploymentId, journal, recheck]);
+
+  const recoverable = entries.filter(
+    (entry) =>
+      entry.action === 'FUND_SALE' && !['REJECTED', 'FAILED_BEFORE_SUBMIT'].includes(entry.status),
+  );
+  if (recoverable.length === 0) return null;
+
+  return (
+    <section aria-label="Funding recovery" className="transaction-recovery">
+      <h2>Funding verification</h2>
+      {recoverable.map((entry) => {
+        const hash = entry.currentTxHash ?? entry.originalTxHash;
+        const candidate = candidates[entry.clientOperationId] ?? '';
+        return (
+          <article key={entry.clientOperationId}>
+            <p>
+              Original account <code>{entry.account}</code> on chain {entry.chainId}. Verification
+              always uses this saved operation context.
+            </p>
+            {entry.projectionObservation === 'NOT_REACHED' && (
+              <p>Payment executed on-chain. Marketplace data is syncing.</p>
+            )}
+            {entry.projectionObservation === 'REFLECTED' && (
+              <p>This funding payment is reflected in the marketplace projection.</p>
+            )}
+            {entry.verificationAvailability === 'UNAVAILABLE' && (
+              <p>Last known evidence is retained. Verification is currently unavailable.</p>
+            )}
+            {!hash && (
+              <label>
+                Candidate transaction hash from wallet activity
+                <input
+                  aria-label="Candidate transaction hash from wallet activity"
+                  value={candidate}
+                  onChange={(event) =>
+                    setCandidates((current) => ({
+                      ...current,
+                      [entry.clientOperationId]: event.target.value,
+                    }))
+                  }
+                  placeholder="0x…"
+                />
+              </label>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                const candidateHash = /^0x[0-9a-fA-F]{64}$/.test(candidate)
+                  ? (candidate as `0x${string}`)
+                  : undefined;
+                void recheck(entry, hash ? undefined : candidateHash);
+              }}
+            >
+              Recheck evidence
+            </button>
+            {!hash && (
+              <p>
+                The wallet request may have been submitted. Rechecking is read-only; a new payment
+                must be started separately by an explicit action.
+              </p>
+            )}
+          </article>
+        );
+      })}
+    </section>
+  );
+}
