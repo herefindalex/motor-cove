@@ -12,6 +12,7 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
         with: { version: v1.8.3 }
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm docs:smoke
       - run: pnpm verify
       - run: pnpm test:e2e
