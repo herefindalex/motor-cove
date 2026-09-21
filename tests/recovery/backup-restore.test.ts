@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -7,7 +7,7 @@ import {
   recoverEnvironment,
   restoreEnvironment,
 } from '@motorcove/database/maintenance';
-import { databaseFixture } from '../helpers/database.js';
+import { databaseFixture, hashes } from '../helpers/database.js';
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -102,6 +102,95 @@ describe('backup, restore, recovery', () => {
     ).toEqual({ name: 'Before' });
     restored.close();
     expect(result.quarantine).toContain('.quarantine-');
+  });
+
+  it('rejects a backup from a different deployment before quarantining the active database', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    writeFileSync(paths.deploymentPath, `${JSON.stringify({ deploymentId: hashes.deployment })}\n`);
+    const backup = await backupEnvironment(paths);
+    const otherDeployment = `0x${'f'.repeat(64)}`;
+    const current = new Database(paths.databasePath);
+    current.pragma('foreign_keys = OFF');
+    current.prepare('UPDATE indexer_checkpoint SET deployment_id=?').run(otherDeployment);
+    current.prepare('UPDATE indexer_runtime_status SET deployment_id=?').run(otherDeployment);
+    current.prepare('UPDATE deployments SET deployment_id=?').run(otherDeployment);
+    current.close();
+    writeFileSync(paths.deploymentPath, `${JSON.stringify({ deploymentId: otherDeployment })}\n`);
+
+    await expect(restoreEnvironment(paths, backup.backupId, true)).rejects.toThrow(
+      'BACKUP_DEPLOYMENT_MISMATCH',
+    );
+    const active = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
+    expect(active.prepare('SELECT deployment_id AS deploymentId FROM deployments').get()).toEqual({
+      deploymentId: otherDeployment,
+    });
+    active.close();
+    expect(
+      readdirSync(paths.environmentDir).some((entry) => entry.startsWith('.quarantine-')),
+    ).toBe(false);
+  });
+
+  it('rejects a backup whose deployment sidecar changed after backup creation', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    writeFileSync(paths.deploymentPath, `${JSON.stringify({ deploymentId: hashes.deployment })}\n`);
+    const backup = await backupEnvironment(paths);
+    writeFileSync(
+      resolve(backup.path, 'deployment.json'),
+      `${JSON.stringify({ deploymentId: `0x${'f'.repeat(64)}` })}\n`,
+    );
+
+    await expect(restoreEnvironment(paths, backup.backupId, true)).rejects.toThrow(
+      'BACKUP_INVALID: sidecar',
+    );
+  });
+
+  it('rejects a backup whose recorded deployment sidecar is missing', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    writeFileSync(paths.deploymentPath, `${JSON.stringify({ deploymentId: hashes.deployment })}\n`);
+    const backup = await backupEnvironment(paths);
+    rmSync(resolve(backup.path, 'deployment.json'));
+
+    await expect(restoreEnvironment(paths, backup.backupId, true)).rejects.toThrow(
+      'BACKUP_INVALID: sidecar deployment.json',
+    );
+  });
+
+  it('refuses to create a backup without the deployment sidecar', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    unlinkSync(paths.deploymentPath);
+
+    await expect(backupEnvironment(paths)).rejects.toThrow(
+      'BACKUP_INVALID: deployment sidecar required',
+    );
+  });
+
+  it('refuses to create a backup when the deployment sidecar disagrees with the database', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    writeFileSync(
+      paths.deploymentPath,
+      `${JSON.stringify({ deploymentId: `0x${'f'.repeat(64)}` })}\n`,
+    );
+
+    await expect(backupEnvironment(paths)).rejects.toThrow('BACKUP_INVALID: deployment identity');
+  });
+
+  it('rejects restore when the active deployment manifest is missing before quarantine', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const backup = await backupEnvironment(paths);
+    unlinkSync(paths.deploymentPath);
+
+    await expect(restoreEnvironment(paths, backup.backupId, true)).rejects.toThrow(
+      'ACTIVE_DEPLOYMENT_MANIFEST_MISSING',
+    );
+    expect(
+      readdirSync(paths.environmentDir).some((entry) => entry.startsWith('.quarantine-')),
+    ).toBe(false);
   });
   it('DB-50 recovers a restore crash from quarantine without mixing sidecars', async () => {
     const { root, paths } = await databaseFixture();

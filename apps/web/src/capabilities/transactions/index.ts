@@ -9,9 +9,9 @@ export { submitOperation } from './submit-operation.js';
 export type { SubmissionAction, SubmissionContext } from './submit-operation.js';
 export { resumeJournalEntry } from './recovery.js';
 export type {
-  FundingChainReader,
+  TransactionChainReader,
   FundingObservationReader,
-  InspectedFundingTransaction,
+  InspectedTransaction,
   RecoveryPorts,
   RecoveryResult,
 } from './recovery.js';

@@ -2,7 +2,7 @@ import type { FundingObservationResponse } from '@motorcove/api-contracts';
 import type { JournalEntry } from './model.js';
 import type { TransactionJournal } from './ports.js';
 
-export type InspectedFundingTransaction =
+export type InspectedTransaction =
   | { kind: 'PENDING'; transactionHash: `0x${string}` }
   | {
       kind: 'INCLUDED_REVERTED';
@@ -16,9 +16,9 @@ export type InspectedFundingTransaction =
       transactionHash: `0x${string}`;
       blockNumber: bigint;
       blockHash: `0x${string}`;
-      logIndex: number;
-      buyer: `0x${string}`;
-      amountWei: bigint;
+      logIndex?: number;
+      buyer?: `0x${string}`;
+      amountWei?: bigint;
       replacementKind?: 'REPRICED';
     }
   | {
@@ -31,11 +31,11 @@ export type InspectedFundingTransaction =
   | { kind: 'INTENT_MISMATCH'; transactionHash: `0x${string}`; reason: string }
   | { kind: 'UNAVAILABLE'; transactionHash: `0x${string}`; reason: string };
 
-export interface FundingChainReader {
-  inspectFunding(
+export interface TransactionChainReader {
+  inspectTransaction(
     entry: JournalEntry,
     transactionHash: `0x${string}`,
-  ): Promise<InspectedFundingTransaction>;
+  ): Promise<InspectedTransaction>;
 }
 
 export interface FundingObservationReader {
@@ -50,7 +50,7 @@ export interface FundingObservationReader {
 }
 
 export interface RecoveryPorts {
-  readonly chain: FundingChainReader;
+  readonly chain: TransactionChainReader;
   readonly observation: FundingObservationReader;
   readonly journal: TransactionJournal;
 }
@@ -59,6 +59,7 @@ export type RecoveryResult =
   | { kind: 'HASH_REQUIRED' }
   | { kind: 'PENDING' }
   | { kind: 'REVERTED' }
+  | { kind: 'INCLUDED' }
   | { kind: 'SYNCING' }
   | { kind: 'REFLECTED' }
   | { kind: 'INCONSISTENT' }
@@ -74,12 +75,12 @@ function latestEntry(entry: JournalEntry, journal: TransactionJournal): JournalE
   );
 }
 
-function update(
+async function update(
   entry: JournalEntry,
   ports: RecoveryPorts,
   values: Partial<JournalEntry>,
   verificationRequestId?: string,
-): { entry: JournalEntry; applied: boolean } {
+): Promise<{ entry: JournalEntry; applied: boolean }> {
   const current = latestEntry(entry, ports.journal);
   if (
     verificationRequestId !== undefined &&
@@ -87,7 +88,7 @@ function update(
   )
     return { entry: current, applied: false };
   const next = { ...current, ...values, updatedAt: new Date().toISOString() };
-  ports.journal.save(next);
+  await ports.journal.save(next);
   return { entry: next, applied: true };
 }
 
@@ -100,7 +101,7 @@ export async function resumeJournalEntry(
   const storedHash = entry.currentTxHash ?? entry.originalTxHash;
   const transactionHash = candidateHash ?? storedHash;
   if (!transactionHash) {
-    update(entry, ports, {
+    await update(entry, ports, {
       status: 'UNKNOWN',
       verificationAvailability: 'AVAILABLE',
       lastErrorCategory: 'HASH_REQUIRED_FROM_WALLET_ACTIVITY',
@@ -110,16 +111,18 @@ export async function resumeJournalEntry(
   const verifiedHash = transactionHash as `0x${string}`;
 
   const verificationRequestId = crypto.randomUUID();
-  const verifying = update(entry, ports, {
-    verificationAvailability: 'VERIFYING',
-    verificationRequestId,
-  }).entry;
+  const verifying = (
+    await update(entry, ports, {
+      verificationAvailability: 'VERIFYING',
+      verificationRequestId,
+    })
+  ).entry;
   const apply = (values: Partial<JournalEntry>) =>
     update(verifying, ports, values, verificationRequestId);
-  const inspected = await ports.chain.inspectFunding(verifying, verifiedHash);
+  const inspected = await ports.chain.inspectTransaction(verifying, verifiedHash);
 
   if (inspected.kind === 'UNAVAILABLE') {
-    const result = apply({
+    const result = await apply({
       verificationAvailability: 'UNAVAILABLE',
       lastErrorCategory: inspected.reason,
     });
@@ -127,7 +130,7 @@ export async function resumeJournalEntry(
     return { kind: 'UNAVAILABLE', reason: inspected.reason };
   }
   if (inspected.kind === 'INTENT_MISMATCH') {
-    const result = apply({
+    const result = await apply({
       verificationAvailability: 'AVAILABLE',
       lastVerifiedAt: new Date().toISOString(),
       lastErrorCategory: `CANDIDATE_REJECTED:${inspected.reason}`,
@@ -136,7 +139,7 @@ export async function resumeJournalEntry(
     return { kind: 'REJECTED_CANDIDATE', reason: inspected.reason };
   }
   if (inspected.kind === 'NONCANONICAL') {
-    const result = apply({
+    const result = await apply({
       status: 'ORPHANED',
       projectionObservation: 'INCONSISTENT',
       verificationAvailability: 'AVAILABLE',
@@ -147,7 +150,7 @@ export async function resumeJournalEntry(
     return { kind: 'INCONSISTENT' };
   }
   if (inspected.kind === 'REPLACED_OR_CANCELLED') {
-    const result = apply({
+    const result = await apply({
       currentTxHash: inspected.replacementHash,
       replacementKind: inspected.replacementKind,
       status: 'REPLACED_OR_CANCELLED',
@@ -168,7 +171,7 @@ export async function resumeJournalEntry(
     : (verifying.evidenceSource ?? 'WALLET_RETURNED');
 
   if (inspected.kind === 'PENDING') {
-    const result = apply({
+    const result = await apply({
       currentTxHash: verifiedHash,
       ...(verifying.originalTxHash ? {} : { originalTxHash: verifiedHash }),
       association,
@@ -183,7 +186,7 @@ export async function resumeJournalEntry(
   }
 
   if (inspected.kind === 'INCLUDED_REVERTED') {
-    const result = apply({
+    const result = await apply({
       currentTxHash: inspected.transactionHash,
       ...(verifying.originalTxHash ? {} : { originalTxHash: verifiedHash }),
       association,
@@ -201,12 +204,46 @@ export async function resumeJournalEntry(
     return { kind: 'REVERTED' };
   }
 
+  if (verifying.action !== 'FUND_SALE') {
+    const result = await apply({
+      currentTxHash: inspected.transactionHash,
+      ...(verifying.originalTxHash ? {} : { originalTxHash: verifiedHash }),
+      association,
+      evidenceSource,
+      receiptStatus: 'SUCCESS',
+      receiptBlockNumber: String(inspected.blockNumber),
+      receiptBlockHash: inspected.blockHash,
+      ...(inspected.replacementKind ? { replacementKind: inspected.replacementKind } : {}),
+      status: 'INCLUDED_SUCCESS',
+      verificationAvailability: 'AVAILABLE',
+      lastVerifiedAt: new Date().toISOString(),
+      lastErrorCategory: undefined,
+      projectionObservation: undefined,
+    });
+    if (!result.applied) return { kind: 'SUPERSEDED' };
+    return { kind: 'INCLUDED' };
+  }
+
+  if (
+    inspected.logIndex === undefined ||
+    inspected.buyer === undefined ||
+    inspected.amountWei === undefined
+  ) {
+    const result = await apply({
+      verificationAvailability: 'AVAILABLE',
+      lastVerifiedAt: new Date().toISOString(),
+      lastErrorCategory: 'FUNDING_EVENT_EVIDENCE_MISSING',
+    });
+    if (!result.applied) return { kind: 'SUPERSEDED' };
+    return { kind: 'INCONSISTENT' };
+  }
+
   const projectionIdentityChanged =
     verifying.projectionTransactionHash !== inspected.transactionHash ||
     verifying.projectionBlockHash !== inspected.blockHash ||
     verifying.projectionLogIndex !== inspected.logIndex ||
     verifying.projectionDeploymentId !== verifying.deploymentId;
-  const chainEvidenceResult = apply({
+  const chainEvidenceResult = await apply({
     currentTxHash: inspected.transactionHash,
     ...(verifying.originalTxHash ? {} : { originalTxHash: verifiedHash }),
     association,
@@ -237,7 +274,7 @@ export async function resumeJournalEntry(
   const withChainEvidence = chainEvidenceResult.entry;
 
   if (!withChainEvidence.saleId) {
-    const result = update(
+    const result = await update(
       withChainEvidence,
       ports,
       {
@@ -268,7 +305,7 @@ export async function resumeJournalEntry(
           : observation.eventLookup === 'MATCHED' && observation.projectionEffect === 'CONSISTENT'
             ? 'REFLECTED'
             : 'INCONSISTENT';
-    const result = update(
+    const result = await update(
       withChainEvidence,
       ports,
       {
@@ -290,7 +327,7 @@ export async function resumeJournalEntry(
     if (projectionObservation === 'NOT_REACHED') return { kind: 'SYNCING' };
     return { kind: 'INCONSISTENT' };
   } catch (error) {
-    const result = update(
+    const result = await update(
       withChainEvidence,
       ports,
       {

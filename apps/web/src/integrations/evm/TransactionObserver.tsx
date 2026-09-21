@@ -7,7 +7,7 @@ import {
   type TransactionJournal,
 } from '../../capabilities/transactions/index.js';
 import { motorCoveApi } from '../http/motorcove-api.js';
-import { createFundingChainReader } from './inspect-funding-transaction.js';
+import { createTransactionChainReader } from './inspect-transaction.js';
 
 export function TransactionObserver({
   deploymentId,
@@ -20,7 +20,10 @@ export function TransactionObserver({
   const [entries, setEntries] = useState<readonly JournalEntry[]>(() => journal.load(deploymentId));
   const [candidates, setCandidates] = useState<Record<string, string>>({});
   const inFlight = useRef(new Set<string>());
-  const chain = useMemo(() => (client ? createFundingChainReader(client) : undefined), [client]);
+  const chain = useMemo(
+    () => (client ? createTransactionChainReader(client) : undefined),
+    [client],
+  );
 
   useEffect(() => {
     const refresh = () => setEntries(journal.load(deploymentId));
@@ -65,12 +68,10 @@ export function TransactionObserver({
     const observe = async () => {
       const recoverable = journal
         .load(deploymentId)
-        .filter(
-          (entry) =>
-            entry.action === 'FUND_SALE' &&
-            ['AWAITING_WALLET', 'SUBMITTED', 'INCLUDED_SUCCESS', 'UNKNOWN', 'ORPHANED'].includes(
-              entry.status,
-            ),
+        .filter((entry) =>
+          ['AWAITING_WALLET', 'SUBMITTED', 'INCLUDED_SUCCESS', 'UNKNOWN', 'ORPHANED'].includes(
+            entry.status,
+          ),
         );
       for (const entry of recoverable) {
         if (stopped) return;
@@ -87,14 +88,13 @@ export function TransactionObserver({
   }, [chain, deploymentId, journal, recheck]);
 
   const recoverable = entries.filter(
-    (entry) =>
-      entry.action === 'FUND_SALE' && !['REJECTED', 'FAILED_BEFORE_SUBMIT'].includes(entry.status),
+    (entry) => !['REJECTED', 'FAILED_BEFORE_SUBMIT'].includes(entry.status),
   );
   if (recoverable.length === 0) return null;
 
   return (
-    <section aria-label="Funding recovery" className="transaction-recovery">
-      <h2>Funding verification</h2>
+    <section aria-label="Transaction recovery" className="transaction-recovery">
+      <h2>Transaction verification</h2>
       {recoverable.map((entry) => {
         const hash = entry.currentTxHash ?? entry.originalTxHash;
         const candidate = candidates[entry.clientOperationId] ?? '';
@@ -107,7 +107,7 @@ export function TransactionObserver({
             {entry.projectionObservation === 'NOT_REACHED' && (
               <p>Payment executed on-chain. Marketplace data is syncing.</p>
             )}
-            {isProjectionCurrentlyReflected(entry) && (
+            {entry.action === 'FUND_SALE' && isProjectionCurrentlyReflected(entry) && (
               <p>This funding payment is reflected in the marketplace projection.</p>
             )}
             {entry.verificationAvailability === 'UNAVAILABLE' && (
@@ -142,8 +142,8 @@ export function TransactionObserver({
             </button>
             {!hash && (
               <p>
-                The wallet request may have been submitted. Rechecking is read-only; a new payment
-                must be started separately by an explicit action.
+                The wallet request may have been submitted. Rechecking is read-only; a new
+                transaction must be started separately by an explicit action.
               </p>
             )}
           </article>

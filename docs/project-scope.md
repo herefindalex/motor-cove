@@ -33,16 +33,16 @@ and contributor handoffs.
 
 - A real process kill in the chain broadcast-to-hash journal window is not injected. Deterministic
   journal tests prove known-hash resume and conservative `UNKNOWN` behavior around that boundary.
-- The repository has only its initial migration, so a truthful prior-schema upgrade fixture does not
-  yet exist. The first real schema change must add it.
+- The first schema upgrade has a preserved-data `0000` to `0001` fixture. Compatibility with
+  schemas outside the repository's recorded migration history remains unverified and unsupported.
 - Controlled SQLite page exhaustion proves atomic rollback but does not simulate a full host
   filesystem. `SIGKILL` does not prove controller-cache, filesystem-flush, or hardware power-loss
   durability.
 - Manual MetaMask prompts and provider-specific behavior are not verified. Browser automation uses a
   controlled EIP-1193 adapter.
-- The published source passed the repository's GitHub Actions workflow. Branch protection,
-  required-review settings, and repository reviewer identities still require owner configuration
-  and remain unverified.
+- GitHub Actions runs are commit-specific and are recorded separately from local evidence. Branch
+  protection, required-review settings, and repository reviewer identities still require owner
+  configuration and remain unverified.
 
 ## Non-goals
 

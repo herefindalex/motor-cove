@@ -18,7 +18,7 @@ import {
   type JournalEntry,
   type TransactionJournal,
 } from '../../apps/web/src/capabilities/transactions/index.js';
-import { createFundingChainReader } from '../../apps/web/src/integrations/evm/inspect-funding-transaction.js';
+import { createTransactionChainReader } from '../../apps/web/src/integrations/evm/inspect-transaction.js';
 import { motorCoveEscrowAbi } from '../../packages/chain-artifacts/src/index.js';
 import {
   deploymentManifestSchema,
@@ -92,12 +92,18 @@ describe('transaction recovery converges across Anvil, API, SQLite, and Indexer'
       cwd: root,
       env: { ...environment, MOTORCOVE_API_PORT: '19002' },
       stdio: 'pipe',
+      detached: true,
     });
     await waitFor(`${apiUrl}/v1/config`);
   }, 60_000);
 
   afterAll(() => {
-    api?.kill('SIGTERM');
+    if (api?.pid)
+      try {
+        process.kill(-api.pid, 'SIGTERM');
+      } catch {
+        // The isolated API process group already exited.
+      }
     anvil?.kill('SIGTERM');
     rmSync(directory, { recursive: true, force: true });
   });
@@ -172,6 +178,7 @@ describe('transaction recovery converges across Anvil, API, SQLite, and Indexer'
         observeBlockHash: string;
         observeLogIndex: number;
       }) => {
+        expect(input.deploymentId).toBe(manifest.deploymentId);
         const query = new URLSearchParams({
           deploymentId: input.deploymentId,
           observeTxHash: input.observeTxHash,
@@ -180,12 +187,13 @@ describe('transaction recovery converges across Anvil, API, SQLite, and Indexer'
           observeLogIndex: String(input.observeLogIndex),
         });
         const response = await fetch(`${apiUrl}/v1/sales/${input.saleId}?${query.toString()}`);
-        expect(response.status).toBe(200);
-        return fundingObservationResponseSchema.parse(await response.json());
+        const body = (await response.json()) as unknown;
+        expect(response.status, JSON.stringify(body)).toBe(200);
+        return fundingObservationResponseSchema.parse(body);
       },
     };
     const recoveryPorts = {
-      chain: createFundingChainReader(publicClient),
+      chain: createTransactionChainReader(publicClient),
       observation,
       journal,
     };

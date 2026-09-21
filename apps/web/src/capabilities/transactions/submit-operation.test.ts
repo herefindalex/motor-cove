@@ -68,6 +68,20 @@ describe('submitOperation', () => {
     expect(submit).toHaveBeenCalledTimes(0);
   });
 
+  it('awaits an asynchronous durable intent failure before opening the wallet', async () => {
+    const store = journal();
+    const { action, context, submit } = fixture();
+    store.port.save = vi.fn(async () => {
+      await Promise.resolve();
+      throw new Error('async storage unavailable');
+    });
+
+    await expect(submitOperation(context, action, store.port)).rejects.toThrow(
+      'async storage unavailable',
+    );
+    expect(submit).not.toHaveBeenCalled();
+  });
+
   it('records a failed precondition without calling the wallet', async () => {
     const store = journal();
     const { action, context, submit } = fixture({
@@ -148,7 +162,7 @@ describe('submitOperation', () => {
     await vi.waitFor(() => expect(store.entries[0]?.status).toBe('SUBMITTED'));
     const submitted = store.entries[0];
     if (!submitted) throw new Error('submitted entry was not saved');
-    store.port.save({
+    await store.port.save({
       ...submitted,
       updatedAt: new Date().toISOString(),
       status: 'INCLUDED_SUCCESS',

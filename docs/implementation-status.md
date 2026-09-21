@@ -1,49 +1,49 @@
 # Implementation status
 
-Status captured on 2026-09-21 from committed source and its successful GitHub Actions run.
-Capability metadata and the verification JSON are the machine-readable sources; this page is the
-human summary.
+Status captured on 2026-09-21 from the current pre-commit workspace. Capability metadata and
+the verification JSON are the machine-readable sources; this page is a human summary.
 
-| Area                   | Required behavior                                                                                                                                 | Implemented                                                                                                                                       | Current local evidence                                                                                                                                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Contracts              | ERC-721 custody, sale transitions, pull claims, refund/withdraw/reclaim, liability invariant                                                      | `chain/src` and generated ABI                                                                                                                     | 12 unit/fuzz tests and 1 stateful invariant test passed.                                                                                                                                                                                                         |
-| Frontend               | Feature/capability/adapter layers, explicit injected/local connector states, durable pre-submit journal, read-only hash/event/projection recovery | `apps/web` capability ports plus EVM, HTTP, Wagmi, and localStorage adapters; generation-guarded verification and one current-reflection selector | Missing-provider component coverage; controlled slow-verification and slow-nonce tests; real replacement/reorg tests; 4 Playwright scenarios using the loopback demo connector for settlement and a controlled provider for faults. Manual MetaMask was not run. |
-| API                    | Readonly query API with validated wire schemas, selector observation, and provenance                                                              | Database reader plus Zod/OpenAPI contracts                                                                                                        | 12 API contract tests, readonly boundary tests, one-snapshot concurrency, and real local convergence passed.                                                                                                                                                     |
-| Indexer                | Ordered source evidence, atomic commit, catch-up, replay, rebuild/reindex, version gates                                                          | Pure projectors plus EVM/SQLite adapters, exclusive projection maintenance, checkpoint seam validation, and transport retry                       | Same-history recanonicalization, real Anvil orphan/reinclude and reindex, restore catch-up, reconciliation, controlled RPC failure, graceful stop, and child-process `SIGKILL` cases passed.                                                                     |
-| Database               | One migration history, managed environments, role exports, locks/marker, seed, backup/restore                                                     | `@motorcove/database` is the only runtime database package; projection rebuild/reindex share its exclusive lock and durable marker path           | Migration failure rollback, source digest, lock kill, active/failed projection maintenance, busy/full faults, seed conflict, backup/restore, and deployment reset detection passed. DB-03 remains open because no prior schema release exists.                   |
-| Documentation delivery | Navigable scope/architecture/operations, provider-consumer contracts, local/CI gates, evidence discipline                                         | Bilingual entry, public docs, generated maps, docs/architecture checks, and CI workflow                                                           | Docs smoke, complete verify, and E2E passed locally and in GitHub Actions; branch protection and required-review settings remain unobserved.                                                                                                                     |
+| Area      | Required behavior                                                                                                                               | Implemented                                                                                                                                                               | Current local evidence                                                                                                                                                                                                                        |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contracts | ERC-721 custody, sale transitions, pull claims, refund, withdrawal, reclaim, and liability invariant                                            | `chain/src` and generated ABI                                                                                                                                             | 12 unit and fuzz tests plus 1 stateful invariant test passed.                                                                                                                                                                                 |
+| Frontend  | Feature/capability/adapter layers, explicit injected and local connector states, durable pre-submit journal, and read-only transaction recovery | `apps/web` capability ports plus EVM, HTTP, Wagmi, and localStorage adapters; generation-guarded verification; Web Locks serialize journal writers per deployment         | All eight supported actions have receipt outcomes; non-funding revert and reload cases passed. Six Playwright scenarios include two real multi-tab journal cases. Manual MetaMask was not run.                                                |
+| API       | Read-only query API with validated wire schemas, selector observation, and provenance                                                           | Database reader plus Zod and OpenAPI contracts                                                                                                                            | 12 API contract tests, read-only boundary tests, one-snapshot concurrency, and real local convergence passed.                                                                                                                                 |
+| Indexer   | Ordered source evidence, atomic commit, catch-up, replay, rebuild/reindex, and version gates                                                    | Pure projectors plus EVM and SQLite adapters; rebuild source preflight; eligible-depth reindex targets; explicit maintenance version transitions; idle transport recovery | Missing or altered journal evidence is rejected before projection deletion. Depth, target-hash change, prior-projector maintenance, recanonicalization, restore catch-up, reconciliation, RPC recovery, and process termination cases passed. |
+| Database  | One migration history, managed environments, role exports, locks and marker, seed, backup/restore                                               | `@motorcove/database` is the only runtime database package; backup format binds deployment identity and sidecar checksums; restore rejects mismatches before quarantine   | Migration rollback, real `0000` to `0001` preserved-data upgrade, source digest, lock termination, backup/restore boundaries, and deployment mismatch refusal passed.                                                                         |
 
 ## Current executed gates
 
-- `pnpm verify`: generation, database contract, formatting, docs, architecture, typecheck, lint,
-  13 Foundry tests, 117 unit/component/database tests, 27 integration tests, and all 7 workspace
-  builds passed.
-- `pnpm test:e2e`: 4 local Playwright scenarios passed against Anvil, managed SQLite, API,
-  Indexer, and Web. Normal settlement used the loopback demo connector; fault injection used a
-  controlled EIP-1193 provider.
-- `pnpm test:migrations`: 1 file and 9 tests passed.
-- `pnpm test:db`: 4 files and 21 tests passed.
-- `pnpm test:seeds`: 1 file and 4 tests passed.
-- `pnpm test:recovery`: 1 file and 4 tests passed.
-- The focused chain/database recovery run passed 2 files and 7 tests.
-- Three real Anvil/SQLite integration files passed concurrently with 6 tests, establishing the
-  configured suite isolation for DB-54.
+- `pnpm verify`: generation, database contract, formatting, docs, architecture, type checking,
+  lint, 13 Foundry tests, 168 unit/component/database tests, 36 integration tests, and all
+  7 workspace builds passed.
+- `pnpm test:e2e`: 6 local Playwright scenarios passed against Anvil, managed SQLite, API,
+  Indexer, and Web. Four cover marketplace and wallet recovery flows; two cover real Chromium
+  multi-tab journal coordination and writer handoff.
+- `pnpm test:migrations`: 1 file and 11 tests passed, including preserved data through the
+  `0000` to `0001` migration.
+- `pnpm test:recovery`: 1 file and 13 tests passed, including sidecar integrity and
+  deployment-bound restore refusal before quarantine.
+- The full gates cover rebuild source integrity, restore identity, all-action transaction
+  observation, depth-aware reindexing, maintenance version gates, idle recovery, source
+  reacquisition after migration, and journal serialization.
+- Architecture validation passed for 142 source files and rejected all 8 negative fixtures.
 
-See exact commands, timestamps, environments, and limits in
-[verification records](evidence/verification.json), the
-[database matrix](testing/database-acceptance-matrix.md), and the
+See exact commands, timestamps, environments, and limitations in the
+[verification records](evidence/verification.json),
+[database matrix](testing/database-acceptance-matrix.md), and
 [documentation matrix](testing/documentation-acceptance-matrix.md).
 
-## Remaining product or verification gaps
+## Remaining product verification gaps
 
-1. Add a preserved-data prior-schema upgrade fixture when the first real schema change exists.
-   Creating a fictional released schema now would make DB-03 evidence misleading.
-2. Inject a real process death inside the chain broadcast-to-hash journal window. Deterministic
+1. Inject real process death inside the chain broadcast-to-hash journal window. Deterministic
    state-machine tests cover known-hash resume and conservative `UNKNOWN`, but not that exact
    operating-system timing window.
-3. Hardware power-loss and full host-filesystem exhaustion remain unverified. Current evidence is
-   bounded SQLite page exhaustion, transactional rollback, WAL recovery, and harness-owned
-   `SIGKILL`.
-4. Manual MetaMask behavior, public-network behavior, branch protection, and final reviewer
-   identities require owner-controlled external environments. They are not local implementation
-   claims. GitHub Actions run `35618386503` passed for commit `6ca3f91`.
+2. Hardware power loss and full host-filesystem exhaustion remain unverified. Current evidence
+   covers bounded SQLite page exhaustion, transactional rollback, WAL recovery, and
+   harness-owned `SIGKILL`.
+3. Manual MetaMask behavior, cross-device journal coordination, public-network behavior,
+   branch protection, and final reviewer identities require owner-controlled external
+   environments and are not local implementation claims.
+
+Remote CI evidence is added to the machine-readable verification record after the corresponding
+commit completes; this pre-commit status does not reuse a prior commit's CI result.

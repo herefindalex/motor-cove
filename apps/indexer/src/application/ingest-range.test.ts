@@ -16,6 +16,7 @@ function header(number: bigint): BlockHeader {
 function store(checkpoint: BlockHeader | null = null) {
   const commits: Array<{ headers: readonly BlockHeader[]; checkpoint: BlockHeader }> = [];
   const recoveries: string[] = [];
+  const current: bigint[] = [];
   const unit: ProjectionUnitOfWork = {
     checkpoint: async () => checkpoint,
     commit: async (headers, _events, checkpoint) => {
@@ -24,8 +25,11 @@ function store(checkpoint: BlockHeader | null = null) {
     markRecoveryRequired: async (reason) => {
       recoveries.push(reason);
     },
+    markCurrent: async (head) => {
+      current.push(head);
+    },
   };
-  return { unit, commits, recoveries };
+  return { unit, commits, recoveries, current };
 }
 
 describe('ingestRange', () => {
@@ -66,6 +70,35 @@ describe('ingestRange', () => {
 
     expect(ranges).toEqual(['0:7']);
     expect(target.commits[0]?.checkpoint.number).toBe(7n);
+  });
+
+  it('marks an already caught-up idle chain current after transport recovery', async () => {
+    const durable = header(7n);
+    const chain: ChainReader = {
+      getHead: async () => header(9n),
+      getBlock: async (number) => header(number),
+      getEvents: async () => [],
+    };
+    const target = store(durable);
+
+    await ingestRange(chain, target.unit, 100n, 0n, 2n);
+
+    expect(target.commits).toHaveLength(0);
+    expect(target.current).toEqual([9n]);
+  });
+
+  it('does not mark a checkpoint behind the eligible head current', async () => {
+    const chain: ChainReader = {
+      getHead: async () => header(9n),
+      getBlock: async (number) => header(number),
+      getEvents: async () => [],
+    };
+    const target = store(header(6n));
+
+    await ingestRange(chain, target.unit, 1n, 0n, 2n);
+
+    expect(target.commits).toHaveLength(1);
+    expect(target.current).toEqual([]);
   });
 
   it('rejects a new batch that no longer joins the durable checkpoint', async () => {

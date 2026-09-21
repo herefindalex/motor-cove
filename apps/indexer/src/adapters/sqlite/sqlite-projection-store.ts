@@ -31,6 +31,18 @@ const eventEnvelope = (ordered: OrderedEvent) => ({
   data: ordered.data.toLowerCase(),
 });
 
+const sourceRecordDigest = (ordered: OrderedEvent) =>
+  digest({
+    envelope: eventEnvelope(ordered),
+    decoded: ordered.event,
+    decoderVersion: DECODER_VERSION,
+  });
+
+export interface ProjectionMaintenanceOptions {
+  readonly supportedProjectorVersions?: readonly string[];
+  readonly allowLogScopeChange?: boolean;
+}
+
 type SaleRow = SaleProjection & { readonly createdBlock: number };
 type PaymentRow = PaymentProjection & {
   readonly creationBlockHash: string;
@@ -44,12 +56,33 @@ export type CommitFaultPoint =
   | 'AFTER_COMMIT';
 
 export class SqliteProjectionStore implements ProjectionUnitOfWork {
+  private readonly sourceScopeChanged: boolean;
+  private readonly sourceRefreshRequired: boolean;
+
+  static forMaintenance(
+    db: Database.Database,
+    deploymentId: string,
+    collectionAddress: string,
+    logScopeHash: string,
+    options: ProjectionMaintenanceOptions = {},
+  ): SqliteProjectionStore {
+    return new SqliteProjectionStore(
+      db,
+      deploymentId,
+      collectionAddress,
+      logScopeHash,
+      undefined,
+      options,
+    );
+  }
+
   constructor(
     private readonly db: Database.Database,
     private readonly deploymentId: string,
     private readonly collectionAddress: string,
     private readonly logScopeHash: string,
     private readonly commitFaultHook?: (point: CommitFaultPoint) => void,
+    maintenance?: ProjectionMaintenanceOptions,
   ) {
     const checkpoint = this.db
       .prepare(
@@ -57,11 +90,25 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
       )
       .get(this.deploymentId) as { projectorVersion: string; logScopeHash: string } | undefined;
     if (!checkpoint) throw new Error('DEPLOYMENT_NOT_REGISTERED');
-    if (
-      checkpoint.projectorVersion !== PROJECTOR_VERSION ||
-      checkpoint.logScopeHash !== this.logScopeHash
-    )
-      throw new Error('PROJECTION_CONTRACT_MISMATCH');
+    this.sourceScopeChanged = checkpoint.logScopeHash !== this.logScopeHash;
+    const staleSource = this.db
+      .prepare(
+        `SELECT COUNT(*) AS count FROM chain_events
+         WHERE deployment_id=? AND (source_record_digest IS NULL OR decoder_version<>?)`,
+      )
+      .get(this.deploymentId, DECODER_VERSION) as { count: number };
+    this.sourceRefreshRequired = this.sourceScopeChanged || staleSource.count > 0;
+    const projectorMatches =
+      checkpoint.projectorVersion === PROJECTOR_VERSION ||
+      Boolean(maintenance?.supportedProjectorVersions?.includes(checkpoint.projectorVersion));
+    const scopeMatches =
+      checkpoint.logScopeHash === this.logScopeHash || maintenance?.allowLogScopeChange === true;
+    if (!projectorMatches || !scopeMatches)
+      throw new Error(
+        maintenance
+          ? 'MAINTENANCE_PROJECTION_CONTRACT_UNSUPPORTED'
+          : 'PROJECTION_CONTRACT_MISMATCH',
+      );
   }
 
   async checkpoint(): Promise<BlockHeader | null> {
@@ -115,6 +162,18 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
          WHERE deployment_id=?`,
       )
       .run(Number(head), now, now, now, this.deploymentId);
+  }
+
+  async markCurrent(observedHead: bigint): Promise<void> {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `UPDATE indexer_runtime_status
+         SET projection_status='CURRENT',recovery_reason=NULL,last_observed_head=?,
+             last_observed_at=?,last_rpc_success_at=?,worker_heartbeat_at=?
+         WHERE deployment_id=? AND projection_status IN ('CURRENT','STALE','SYNCING')`,
+      )
+      .run(Number(observedHead), now, now, now, this.deploymentId);
   }
 
   async commit(
@@ -219,6 +278,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
   rebuildFromJournal(): { projectionBuildId: string; events: number } {
     const projectionBuildId = randomUUID();
     try {
+      this.verifyRebuildSource();
       return this.db.transaction(() => {
         this.db
           .prepare(
@@ -284,11 +344,15 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
         return { projectionBuildId, events: rows.length };
       })();
     } catch (error) {
+      const reason =
+        error instanceof Error && error.message.startsWith('REBUILD_SOURCE_INCOMPLETE')
+          ? 'REBUILD_SOURCE_INCOMPLETE'
+          : 'REBUILD_FAILED';
       this.db
         .prepare(
-          "UPDATE indexer_runtime_status SET projection_status='RECOVERY_REQUIRED',recovery_reason='REBUILD_FAILED' WHERE deployment_id=?",
+          "UPDATE indexer_runtime_status SET projection_status='RECOVERY_REQUIRED',recovery_reason=? WHERE deployment_id=?",
         )
-        .run(this.deploymentId);
+        .run(reason, this.deploymentId);
       throw error;
     }
   }
@@ -340,23 +404,167 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
     })();
   }
 
+  prepareForReindex(blockNumber: bigint): void {
+    if (!this.sourceRefreshRequired) {
+      this.rewindFrom(blockNumber);
+      return;
+    }
+    const deployment = this.db
+      .prepare('SELECT scan_start_block AS scanStartBlock FROM deployments WHERE deployment_id=?')
+      .get(this.deploymentId) as { scanStartBlock: number } | undefined;
+    if (!deployment || BigInt(deployment.scanStartBlock) !== blockNumber)
+      throw new Error('SOURCE_REFRESH_REINDEX_MUST_START_AT_DEPLOYMENT');
+    this.db.transaction(() => {
+      this.db.prepare('DELETE FROM chain_events WHERE deployment_id=?').run(this.deploymentId);
+      this.db.prepare('DELETE FROM indexed_blocks WHERE deployment_id=?').run(this.deploymentId);
+      this.db
+        .prepare(
+          `UPDATE indexer_checkpoint
+           SET last_scanned_block=NULL,last_scanned_hash=NULL,updated_at=?
+           WHERE deployment_id=?`,
+        )
+        .run(new Date().toISOString(), this.deploymentId);
+      this.db
+        .prepare(
+          "UPDATE indexer_runtime_status SET projection_status='REBUILD_REQUIRED',recovery_reason='SOURCE_REFRESH_REINDEX_REQUESTED' WHERE deployment_id=?",
+        )
+        .run(this.deploymentId);
+    })();
+  }
+
+  private verifyRebuildSource(): void {
+    const checkpoint = this.db
+      .prepare(
+        'SELECT last_scanned_block AS blockNumber,last_scanned_hash AS blockHash FROM indexer_checkpoint WHERE deployment_id=?',
+      )
+      .get(this.deploymentId) as
+      | { blockNumber: number | null; blockHash: string | null }
+      | undefined;
+    if (!checkpoint) throw new Error('REBUILD_SOURCE_INCOMPLETE: checkpoint missing');
+    if (checkpoint.blockNumber === null || checkpoint.blockHash === null) {
+      const canonical = this.db
+        .prepare(
+          'SELECT COUNT(*) AS count FROM indexed_blocks WHERE deployment_id=? AND is_canonical=1',
+        )
+        .get(this.deploymentId) as { count: number };
+      if (canonical.count !== 0) throw new Error('REBUILD_SOURCE_INCOMPLETE: checkpoint coverage');
+      return;
+    }
+
+    const deployment = this.db
+      .prepare('SELECT scan_start_block AS scanStartBlock FROM deployments WHERE deployment_id=?')
+      .get(this.deploymentId) as { scanStartBlock: number } | undefined;
+    if (!deployment) throw new Error('REBUILD_SOURCE_INCOMPLETE: deployment missing');
+    const blocks = this.db
+      .prepare(
+        `SELECT block_number AS blockNumber,block_hash AS blockHash,parent_hash AS parentHash,
+                observed_log_count AS observedLogCount,observed_log_digest AS observedLogDigest
+         FROM indexed_blocks
+         WHERE deployment_id=? AND is_canonical=1 AND scan_complete=1 AND block_number<=?
+         ORDER BY block_number`,
+      )
+      .all(this.deploymentId, checkpoint.blockNumber) as Array<{
+      blockNumber: number;
+      blockHash: string;
+      parentHash: string;
+      observedLogCount: number;
+      observedLogDigest: string;
+    }>;
+    const expectedCount = checkpoint.blockNumber - deployment.scanStartBlock + 1;
+    if (
+      expectedCount < 1 ||
+      blocks.length !== expectedCount ||
+      blocks[0]?.blockNumber !== deployment.scanStartBlock ||
+      blocks.at(-1)?.blockHash !== checkpoint.blockHash
+    )
+      throw new Error('REBUILD_SOURCE_INCOMPLETE: canonical coverage');
+
+    for (let index = 0; index < blocks.length; index += 1) {
+      const block = blocks[index];
+      if (
+        !block ||
+        block.blockNumber !== deployment.scanStartBlock + index ||
+        (index > 0 && block.parentHash !== blocks[index - 1]?.blockHash)
+      )
+        throw new Error('REBUILD_SOURCE_INCOMPLETE: canonical continuity');
+      const rows = this.db
+        .prepare(
+          `SELECT block_number AS blockNumber,block_hash AS blockHash,tx_hash AS transactionHash,
+                  transaction_index AS transactionIndex,log_index AS logIndex,
+                  contract_address AS contractAddress,topics_json AS topics,data,
+                  raw_envelope_digest AS rawEnvelopeDigest,decoded_json AS decodedJson,
+                  decoder_version AS decoderVersion,source_record_digest AS sourceRecordDigest
+           FROM chain_events WHERE deployment_id=? AND block_hash=?
+           ORDER BY transaction_index,log_index`,
+        )
+        .all(this.deploymentId, block.blockHash) as Array<{
+        blockNumber: number;
+        blockHash: `0x${string}`;
+        transactionHash: `0x${string}`;
+        transactionIndex: number;
+        logIndex: number;
+        contractAddress: `0x${string}`;
+        topics: string;
+        data: `0x${string}`;
+        rawEnvelopeDigest: string;
+        decodedJson: string;
+        decoderVersion: string;
+        sourceRecordDigest: string | null;
+      }>;
+      let ordered: OrderedEvent[];
+      try {
+        ordered = rows.map((row) => ({
+          blockNumber: BigInt(row.blockNumber),
+          blockHash: row.blockHash,
+          transactionHash: row.transactionHash,
+          transactionIndex: row.transactionIndex,
+          logIndex: row.logIndex,
+          contractAddress: row.contractAddress,
+          topics: JSON.parse(row.topics) as readonly `0x${string}`[],
+          data: row.data,
+          event: JSON.parse(row.decodedJson) as NormalizedEvent,
+        }));
+      } catch {
+        throw new Error('REBUILD_SOURCE_INCOMPLETE: event encoding');
+      }
+      if (
+        ordered.length !== block.observedLogCount ||
+        digest(ordered.map(eventEnvelope)) !== block.observedLogDigest ||
+        ordered.some(
+          (event, rowIndex) =>
+            rows[rowIndex]?.decoderVersion !== DECODER_VERSION ||
+            rows[rowIndex]?.rawEnvelopeDigest !== digest(eventEnvelope(event)) ||
+            rows[rowIndex]?.sourceRecordDigest !== sourceRecordDigest(event),
+        )
+      )
+        throw new Error('REBUILD_SOURCE_INCOMPLETE: event evidence');
+    }
+  }
+
   private recordEvent(ordered: OrderedEvent, applyExisting = false): void {
     const rawEnvelopeDigest = digest(eventEnvelope(ordered));
     const decodedJson = stringify(ordered.event);
+    const recordDigest = sourceRecordDigest(ordered);
     const existing = this.db
       .prepare(
         `SELECT raw_envelope_digest AS rawEnvelopeDigest,decoded_json AS decodedJson,
-                decoder_version AS decoderVersion
+                decoder_version AS decoderVersion,source_record_digest AS sourceRecordDigest
          FROM chain_events WHERE deployment_id=? AND block_hash=? AND log_index=?`,
       )
       .get(this.deploymentId, ordered.blockHash, ordered.logIndex) as
-      | { rawEnvelopeDigest: string; decodedJson: string; decoderVersion: string }
+      | {
+          rawEnvelopeDigest: string;
+          decodedJson: string;
+          decoderVersion: string;
+          sourceRecordDigest: string | null;
+        }
       | undefined;
     if (existing) {
       if (
         existing.rawEnvelopeDigest !== rawEnvelopeDigest ||
         existing.decodedJson !== decodedJson ||
-        existing.decoderVersion !== DECODER_VERSION
+        existing.decoderVersion !== DECODER_VERSION ||
+        existing.sourceRecordDigest !== recordDigest
       )
         throw new Error('EVENT_IDENTITY_CONTENT_MISMATCH');
       if (applyExisting) this.applyEvent(ordered);
@@ -366,8 +574,9 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
       .prepare(
         `INSERT INTO chain_events(
           deployment_id,block_hash,log_index,block_number,tx_hash,transaction_index,
-          contract_address,topics_json,data,raw_envelope_digest,decoded_json,decoder_version,first_seen_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          contract_address,topics_json,data,raw_envelope_digest,decoded_json,decoder_version,
+          source_record_digest,first_seen_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         this.deploymentId,
@@ -382,6 +591,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
         rawEnvelopeDigest,
         decodedJson,
         DECODER_VERSION,
+        recordDigest,
         new Date().toISOString(),
       );
     this.applyEvent(ordered);

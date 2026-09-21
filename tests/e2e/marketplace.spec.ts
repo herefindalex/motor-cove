@@ -293,8 +293,14 @@ test('surfaces network and rejection states, then recovers a lost wallet respons
   ).toBe(submissionsBeforeLostResponse + 1);
 
   await page.reload();
-  await page.getByLabel('Candidate transaction hash from wallet activity').fill(lostHash);
-  await page.getByRole('button', { name: 'Recheck evidence' }).click();
+  const candidateHash = page.getByLabel('Candidate transaction hash from wallet activity');
+  await candidateHash.fill(lostHash);
+  await candidateHash
+    .locator('xpath=ancestor::article')
+    .getByRole('button', {
+      name: 'Recheck evidence',
+    })
+    .click();
   await expect(
     page.getByText('This funding payment is reflected in the marketplace projection.'),
   ).toBeVisible({ timeout: 15_000 });

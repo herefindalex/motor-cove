@@ -9,7 +9,7 @@ export interface JournalLoadIssue {
 export interface TransactionJournal {
   load(deploymentId: string): readonly JournalEntry[];
   loadIssues(deploymentId: string): readonly JournalLoadIssue[];
-  save(entry: JournalEntry): void;
+  save(entry: JournalEntry): void | Promise<void>;
   saveVolatile?(entry: JournalEntry): void;
   subscribe(listener: () => void): () => void;
 }

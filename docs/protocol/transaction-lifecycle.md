@@ -71,3 +71,16 @@ the Indexer has projected the event.
 See [listing and funding](../flows/listing-and-funding.md),
 [settlement and claims](../flows/settlement-and-claims.md), and
 [System API reference](../reference/api.md).
+
+## Supported action observation and tab coordination
+
+Known-hash receipt observation covers `APPROVE_TOKEN`, `CREATE_SALE`, `FUND_SALE`, `COMPLETE_SALE`,
+`CANCEL_SALE`, `EXPIRE_SALE`, `WITHDRAW_PAYMENT`, and `RECLAIM_TOKEN`. Every action verifies the saved
+sender, target, calldata, value, canonical receipt block, success or revert, and replacement outcome.
+Funding additionally verifies the exact `SaleFunded` log and then asks the API for projection effect.
+A successful receipt for any other action updates only transaction evidence; it does not imply Sale,
+Payment, or projection convergence.
+
+All durable journal writes are awaited. Tabs in one browser profile serialize deployment journal
+writes with the Web Locks API, and older same-operation updates cannot replace newer evidence. Closing
+the lock owner releases the lock for another tab. The journal does not coordinate different devices.

@@ -49,8 +49,9 @@ any blockchain.
 
 ## Current limits
 
-Chain seed ambiguity is conservative and parallel suite isolation, SQLite busy/full rollback,
-lock-owner death, reorg/reindex, and restore catch-up have local evidence. The remaining database
-limits are a prior-schema upgrade, a real process death in the broadcast-to-hash journal window,
-full host-filesystem exhaustion, and hardware power loss. See exact per-requirement status in the
+Chain seed ambiguity is conservative. Parallel suite isolation, SQLite busy/full rollback,
+lock-owner death, reorg/reindex, and restore catch-up have local evidence. The recorded
+`0000` to `0001` migration has a preserved-data fixture. Remaining database limits include
+real process death in the broadcast-to-hash journal window, full host-filesystem exhaustion,
+and hardware power loss. See exact per-requirement status in the
 [database acceptance matrix](../testing/database-acceptance-matrix.md).

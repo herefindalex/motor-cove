@@ -84,10 +84,16 @@ export async function ingestRange(
 
   const head = await readChain('chain head', () => chain.getHead());
   store.observe?.(head.number);
-  if (head.number < indexingDepth) return;
+  if (head.number < indexingDepth) {
+    if (checkpoint) await store.markCurrent?.(head.number);
+    return;
+  }
   const target = head.number - indexingDepth;
   const from = checkpoint ? checkpoint.number + 1n : startBlock;
-  if (from > target) return;
+  if (from > target) {
+    await store.markCurrent?.(head.number);
+    return;
+  }
 
   let to = from + batchSize - 1n < target ? from + batchSize - 1n : target;
   let events: Awaited<ReturnType<ChainReader['getEvents']>>;

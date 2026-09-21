@@ -9,7 +9,7 @@
       "code": ["apps/web/src/main.tsx", "apps/web/src/app/App.tsx", "apps/web/vite.config.ts"],
       "scenarios": ["SALE-001", "ARCH-001"],
       "verification": ["RUN-WORKSPACE-VERIFY"],
-      "limits": "The recorded local and remote gates apply to commit 6ca3f91; later material source changes require a rerun."
+      "limits": "Pinned Node, package-manager, local build, and test gates must be rerun after material source changes."
     },
     {
       "id": "CAP-02",
@@ -68,12 +68,16 @@
     {
       "id": "CAP-06",
       "name": "Transaction lifecycle",
-      "behavior": "Durably records immutable intent before wallet submission, exposes a returned hash even when persistence fails, and binds read-only projection proof to the exact chain event and projection build.",
+      "behavior": "Durably records immutable intent before wallet submission, observes canonical receipt outcomes for every supported action, preserves funding-specific projection proof, and serializes same-profile browser writes.",
       "implementation": "implemented",
-      "code": ["apps/web/src/capabilities/transactions", "apps/web/src/integrations/persistence"],
+      "code": [
+        "apps/web/src/capabilities/transactions",
+        "apps/web/src/integrations/evm/inspect-transaction.ts",
+        "apps/web/src/integrations/persistence/local-storage-journal.ts"
+      ],
       "scenarios": ["TX-001", "TX-002"],
       "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E"],
-      "limits": "Non-durable known-hash tracking survives only in the current tab; automated recovery uses local Anvil or controlled ports, while real MetaMask response loss and every replacement variant remain unverified."
+      "limits": "Non-durable known-hash tracking survives only in the current tab. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
     },
     {
       "id": "CAP-07",
@@ -106,7 +110,7 @@
       "implementation": "implemented",
       "code": [
         "apps/indexer/src/adapters/evm",
-        "apps/web/src/integrations/evm/inspect-funding-transaction.ts",
+        "apps/web/src/integrations/evm/inspect-transaction.ts",
         "packages/chain-artifacts/src/manifest.ts"
       ],
       "scenarios": ["IDX-003", "REL-001"],
@@ -116,7 +120,7 @@
     {
       "id": "CAP-10",
       "name": "Event-driven backend",
-      "behavior": "Reads bounded log ranges, orders events, applies pure projectors, and advances a checkpoint.",
+      "behavior": "Reads bounded eligible log ranges, orders events, applies pure projectors, advances a checkpoint, and verifies bound raw and decoded source evidence before rebuild.",
       "implementation": "implemented",
       "code": [
         "apps/indexer/src/application/ingest-range.ts",
@@ -125,12 +129,12 @@
       ],
       "scenarios": ["IDX-001", "IDX-002", "IDX-003", "IDX-004"],
       "verification": ["RUN-INDEXER-UNIT", "RUN-INDEXER-KILL", "RUN-INTEGRATION"],
-      "limits": "Automatic recovery across arbitrary canonical branch changes is outside the implemented scope."
+      "limits": "Automatic recovery across arbitrary canonical branch changes remains outside scope; incomplete rebuild source requires explicit reindex."
     },
     {
       "id": "CAP-11",
       "name": "Database lifecycle",
-      "behavior": "Uses native Drizzle history, managed environments, connection roles, locks, markers, catalog seed, backup, and restore.",
+      "behavior": "Uses native Drizzle history, managed environments, connection roles, locks, markers, catalog seed, deployment-bound backup, and sidecar-verified restore.",
       "implementation": "partial",
       "code": [
         "packages/database",
@@ -201,7 +205,7 @@
     {
       "id": "CAP-13",
       "name": "Failure diagnosis and recovery",
-      "behavior": "Exposes projection status, selector-scoped funding evidence, read-only journal recovery, anchored reconciliation, ownership-safe maintenance markers, operation-specific projection resume, and recovery commands.",
+      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands.",
       "implementation": "partial",
       "code": [
         "apps/web/src/pages/InspectorPage.tsx",
@@ -217,7 +221,7 @@
         "RUN-INTEGRATION",
         "RUN-DB-RECOVERY"
       ],
-      "limits": "Projection interruption through ordinary process SIGKILL is verified; hardware power loss, cross-device journal recovery, and some filesystem fault cases remain unverified."
+      "limits": "Hardware power loss, cross-device journal recovery, and some filesystem fault cases remain unverified."
     },
     {
       "id": "CAP-14",
@@ -231,7 +235,7 @@
       ],
       "scenarios": ["REL-001"],
       "verification": ["RUN-GENERATE-CHECK", "RUN-CI"],
-      "limits": "GitHub Actions passed for commit 6ca3f91. Branch protection and required-review settings were not inspected."
+      "limits": "Local and remote gates are commit-specific; the verification record must name the exact source context and remote run instead of reusing an older source claim."
     },
     {
       "id": "CAP-15",

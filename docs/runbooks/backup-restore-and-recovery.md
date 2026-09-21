@@ -54,3 +54,15 @@ Restore currently installs only a snapshot that matches the running code's targe
 older snapshot fails with `BACKUP_REQUIRES_MIGRATION` before the active database is moved; upgrade it
 through the migration workflow instead of bypassing the guard. An interrupted projection rebuild or
 reindex remains `ACTION_REQUIRED` until the matching projection command completes.
+
+## Deployment and sidecar identity
+
+Backup format 2 binds the database deployment ID and records presence and SHA-256 evidence for the
+deployment, bootstrap receipt, and seed journal sidecars. Restore compares the verified backup
+deployment with both the active database and the active deployment manifest before creating a
+quarantine directory. A missing or changed recorded sidecar fails verification. A backup from an
+earlier deployment of the same environment name is rejected.
+
+Restore does not install sidecars, reset Anvil, deploy contracts, or replay seed transactions. Moving
+an entire environment requires a separate, explicit workflow; database restore is for the same
+deployment identity and may be followed by normal Indexer catch-up.

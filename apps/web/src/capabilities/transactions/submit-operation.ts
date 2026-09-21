@@ -58,14 +58,14 @@ export async function submitOperation(
   };
 
   // Durable intent boundary: a failed write prevents any wallet request.
-  journal.save(base);
+  await journal.save(base);
 
   try {
     if (!context.contextStillCurrent()) throw new Error('OPERATION_CONTEXT_CHANGED');
     await action.simulate();
     if (!context.contextStillCurrent()) throw new Error('OPERATION_CONTEXT_CHANGED');
   } catch (error) {
-    journal.save({
+    await journal.save({
       ...base,
       updatedAt: new Date().toISOString(),
       status: 'FAILED_BEFORE_SUBMIT',
@@ -87,7 +87,7 @@ export async function submitOperation(
     walletRequestStartedAt: new Date().toISOString(),
     status: 'AWAITING_WALLET',
   };
-  journal.save(awaitingWallet);
+  await journal.save(awaitingWallet);
 
   let hash: `0x${string}`;
   try {
@@ -95,7 +95,7 @@ export async function submitOperation(
   } catch (error) {
     const rejected = rejectedByUser(error);
     try {
-      journal.save({
+      await journal.save({
         ...awaitingWallet,
         updatedAt: new Date().toISOString(),
         status: rejected ? 'REJECTED' : 'UNKNOWN',
@@ -119,7 +119,7 @@ export async function submitOperation(
     status: 'SUBMITTED',
   };
   try {
-    journal.save(submitted);
+    await journal.save(submitted);
   } catch {
     journal.saveVolatile?.(submitted);
     return {
@@ -135,7 +135,7 @@ export async function submitOperation(
       journal
         .load(context.deploymentId)
         .find((entry) => entry.clientOperationId === submitted.clientOperationId) ?? submitted;
-    journal.save({ ...current, updatedAt: new Date().toISOString(), nonce });
+    await journal.save({ ...current, updatedAt: new Date().toISOString(), nonce });
   } catch {
     // Optional enrichment cannot erase the already durable hash.
   }

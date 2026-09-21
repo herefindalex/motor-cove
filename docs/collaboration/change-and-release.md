@@ -12,8 +12,9 @@ preservation and restore. Projector changes state rebuild requirements. Deployme
 identity compatibility.
 
 Recommended GitHub settings include required CI, resolved conversations, a protected default branch,
-no force pushes, and real CODEOWNERS review. GitHub Actions run `35618386503` passed the declared
-docs smoke, verify, and E2E gates. Branch protection, required reviews, and CODEOWNERS enforcement
-were not inspected or modified; a successful workflow run does not prove those repository rules.
+no force pushes, and real CODEOWNERS review. Each pushed revision needs its own docs smoke, verify,
+and E2E result; the machine evidence record names the exact revision and run. Branch protection,
+required reviews, and CODEOWNERS enforcement are separate owner-controlled settings that a successful
+workflow run does not prove.
 
 See [testing strategy](../testing/strategy.md) and [delivery workflow](delivery-workflow.md).

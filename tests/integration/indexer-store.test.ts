@@ -261,4 +261,248 @@ describe('Indexer store', () => {
     );
     await writer.close();
   });
+
+  it('refuses rebuild when a completed block is missing a source event and preserves projection', async () => {
+    const paths = await fixture();
+    const first = header(1);
+    const writer = await openProjectionWriter(paths);
+    const store = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
+    await store.commit(
+      [first],
+      [
+        event(first, 0, {
+          kind: 'SaleCreated',
+          saleId: '1',
+          tokenId: '1',
+          seller,
+          priceWei: '100',
+        }),
+      ],
+      first,
+    );
+    writer.database
+      .prepare('DELETE FROM chain_events WHERE deployment_id=? AND block_hash=?')
+      .run(deploymentId, first.hash);
+
+    expect(() => store.rebuildFromJournal()).toThrow('REBUILD_SOURCE_INCOMPLETE');
+    expect(
+      writer.database
+        .prepare('SELECT status FROM sales WHERE deployment_id=? AND sale_id=?')
+        .get(deploymentId, '1'),
+    ).toEqual({ status: 'LISTED' });
+    expect(
+      writer.database
+        .prepare(
+          'SELECT projection_status AS projectionStatus,recovery_reason AS recoveryReason FROM indexer_runtime_status WHERE deployment_id=?',
+        )
+        .get(deploymentId),
+    ).toEqual({
+      projectionStatus: 'RECOVERY_REQUIRED',
+      recoveryReason: 'REBUILD_SOURCE_INCOMPLETE',
+    });
+    await writer.close();
+  });
+
+  it('refuses rebuild when decoded source evidence changes and preserves projection', async () => {
+    const paths = await fixture();
+    const first = header(1);
+    const writer = await openProjectionWriter(paths);
+    const store = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
+    await store.commit(
+      [first],
+      [
+        event(first, 0, {
+          kind: 'SaleCreated',
+          saleId: '1',
+          tokenId: '1',
+          seller,
+          priceWei: '100',
+        }),
+      ],
+      first,
+    );
+    writer.database
+      .prepare('UPDATE chain_events SET decoded_json=? WHERE deployment_id=? AND block_hash=?')
+      .run(
+        JSON.stringify({
+          kind: 'SaleCreated',
+          saleId: '1',
+          tokenId: '1',
+          seller,
+          priceWei: '999',
+        }),
+        deploymentId,
+        first.hash,
+      );
+
+    expect(() => store.rebuildFromJournal()).toThrow('REBUILD_SOURCE_INCOMPLETE');
+    expect(
+      writer.database
+        .prepare('SELECT price_wei AS priceWei FROM sales WHERE deployment_id=? AND sale_id=?')
+        .get(deploymentId, '1'),
+    ).toEqual({ priceWei: '100' });
+    await writer.close();
+  });
+
+  it('allows maintenance rebuild from an explicitly supported prior projector version', async () => {
+    const paths = await fixture();
+    const writer = await openProjectionWriter(paths);
+    writer.database
+      .prepare('UPDATE indexer_checkpoint SET projector_version=? WHERE deployment_id=?')
+      .run('0', deploymentId);
+
+    expect(() => new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash)).toThrow(
+      'PROJECTION_CONTRACT_MISMATCH',
+    );
+    const maintenance = SqliteProjectionStore.forMaintenance(
+      writer.database,
+      deploymentId,
+      nft,
+      scopeHash,
+      { supportedProjectorVersions: ['0'] },
+    );
+    expect(maintenance.rebuildFromJournal().events).toBe(0);
+    expect(
+      writer.database
+        .prepare(
+          'SELECT projector_version AS projectorVersion FROM indexer_checkpoint WHERE deployment_id=?',
+        )
+        .get(deploymentId),
+    ).toEqual({ projectorVersion: '1' });
+    await writer.close();
+  });
+
+  it('rebuilds a verified empty block without removing catalog data', async () => {
+    const paths = await fixture();
+    const first = header(1);
+    const writer = await openProjectionWriter(paths);
+    const store = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
+    await store.commit([first], [], first);
+    const catalogBefore = writer.database
+      .prepare('SELECT COUNT(*) AS count FROM catalog_vehicles')
+      .get();
+
+    expect(store.rebuildFromJournal()).toMatchObject({ events: 0 });
+    expect(writer.database.prepare('SELECT COUNT(*) AS count FROM catalog_vehicles').get()).toEqual(
+      catalogBefore,
+    );
+    await writer.close();
+  });
+
+  it('does not clear recovery-required status during an idle health update', async () => {
+    const paths = await fixture();
+    const writer = await openProjectionWriter(paths);
+    const store = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
+    await store.markRecoveryRequired('CHECKPOINT_HASH_CHANGED');
+    store.observe(5n);
+    await store.markCurrent(5n);
+
+    expect(
+      writer.database
+        .prepare(
+          'SELECT projection_status AS projectionStatus,recovery_reason AS recoveryReason FROM indexer_runtime_status WHERE deployment_id=?',
+        )
+        .get(deploymentId),
+    ).toEqual({
+      projectionStatus: 'RECOVERY_REQUIRED',
+      recoveryReason: 'CHECKPOINT_HASH_CHANGED',
+    });
+    await writer.close();
+  });
+
+  it('keeps unsupported projector and scope transitions fail-closed in maintenance mode', async () => {
+    const paths = await fixture();
+    const writer = await openProjectionWriter(paths);
+    writer.database
+      .prepare(
+        'UPDATE indexer_checkpoint SET projector_version=?,log_scope_hash=? WHERE deployment_id=?',
+      )
+      .run('unsupported', hex('9', 32), deploymentId);
+
+    expect(() =>
+      SqliteProjectionStore.forMaintenance(writer.database, deploymentId, nft, scopeHash, {
+        supportedProjectorVersions: ['0'],
+        allowLogScopeChange: true,
+      }),
+    ).toThrow('MAINTENANCE_PROJECTION_CONTRACT_UNSUPPORTED');
+    await writer.close();
+  });
+
+  it('reacquires source from deployment start when the log scope changes', async () => {
+    const paths = await fixture();
+    const first = header(1);
+    const source = event(first, 0, {
+      kind: 'SaleCreated',
+      saleId: '1',
+      tokenId: '1',
+      seller,
+      priceWei: '100',
+    });
+    const writer = await openProjectionWriter(paths);
+    const initial = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
+    await initial.commit([first], [source], first);
+    const previousScope = hex('8', 32);
+    writer.database
+      .prepare('UPDATE indexer_checkpoint SET log_scope_hash=? WHERE deployment_id=?')
+      .run(previousScope, deploymentId);
+    writer.database
+      .prepare('UPDATE indexed_blocks SET log_scope_hash=? WHERE deployment_id=?')
+      .run(previousScope, deploymentId);
+
+    const maintenance = SqliteProjectionStore.forMaintenance(
+      writer.database,
+      deploymentId,
+      nft,
+      scopeHash,
+      { allowLogScopeChange: true },
+    );
+    maintenance.prepareForReindex(1n);
+    expect(maintenance.rebuildFromJournal()).toMatchObject({ events: 0 });
+    await maintenance.commit([first], [source], first);
+    expect(
+      writer.database
+        .prepare('SELECT log_scope_hash AS logScopeHash FROM indexed_blocks WHERE deployment_id=?')
+        .get(deploymentId),
+    ).toEqual({ logScopeHash: scopeHash });
+    await writer.close();
+  });
+
+  it('reacquires source from deployment start after a prior schema left source digests empty', async () => {
+    const paths = await fixture();
+    const first = header(1);
+    const source = event(first, 0, {
+      kind: 'SaleCreated',
+      saleId: '1',
+      tokenId: '1',
+      seller,
+      priceWei: '100',
+    });
+    const writer = await openProjectionWriter(paths);
+    const initial = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
+    await initial.commit([first], [source], first);
+    writer.database
+      .prepare('UPDATE chain_events SET source_record_digest=NULL WHERE deployment_id=?')
+      .run(deploymentId);
+    writer.database
+      .prepare('UPDATE indexer_checkpoint SET projector_version=? WHERE deployment_id=?')
+      .run('0', deploymentId);
+
+    const maintenance = SqliteProjectionStore.forMaintenance(
+      writer.database,
+      deploymentId,
+      nft,
+      scopeHash,
+      { supportedProjectorVersions: ['0'] },
+    );
+    maintenance.prepareForReindex(1n);
+    expect(maintenance.rebuildFromJournal()).toMatchObject({ events: 0 });
+    await maintenance.commit([first], [source], first);
+    const refreshed = writer.database
+      .prepare(
+        'SELECT source_record_digest AS sourceRecordDigest FROM chain_events WHERE deployment_id=?',
+      )
+      .get(deploymentId) as { sourceRecordDigest: string | null } | undefined;
+    expect(refreshed?.sourceRecordDigest).toMatch(/^0x[0-9a-f]{64}$/);
+    await writer.close();
+  });
 });

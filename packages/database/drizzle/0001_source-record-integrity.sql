@@ -1,0 +1,1 @@
+ALTER TABLE `chain_events` ADD `source_record_digest` text;

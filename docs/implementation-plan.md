@@ -15,8 +15,8 @@ Remaining limits are named on the item that owns them.
       and anchored sale/token reconciliation. Local process and controlled SQLite fault cases passed;
       hardware power loss and public-network history remain outside local evidence.
 - [x] **P5:** Local and remote CI gates, ownership, collaboration docs, demo, and evidence.
-      Remote CI passed for the published recovery revision. Branch protection, final reviewer
-      identities, and manual wallet evidence remain owner-controlled checks.
+      Remote CI evidence is commit-specific. Branch protection, final reviewer identities, and
+      manual wallet evidence remain owner-controlled checks.
 
 ## Database D0–D5
 
@@ -24,14 +24,16 @@ Remaining limits are named on the item that owns them.
       recorded.
 - [x] **D1:** One database package, schema, codecs, managed paths, role exports, locks, and marker.
 - [x] **D2:** Native migration history, source digest, runtime checks, injected SQL rollback, and
-      failure-marker recovery passed. DB-03 waits for the first truthful prior-schema change.
+      failure-marker recovery passed. The real `0000` to `0001` preserved-data upgrade fixture
+      covers DB-03 for the repository's current history.
 - [x] **D3:** Catalog seed, durable chain-step journal, known-hash resume, seed-version conflict, and
       completed-bootstrap reuse passed. A real process kill in the broadcast-to-hash window remains a
       stated operating-system fault-injection gap.
 - [x] **D4:** Backup/restore, rebuild/reindex, reorg evidence retention, restore-behind-head catch-up,
       reconciliation, one-snapshot reads, and reset deployment mismatch detection passed locally.
 - [x] **D5:** Commands, runbooks, local full-stack drills, reset refusal matrix, and parallel suite
-      isolation passed. The DB-01–DB-54 matrix preserves DB-03 and hardware-level limits.
+      isolation passed. The DB-01–DB-54 matrix preserves hardware-level and external-environment
+      limits.
 
 ## Documentation DOC-P0–DOC-P5
 

@@ -4,6 +4,7 @@ import { createPublicClient, http, keccak256, type Address } from 'viem';
 import { ViemChainReader } from '../adapters/evm/viem-chain-reader.js';
 import { SqliteProjectionStore } from '../adapters/sqlite/sqlite-projection-store.js';
 import { ingestRange } from '../application/ingest-range.js';
+import { resolveEligibleReindexTarget } from '../application/reindex-target.js';
 import { loadConfig, logScopeHash } from '../runtime/config.js';
 
 if (!process.argv.includes('--yes')) throw new Error('CONFIRMATION_REQUIRED: pass --yes');
@@ -38,8 +39,9 @@ if (
 )
   throw new Error('DEPLOYMENT_MISMATCH: runtime identity');
 
-const target = await client.getBlock();
-if (!target.hash) throw new Error('REINDEX_TARGET_HASH_MISSING');
+const chain = new ViemChainReader(client, nft, escrow);
+const target = await resolveEligibleReindexTarget(chain, config.indexingDepth);
+if (!target) throw new Error('REINDEX_TARGET_NOT_AVAILABLE');
 const operation = await runProjectionMaintenance(config.environment, {
   operationType: 'REINDEX_PROJECTION',
   expectedDeploymentId: config.manifest.deploymentId,
@@ -49,15 +51,18 @@ const operation = await runProjectionMaintenance(config.environment, {
     targetHash: target.hash,
   },
   run: async (database) => {
-    const store = new SqliteProjectionStore(
+    const store = SqliteProjectionStore.forMaintenance(
       database,
       config.manifest.deploymentId,
       config.manifest.nft.address,
       logScopeHash(config.manifest),
+      {
+        supportedProjectorVersions: ['0'],
+        allowLogScopeChange: fromBlock === BigInt(config.manifest.scanStartBlock),
+      },
     );
-    store.rewindFrom(fromBlock);
+    store.prepareForReindex(fromBlock);
     const rebuild = store.rebuildFromJournal();
-    const chain = new ViemChainReader(client, nft, escrow);
     for (let attempt = 0; attempt < 1_000; attempt += 1) {
       const checkpoint = await store.checkpoint();
       if (checkpoint && checkpoint.number >= target.number) break;

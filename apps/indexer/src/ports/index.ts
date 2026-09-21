@@ -19,4 +19,5 @@ export interface ProjectionUnitOfWork {
     checkpoint: BlockHeader,
   ): Promise<void>;
   markRecoveryRequired(reason: string): Promise<void>;
+  markCurrent?(observedHead: bigint): Promise<void>;
 }

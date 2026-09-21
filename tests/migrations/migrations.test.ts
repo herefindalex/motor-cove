@@ -8,6 +8,7 @@ import {
   inspectEnvironment,
   migrateEnvironment,
   recoverEnvironment,
+  schemaFingerprint,
   verifyDatabase,
   schemaSourceDigest,
   loadSchemaContract,
@@ -44,6 +45,66 @@ describe('native migration path', () => {
       after.prepare(`SELECT name FROM catalog_vehicles WHERE catalog_id='manual'`).get(),
     ).toEqual({ name: 'Manual' });
     after.close();
+  });
+
+  it('upgrades the prior schema without changing existing chain event data', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const db = new Database(paths.databasePath);
+    const decoded = JSON.stringify({
+      kind: 'SaleCancelled',
+      saleId: '7',
+    });
+    db.prepare(
+      `INSERT INTO chain_events(
+        deployment_id,block_hash,log_index,block_number,tx_hash,transaction_index,
+        contract_address,topics_json,data,raw_envelope_digest,decoded_json,decoder_version,
+        source_record_digest,first_seen_at
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    ).run(
+      `0x${'1'.repeat(64)}`,
+      `0x${'2'.repeat(64)}`,
+      0,
+      7,
+      `0x${'4'.repeat(64)}`,
+      0,
+      `0x${'9'.repeat(40)}`,
+      '[]',
+      '0x',
+      `0x${'a'.repeat(64)}`,
+      decoded,
+      'motorcove-events-v1',
+      null,
+      '2026-09-21T00:00:00.000Z',
+    );
+    db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
+    db.prepare(
+      'DELETE FROM __drizzle_migrations WHERE created_at=(SELECT MAX(created_at) FROM __drizzle_migrations)',
+    ).run();
+    db.prepare(
+      'UPDATE db_contract SET migration_bundle_digest=?,schema_fingerprint=? WHERE id=1',
+    ).run(migrationBundleDigest(migrationBundle().slice(0, 1)), schemaFingerprint(db));
+    db.close();
+
+    const result = await migrateEnvironment(paths);
+
+    expect(result.changed).toBe(true);
+    const upgraded = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
+    expect(
+      upgraded
+        .prepare(
+          'SELECT decoded_json AS decodedJson,source_record_digest AS sourceRecordDigest FROM chain_events',
+        )
+        .get(),
+    ).toEqual({ decodedJson: decoded, sourceRecordDigest: null });
+    expect(
+      (
+        upgraded.prepare('SELECT COUNT(*) AS count FROM __drizzle_migrations').get() as {
+          count: number;
+        }
+      ).count,
+    ).toBe(2);
+    upgraded.close();
   });
   it('DB-05 rejects tampered native history', async () => {
     const { root, paths } = await databaseFixture();

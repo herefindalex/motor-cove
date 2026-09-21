@@ -1,8 +1,8 @@
 import { decodeEventLog, decodeFunctionData, type PublicClient } from 'viem';
 import { motorCoveEscrowAbi } from '@motorcove/chain-artifacts';
 import type {
-  FundingChainReader,
-  InspectedFundingTransaction,
+  TransactionChainReader,
+  InspectedTransaction,
   JournalEntry,
 } from '../../capabilities/transactions/index.js';
 
@@ -30,6 +30,7 @@ function intentMismatchReason(
   if (!equalHex(transaction.to, entry.intendedContract)) return 'TARGET_MISMATCH';
   if (transaction.value !== BigInt(entry.valueWei)) return 'VALUE_MISMATCH';
   if (!equalHex(transaction.input, entry.intendedCalldata)) return 'CALLDATA_MISMATCH';
+  if (entry.action !== 'FUND_SALE') return undefined;
   try {
     const decoded = decodeFunctionData({ abi: motorCoveEscrowAbi, data: transaction.input });
     if (decoded.functionName !== 'fundSale' || decoded.args?.[0] !== BigInt(entry.saleId ?? '-1')) {
@@ -41,13 +42,12 @@ function intentMismatchReason(
   return undefined;
 }
 
-export function createFundingChainReader(client: PublicClient): FundingChainReader {
+export function createTransactionChainReader(client: PublicClient): TransactionChainReader {
   return {
-    async inspectFunding(entry, transactionHash) {
+    async inspectTransaction(entry, transactionHash) {
       try {
-        if (entry.action !== 'FUND_SALE' || !entry.saleId) {
-          return mismatch(transactionHash, 'ENTRY_IS_NOT_FUNDING');
-        }
+        if (entry.action === 'FUND_SALE' && !entry.saleId)
+          return mismatch(transactionHash, 'FUNDING_SALE_ID_MISSING');
         let transaction;
         try {
           transaction = await client.getTransaction({ hash: transactionHash });
@@ -136,6 +136,18 @@ export function createFundingChainReader(client: PublicClient): FundingChainRead
           };
         }
 
+        if (entry.action !== 'FUND_SALE') {
+          return {
+            kind: 'INCLUDED_SUCCESS',
+            transactionHash: effectiveHash,
+            blockNumber: receipt.blockNumber,
+            blockHash: receipt.blockHash,
+            ...(replacementKind ? { replacementKind } : {}),
+          };
+        }
+        if (!entry.saleId) return mismatch(transactionHash, 'FUNDING_SALE_ID_MISSING');
+        const fundingSaleId = entry.saleId;
+
         for (const log of receipt.logs) {
           if (!equalHex(log.address, entry.intendedContract)) continue;
           if (!equalHex(log.transactionHash, effectiveHash)) continue;
@@ -151,7 +163,7 @@ export function createFundingChainReader(client: PublicClient): FundingChainRead
               buyer: `0x${string}`;
               amountWei: bigint;
             };
-            if (args.saleId !== BigInt(entry.saleId)) continue;
+            if (args.saleId !== BigInt(fundingSaleId)) continue;
             if (!equalHex(args.buyer, entry.account)) continue;
             if (args.amountWei !== BigInt(entry.valueWei)) continue;
             if (log.logIndex === null) {
@@ -183,6 +195,6 @@ export function createFundingChainReader(client: PublicClient): FundingChainRead
   };
 }
 
-function mismatch(transactionHash: `0x${string}`, reason: string): InspectedFundingTransaction {
+function mismatch(transactionHash: `0x${string}`, reason: string): InspectedTransaction {
   return { kind: 'INTENT_MISMATCH', transactionHash, reason };
 }

@@ -15,7 +15,7 @@ import {
   type Hash,
 } from 'viem';
 import type { JournalEntry } from '../../apps/web/src/capabilities/transactions/index.js';
-import { createFundingChainReader } from '../../apps/web/src/integrations/evm/inspect-funding-transaction.js';
+import { createTransactionChainReader } from '../../apps/web/src/integrations/evm/inspect-transaction.js';
 import { motorCoveEscrowAbi } from '../../packages/chain-artifacts/src/index.js';
 import {
   deploymentManifestSchema,
@@ -158,7 +158,7 @@ describe('transaction replacement and reorg recovery on Anvil', () => {
     const nonce = await publicClient.getTransactionCount({ address: buyer, blockTag: 'pending' });
     await rpc('evm_setAutomine', [false]);
     const originalHash = await sendFunding(nonce, parseGwei('2'));
-    const inspection = createFundingChainReader(publicClient).inspectFunding(
+    const inspection = createTransactionChainReader(publicClient).inspectTransaction(
       fundingEntry(originalHash),
       originalHash,
     );
@@ -237,12 +237,12 @@ describe('transaction replacement and reorg recovery on Anvil', () => {
     expect(await rpc<boolean>('evm_revert', [beforeFunding])).toBe(true);
     await rpc('evm_mine');
     expect(
-      await createFundingChainReader(publicClient).inspectFunding(saved, originalHash),
+      await createTransactionChainReader(publicClient).inspectTransaction(saved, originalHash),
     ).toEqual({ kind: 'NONCANONICAL', transactionHash: originalHash });
 
     const reIncludedHash = await sendFunding(nonce, parseGwei('2'));
     expect(reIncludedHash).toBe(originalHash);
-    const reIncluded = await createFundingChainReader(publicClient).inspectFunding(
+    const reIncluded = await createTransactionChainReader(publicClient).inspectTransaction(
       { ...saved, status: 'ORPHANED' },
       originalHash,
     );

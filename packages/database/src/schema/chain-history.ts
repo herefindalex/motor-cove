@@ -56,6 +56,7 @@ export const chainEvents = sqliteTable(
     rawEnvelopeDigest: text('raw_envelope_digest').notNull(),
     decodedJson: text('decoded_json').notNull(),
     decoderVersion: text('decoder_version').notNull(),
+    sourceRecordDigest: text('source_record_digest'),
     firstSeenAt: text('first_seen_at').notNull(),
   },
   (t) => [

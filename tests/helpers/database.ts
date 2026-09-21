@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { environmentPaths, migrateEnvironment } from '@motorcove/database/maintenance';
@@ -56,5 +56,9 @@ export async function databaseFixture(environmentId = 'test') {
     `INSERT INTO indexer_runtime_status(deployment_id,projection_status) VALUES (?,?)`,
   ).run(hashes.deployment, 'CURRENT');
   db.close();
+  writeFileSync(
+    paths.deploymentPath,
+    `${JSON.stringify({ deploymentId: hashes.deployment }, null, 2)}\n`,
+  );
   return { root, paths };
 }

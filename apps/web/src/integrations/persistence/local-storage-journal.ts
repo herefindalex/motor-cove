@@ -6,6 +6,29 @@ import {
 } from '../../capabilities/transactions/index.js';
 
 const key = (deploymentId: string) => `motorcove:journal:v1:${deploymentId}`;
+const lockKey = (deploymentId: string) => `${key(deploymentId)}:write`;
+const fallbackQueues = new Map<string, Promise<void>>();
+
+async function withWriteLock<T>(deploymentId: string, operation: () => T | Promise<T>): Promise<T> {
+  if (typeof navigator !== 'undefined' && navigator.locks) {
+    return navigator.locks.request(lockKey(deploymentId), { mode: 'exclusive' }, operation);
+  }
+  const name = lockKey(deploymentId);
+  const previous = fallbackQueues.get(name) ?? Promise.resolve();
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const tail = previous.then(() => pending);
+  fallbackQueues.set(name, tail);
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (fallbackQueues.get(name) === tail) fallbackQueues.delete(name);
+  }
+}
 
 export class LocalStorageJournal implements TransactionJournal {
   private readonly listeners = new Set<() => void>();
@@ -75,23 +98,27 @@ export class LocalStorageJournal implements TransactionJournal {
     return this.issues.get(deploymentId) ?? [];
   }
 
-  save(entry: JournalEntry): void {
+  async save(entry: JournalEntry): Promise<void> {
     const parsed = journalEntrySchema.parse(entry);
     if (this.volatileEntries.has(parsed.clientOperationId)) {
       this.volatileEntries.set(parsed.clientOperationId, parsed);
       for (const listener of this.listeners) listener();
       return;
     }
-    const loaded = this.load(parsed.deploymentId);
-    if ((this.issues.get(parsed.deploymentId)?.length ?? 0) > 0) {
-      throw new Error('JOURNAL_STORAGE_INVALID');
-    }
-    const entries = loaded.filter(
-      (item) =>
-        item.clientOperationId !== parsed.clientOperationId &&
-        !this.volatileEntries.has(item.clientOperationId),
-    );
-    localStorage.setItem(key(parsed.deploymentId), JSON.stringify([...entries, parsed]));
+    await withWriteLock(parsed.deploymentId, () => {
+      const loaded = this.load(parsed.deploymentId);
+      if ((this.issues.get(parsed.deploymentId)?.length ?? 0) > 0) {
+        throw new Error('JOURNAL_STORAGE_INVALID');
+      }
+      const current = loaded.find((item) => item.clientOperationId === parsed.clientOperationId);
+      if (current && Date.parse(current.updatedAt) > Date.parse(parsed.updatedAt)) return;
+      const entries = loaded.filter(
+        (item) =>
+          item.clientOperationId !== parsed.clientOperationId &&
+          !this.volatileEntries.has(item.clientOperationId),
+      );
+      localStorage.setItem(key(parsed.deploymentId), JSON.stringify([...entries, parsed]));
+    });
     for (const listener of this.listeners) listener();
   }
 

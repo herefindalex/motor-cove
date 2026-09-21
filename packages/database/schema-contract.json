@@ -11,10 +11,15 @@
       "id": "0000_initial",
       "createdAt": 1789968302978,
       "hash": "dcd47800a557be1ccd214b17607e62466561ebcb3d6ea3666559fede6d061c97"
+    },
+    {
+      "id": "0001_source-record-integrity",
+      "createdAt": 1790026879293,
+      "hash": "8a09f96947471d3b9f21b6f08fa7e551236bdb865174da6ff5d2bc6e19f29fca"
     }
   ],
-  "migrationBundleDigest": "c35ee0f6bc89329ea1acba18e74598567495803f76e2583f88139bd7dccc2354",
-  "schemaFingerprint": "086027dd663ba1d2fc8a74557d5492e9599a59fe251df1134a8760450a5bda1f",
-  "schemaSourceDigest": "88dc0de0a20f4fa89320fa1f1cf2ecd5ea8323eae1b8bb1c566d28b70653247b",
+  "migrationBundleDigest": "499e8645adc299e7ccf58cc3dd2bc2c6eb7b61a09127f41d58e4eb6a9004aa12",
+  "schemaFingerprint": "55da2994016edf47d7184d0c705a744b201b40927b4f6d58d5495ea7c6061790",
+  "schemaSourceDigest": "b581099c00964620f99ee6b88f1b55ed749bf22b5d389a73acd82a9b18700c9f",
   "requiredProjectorVersion": "1"
 }

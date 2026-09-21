@@ -2,11 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { FundingObservationResponse } from '@motorcove/api-contracts';
 import { isProjectionCurrentlyReflected, type JournalEntry } from './model.js';
 import type { TransactionJournal } from './ports.js';
-import {
-  resumeJournalEntry,
-  type InspectedFundingTransaction,
-  type RecoveryPorts,
-} from './recovery.js';
+import { resumeJournalEntry, type InspectedTransaction, type RecoveryPorts } from './recovery.js';
 
 const deploymentId = `0x${'1'.repeat(64)}` as const;
 const account = `0x${'2'.repeat(40)}` as const;
@@ -63,7 +59,7 @@ function observation(
 }
 
 function ports(
-  inspected: InspectedFundingTransaction,
+  inspected: InspectedTransaction,
   response = observation('SCANNED', 'MATCHED', 'CONSISTENT'),
 ) {
   const saved: JournalEntry[] = [];
@@ -77,7 +73,7 @@ function ports(
     },
     subscribe: () => () => undefined,
   };
-  const chain = { inspectFunding: vi.fn(async () => inspected) };
+  const chain = { inspectTransaction: vi.fn(async () => inspected) };
   const readObservation = vi.fn(async () => response);
   const recoveryPorts: RecoveryPorts = {
     chain,
@@ -87,7 +83,7 @@ function ports(
   return { recoveryPorts, saved, chain, readObservation };
 }
 
-const included: InspectedFundingTransaction = {
+const included: InspectedTransaction = {
   kind: 'INCLUDED_SUCCESS',
   transactionHash: hash,
   blockNumber: 105n,
@@ -105,7 +101,7 @@ describe('read-only transaction recovery', () => {
     ).toEqual({
       kind: 'HASH_REQUIRED',
     });
-    expect(fixture.chain.inspectFunding).toHaveBeenCalledTimes(0);
+    expect(fixture.chain.inspectTransaction).toHaveBeenCalledTimes(0);
     expect(fixture.readObservation).toHaveBeenCalledTimes(0);
     expect(fixture.saved[0]?.status).toBe('UNKNOWN');
   });
@@ -221,20 +217,20 @@ describe('read-only transaction recovery', () => {
   );
 
   it('does not let a slow unavailable result replace newer reflected evidence', async () => {
-    let resolveInspection: ((value: InspectedFundingTransaction) => void) | undefined;
-    const inspection = new Promise<InspectedFundingTransaction>((resolve) => {
+    let resolveInspection: ((value: InspectedTransaction) => void) | undefined;
+    const inspection = new Promise<InspectedTransaction>((resolve) => {
       resolveInspection = resolve;
     });
     const fixture = ports(included);
-    fixture.recoveryPorts.chain.inspectFunding = vi.fn(async () => inspection);
+    fixture.recoveryPorts.chain.inspectTransaction = vi.fn(async () => inspection);
     const original = entry({ originalTxHash: hash, currentTxHash: hash, status: 'SUBMITTED' });
-    fixture.recoveryPorts.journal.save(original);
+    await fixture.recoveryPorts.journal.save(original);
 
     const slow = resumeJournalEntry(original, fixture.recoveryPorts);
     await vi.waitFor(() => expect(fixture.saved[0]?.verificationAvailability).toBe('VERIFYING'));
     const verifying = fixture.saved[0];
     if (!verifying) throw new Error('verification marker was not saved');
-    fixture.recoveryPorts.journal.save({
+    await fixture.recoveryPorts.journal.save({
       ...verifying,
       verificationRequestId: 'newer-request',
       verificationAvailability: 'AVAILABLE',
@@ -366,5 +362,72 @@ describe('read-only transaction recovery', () => {
       kind: 'REFLECTED',
     });
     expect(isProjectionCurrentlyReflected(fixture.saved[0]!)).toBe(true);
+  });
+
+  it.each([
+    'APPROVE_TOKEN',
+    'CREATE_SALE',
+    'COMPLETE_SALE',
+    'CANCEL_SALE',
+    'EXPIRE_SALE',
+    'WITHDRAW_PAYMENT',
+    'RECLAIM_TOKEN',
+  ])('records receipt success for %s without claiming projection convergence', async (action) => {
+    const fixture = ports({
+      kind: 'INCLUDED_SUCCESS',
+      transactionHash: hash,
+      blockNumber: 105n,
+      blockHash,
+    });
+    const submitted = entry({
+      action,
+      calldataSummary: action,
+      originalTxHash: hash,
+      currentTxHash: hash,
+      status: 'SUBMITTED',
+      saleId: action === 'APPROVE_TOKEN' ? undefined : '7',
+    });
+    await fixture.recoveryPorts.journal.save(submitted);
+
+    await expect(resumeJournalEntry(submitted, fixture.recoveryPorts)).resolves.toEqual({
+      kind: 'INCLUDED',
+    });
+    expect(fixture.saved[0]).toMatchObject({
+      action,
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+      receiptBlockNumber: '105',
+      receiptBlockHash: blockHash,
+    });
+    expect(fixture.saved[0]?.projectionObservation).toBeUndefined();
+    expect(fixture.readObservation).not.toHaveBeenCalled();
+  });
+
+  it('resumes a non-funding operation after reload and records a reverted receipt', async () => {
+    const fixture = ports({
+      kind: 'INCLUDED_REVERTED',
+      transactionHash: hash,
+      blockNumber: 105n,
+      blockHash,
+    });
+    const submitted = entry({
+      action: 'WITHDRAW_PAYMENT',
+      calldataSummary: 'WITHDRAW_PAYMENT',
+      originalTxHash: hash,
+      currentTxHash: hash,
+      status: 'SUBMITTED',
+    });
+    await fixture.recoveryPorts.journal.save(submitted);
+    const reloaded = fixture.recoveryPorts.journal.load(deploymentId)[0]!;
+
+    await expect(resumeJournalEntry(reloaded, fixture.recoveryPorts)).resolves.toEqual({
+      kind: 'REVERTED',
+    });
+    expect(fixture.saved[0]).toMatchObject({
+      status: 'INCLUDED_REVERTED',
+      receiptStatus: 'REVERTED',
+      receiptBlockHash: blockHash,
+    });
+    expect(fixture.readObservation).not.toHaveBeenCalled();
   });
 });

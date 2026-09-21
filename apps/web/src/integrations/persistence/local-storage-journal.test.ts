@@ -27,9 +27,9 @@ describe('LocalStorageJournal', () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => vi.restoreAllMocks());
 
-  it('round trips a runtime validated entry', () => {
+  it('round trips a runtime validated entry', async () => {
     const journal = new LocalStorageJournal();
-    journal.save(entry);
+    await journal.save(entry);
     expect(journal.load(deploymentId)).toEqual([entry]);
     expect(journal.loadIssues(deploymentId)).toEqual([]);
   });
@@ -41,7 +41,7 @@ describe('LocalStorageJournal', () => {
     expect(journal.loadIssues(deploymentId)[0]?.reason).toBe('CORRUPT_STORAGE');
   });
 
-  it('rejects unknown schema versions and partial entries', () => {
+  it('rejects unknown schema versions and partial entries', async () => {
     localStorage.setItem(
       storageKey,
       JSON.stringify([{ ...entry, schemaVersion: 2 }, { schemaVersion: 1 }]),
@@ -49,18 +49,18 @@ describe('LocalStorageJournal', () => {
     const journal = new LocalStorageJournal();
     expect(journal.load(deploymentId)).toEqual([]);
     expect(journal.loadIssues(deploymentId)).toHaveLength(2);
-    expect(() => journal.save(entry)).toThrow('JOURNAL_STORAGE_INVALID');
+    await expect(journal.save(entry)).rejects.toThrow('JOURNAL_STORAGE_INVALID');
     expect(JSON.parse(localStorage.getItem(storageKey) ?? '[]')).toHaveLength(2);
   });
 
-  it('propagates storage failure to the submission boundary', () => {
+  it('propagates storage failure to the submission boundary', async () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('quota exceeded');
     });
-    expect(() => new LocalStorageJournal().save(entry)).toThrow('quota exceeded');
+    await expect(new LocalStorageJournal().save(entry)).rejects.toThrow('quota exceeded');
   });
 
-  it('keeps a known-hash submission in memory without claiming durable storage', () => {
+  it('keeps a known-hash submission in memory without claiming durable storage', async () => {
     const journal = new LocalStorageJournal();
     const volatile = {
       ...entry,
@@ -72,11 +72,42 @@ describe('LocalStorageJournal', () => {
     expect(journal.load(deploymentId)).toEqual([volatile]);
     expect(localStorage.getItem(storageKey)).toBeNull();
 
-    journal.save({ ...volatile, status: 'INCLUDED_SUCCESS', receiptStatus: 'SUCCESS' });
+    await journal.save({ ...volatile, status: 'INCLUDED_SUCCESS', receiptStatus: 'SUCCESS' });
     expect(journal.load(deploymentId)[0]).toMatchObject({
       status: 'INCLUDED_SUCCESS',
       receiptStatus: 'SUCCESS',
     });
     expect(localStorage.getItem(storageKey)).toBeNull();
+  });
+
+  it('serializes journal writes from independent instances through one deployment lock', async () => {
+    const second = {
+      ...entry,
+      clientOperationId: 'operation-2',
+      createdAt: '2026-09-21T00:00:01.000Z',
+      updatedAt: '2026-09-21T00:00:01.000Z',
+    };
+    const firstJournal = new LocalStorageJournal();
+    const secondJournal = new LocalStorageJournal();
+
+    await Promise.all([firstJournal.save(entry), secondJournal.save(second)]);
+
+    expect(firstJournal.load(deploymentId)).toEqual([entry, second]);
+  });
+
+  it('does not let an older same-operation write erase newer evidence', async () => {
+    const journal = new LocalStorageJournal();
+    const newer = {
+      ...entry,
+      updatedAt: '2026-09-21T00:00:03.000Z',
+      status: 'INCLUDED_SUCCESS' as const,
+      receiptStatus: 'SUCCESS' as const,
+      receiptBlockHash: `0x${'5'.repeat(64)}`,
+      receiptBlockNumber: '12',
+    };
+    await journal.save(newer);
+    await journal.save({ ...entry, updatedAt: '2026-09-21T00:00:01.000Z' });
+
+    expect(journal.load(deploymentId)).toEqual([newer]);
   });
 });

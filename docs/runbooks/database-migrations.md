@@ -36,12 +36,10 @@ history/schema/FK/integrity, writes `db_contract`, then clears the marker.
 
 ## Verification
 
-Run `pnpm test:migrations` and `pnpm test:db`. A successful second migration is an explicit no-op.
-The current test suite covers fresh install, repeat, tampered and unknown history, live index drift,
-schema-source drift, behind-code startup failure, post-migration marker recovery, and injected SQL
-failure with transactional DDL rollback. A previous-release upgrade remains unverified because the
-repository has only its initial migration; the first real schema change must add a preserved-data
-upgrade fixture instead of inventing a release history now.
+The real `0000` to `0001` fixture preserves an existing chain event while adding source-record
+integrity storage. Because migrated rows cannot retroactively prove a digest that did not exist,
+rebuild rejects them and a reindex from the deployment scan start reacquires verified source before
+publishing current projection metadata.
 
 ## Troubleshooting
 

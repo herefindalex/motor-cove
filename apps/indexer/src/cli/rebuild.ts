@@ -7,11 +7,12 @@ const operation = await runProjectionMaintenance(config.environment, {
   operationType: 'REBUILD_PROJECTION',
   expectedDeploymentId: config.manifest.deploymentId,
   run: (database) =>
-    new SqliteProjectionStore(
+    SqliteProjectionStore.forMaintenance(
       database,
       config.manifest.deploymentId,
       config.manifest.nft.address,
       logScopeHash(config.manifest),
+      { supportedProjectorVersions: ['0'] },
     ).rebuildFromJournal(),
 });
 console.log(
