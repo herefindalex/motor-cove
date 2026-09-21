@@ -126,4 +126,6 @@ MotorCove 不處理實體產權、交付、融資、稅務、登入、SIWE、後
 正式資料庫服務。執行範圍限單機 SQLite 與 loopback Anvil。完整 non-goals 與仍待完成的
 產品缺口見[專案範圍](docs/project-scope.md)。
 
-本 repository 為 **UNLICENSED**；第三方依賴各自維持原授權。
+## 授權
+
+MotorCove 採用 Apache License 2.0，詳情請見 [LICENSE](./LICENSE)。第三方依賴各自維持原授權。

@@ -1,8 +1,8 @@
 # Contributing to MotorCove
 
 MotorCove accepts changes that preserve its local-only safety boundary and explicit
-provider-consumer contracts. The repository is currently unlicensed, so contribution terms have
-not been established; coordinate with the repository owner before submitting external work.
+provider-consumer contracts. The repository is licensed under the Apache License 2.0; review
+[LICENSE](LICENSE) before submitting external work.
 
 ## Prerequisites
 

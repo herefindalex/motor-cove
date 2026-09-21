@@ -2,8 +2,8 @@
   "name": "motorcove",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
-  "license": "UNLICENSED",
   "packageManager": "pnpm@12.5.1",
   "engines": {
     "node": ">=24.21"

@@ -134,4 +134,7 @@ custody, public-network deployment, or production database service. It supports 
 SQLite and loopback Anvil only. The complete boundary and open product gaps are in
 [project scope](docs/project-scope.md).
 
-This repository is **UNLICENSED**. Third-party dependencies retain their own licenses.
+## License
+
+MotorCove is licensed under the Apache License 2.0. See [LICENSE](./LICENSE) for details.
+Third-party dependencies retain their own licenses.

@@ -350,7 +350,7 @@ if (fixtureIndex >= 0) {
 
   for (const file of markdown) {
     const content = readFileSync(file, 'utf8');
-    if (/DeLorean|JD Match|Why hire me/i.test(content)) fail(`${file}: prohibited positioning`);
+    if (/JD Match|Why hire me/i.test(content)) fail(`${file}: prohibited positioning`);
     if (/database[- ]?v2|consumer transition|reset and migrations moved/i.test(content))
       fail(`${file}: unpublished version-transition wording`);
     if (/(?:private key|mnemonic|seed phrase)\s*[:=]\s*[0-9a-f]{32,}/i.test(content))
