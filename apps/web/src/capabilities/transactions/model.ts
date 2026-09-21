@@ -56,6 +56,11 @@ export const journalEntrySchema = z.object({
   projectionObservation: z
     .enum(['NOT_REACHED', 'REFLECTED', 'INCONSISTENT', 'UNVERIFIABLE'])
     .optional(),
+  projectionTransactionHash: bytes32Schema.optional(),
+  projectionBlockHash: bytes32Schema.optional(),
+  projectionLogIndex: z.number().int().nonnegative().optional(),
+  projectionDeploymentId: bytes32Schema.optional(),
+  projectionBuildId: z.string().min(1).optional(),
   status: transactionObservationSchema,
   lastErrorCategory: z.string().min(1).optional(),
 });
@@ -66,12 +71,22 @@ export function isProjectionCurrentlyReflected(entry: JournalEntry): boolean {
   return (
     entry.status === 'INCLUDED_SUCCESS' &&
     entry.receiptStatus === 'SUCCESS' &&
-    entry.projectionObservation === 'REFLECTED'
+    entry.projectionObservation === 'REFLECTED' &&
+    entry.projectionTransactionHash === entry.currentTxHash &&
+    entry.projectionBlockHash === entry.receiptBlockHash &&
+    entry.projectionLogIndex === entry.eventLogIndex &&
+    entry.projectionDeploymentId === entry.deploymentId &&
+    Boolean(entry.projectionBuildId)
   );
 }
 
 export type SubmissionResult =
-  | { kind: 'submitted'; hash: `0x${string}` }
-  | { kind: 'rejected' }
-  | { kind: 'failed'; message: string }
-  | { kind: 'unknown'; hash?: `0x${string}` };
+  | { kind: 'submitted'; hash: `0x${string}`; clientOperationId: string }
+  | {
+      kind: 'submitted-non-durable';
+      hash: `0x${string}`;
+      clientOperationId: string;
+    }
+  | { kind: 'rejected'; clientOperationId: string }
+  | { kind: 'failed'; message: string; clientOperationId: string }
+  | { kind: 'unknown'; clientOperationId: string };

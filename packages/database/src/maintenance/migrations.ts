@@ -43,7 +43,13 @@ export function schemaSourceDigest(folder = schemaSourceFolder): string {
   return hash.digest('hex');
 }
 
-export function migrationBundle() {
+export interface MigrationDescriptor {
+  readonly id: string;
+  readonly createdAt: number;
+  readonly hash: string;
+}
+
+export function migrationBundle(): MigrationDescriptor[] {
   const journal = JSON.parse(
     readFileSync(resolve(migrationsFolder, 'meta/_journal.json'), 'utf8'),
   ) as { entries: Array<{ tag: string; when: number }> };
@@ -128,6 +134,43 @@ export function verifyDatabase(db: Database.Database, requireCurrent = true) {
     fingerprint,
     integrity,
     foreignKeyErrors: foreignKeys.length,
+  };
+}
+
+export function verifyKnownSourceDatabase(
+  db: Database.Database,
+  knownBundle: readonly MigrationDescriptor[] = migrationBundle(),
+) {
+  const verification = verifyDatabase(db, false);
+  const history = readNativeHistory(db);
+  if (history.length === 0) {
+    return {
+      ...verification,
+      contractVersion: null,
+      migrationBundleDigest: migrationBundleDigest([]),
+    };
+  }
+  const contract = db
+    .prepare(
+      'SELECT contract_version AS contractVersion,migration_bundle_digest AS migrationBundleDigest,schema_fingerprint AS schemaFingerprint FROM db_contract WHERE id=1',
+    )
+    .get() as
+    | {
+        contractVersion: string;
+        migrationBundleDigest: string;
+        schemaFingerprint: string;
+      }
+    | undefined;
+  if (!contract) throw new Error('DB_SOURCE_CONTRACT_MISSING');
+  const expectedDigest = migrationBundleDigest(knownBundle.slice(0, history.length));
+  if (contract.migrationBundleDigest !== expectedDigest)
+    throw new Error('DB_SOURCE_CONTRACT_DRIFT: migration digest');
+  if (contract.schemaFingerprint !== verification.fingerprint)
+    throw new Error('DB_SOURCE_CONTRACT_DRIFT: schema fingerprint');
+  return {
+    ...verification,
+    contractVersion: contract.contractVersion,
+    migrationBundleDigest: expectedDigest,
   };
 }
 

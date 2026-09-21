@@ -13,7 +13,7 @@ import { resolve } from 'node:path';
 import { acquireMaintenanceLocks } from '../connection/flock.js';
 import { verifyOwnedEnvironment } from '../connection/environment.js';
 import type { EnvironmentPaths } from '../types/index.js';
-import { loadSchemaContract, verifyDatabase } from './migrations.js';
+import { verifyKnownSourceDatabase } from './migrations.js';
 
 const fileHash = (path: string) => createHash('sha256').update(readFileSync(path)).digest('hex');
 
@@ -41,7 +41,7 @@ export async function backupEnvironment(
     });
     let verification;
     try {
-      verification = verifyDatabase(snapshot);
+      verification = verifyKnownSourceDatabase(snapshot);
     } finally {
       snapshot.close();
     }
@@ -51,7 +51,6 @@ export async function backupEnvironment(
       [paths.seedJournalPath, 'seed-journal.json'],
     ] as const)
       if (existsSync(sourcePath)) copyFileSync(sourcePath, resolve(staging, name));
-    const contract = loadSchemaContract();
     const engineDb = new Database(':memory:');
     const sqliteEngine = engineDb.prepare('select sqlite_version() version').get();
     engineDb.close();
@@ -62,8 +61,10 @@ export async function backupEnvironment(
       reason: options.reason ?? 'manual',
       createdAt: new Date().toISOString(),
       databaseSha256: fileHash(resolve(staging, 'database.sqlite')),
-      schemaContractVersion: contract.contractVersion,
-      migrationBundleDigest: contract.migrationBundleDigest,
+      schemaContractVersion: verification.contractVersion,
+      migrationCount: verification.historyCount,
+      migrationBundleDigest: verification.migrationBundleDigest,
+      schemaFingerprint: verification.fingerprint,
       sqliteEngine,
       includesChainState: false,
     };
@@ -102,7 +103,14 @@ export function verifyBackup(paths: EnvironmentPaths, backupId: string) {
     throw new Error('BACKUP_INVALID: identity or checksum');
   const db = new Database(databasePath, { readonly: true, fileMustExist: true });
   try {
-    verifyDatabase(db);
+    const verification = verifyKnownSourceDatabase(db);
+    if (
+      manifest.schemaContractVersion !== verification.contractVersion ||
+      manifest.migrationCount !== verification.historyCount ||
+      manifest.migrationBundleDigest !== verification.migrationBundleDigest ||
+      manifest.schemaFingerprint !== verification.fingerprint
+    )
+      throw new Error('BACKUP_INVALID: source schema evidence');
   } finally {
     db.close();
   }

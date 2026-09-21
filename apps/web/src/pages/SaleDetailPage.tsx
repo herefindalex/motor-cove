@@ -1,11 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { WalletPanel } from '../capabilities/wallet/index.js';
-import { TransactionTimeline, type SubmissionResult } from '../capabilities/transactions/index.js';
+import {
+  SubmissionNotice,
+  TransactionTimeline,
+  useTransactionJournal,
+  type SubmissionResult,
+} from '../capabilities/transactions/index.js';
 import { Marketplace, type MarketActions } from '../features/marketplace/index.js';
 import { motorCoveApi } from '../integrations/http/motorcove-api.js';
-import { LocalStorageJournal } from '../integrations/persistence/local-storage-journal.js';
 import { TransactionObserver } from '../integrations/evm/TransactionObserver.js';
 import { useChainTime } from '../integrations/evm/use-chain-time.js';
 import { useEscrowGateway } from '../integrations/evm/use-escrow-gateway.js';
@@ -27,22 +31,20 @@ export function SaleDetailPage() {
     refetchInterval: 2_000,
   });
   const wallet = useWalletState(Number(config.data?.chainId ?? 31337));
-  const journal = useMemo(() => new LocalStorageJournal(), []);
+  const journal = useTransactionJournal();
   const gateway = useEscrowGateway(config.data, journal);
   const currentTimestamp = useChainTime(config.data?.deploymentId);
-  const [message, setMessage] = useState<string>();
+  const [submissionResult, setSubmissionResult] = useState<SubmissionResult>();
+  const [submissionError, setSubmissionError] = useState<string>();
 
   const submit = async (operation: () => Promise<SubmissionResult>) => {
-    const result = await operation();
-    setMessage(
-      result.kind === 'submitted'
-        ? `Submitted ${result.hash ?? ''}`
-        : result.kind === 'rejected'
-          ? 'Wallet request rejected.'
-          : result.kind === 'failed'
-            ? result.message
-            : 'Submission outcome unknown. Check the transaction timeline before retrying.',
-    );
+    setSubmissionError(undefined);
+    try {
+      setSubmissionResult(await operation());
+    } catch (error) {
+      setSubmissionResult(undefined);
+      setSubmissionError(error instanceof Error ? error.message : String(error));
+    }
   };
 
   const actions: MarketActions | undefined = gateway
@@ -75,10 +77,34 @@ export function SaleDetailPage() {
 
   if (!saleId || config.isError || sale.isError || vehicles.isError)
     return (
-      <section>
-        <h2>Sale detail unavailable</h2>
-        <p>The sale or its read model could not be loaded.</p>
-      </section>
+      <>
+        <section className="wallet-row">
+          <WalletPanel
+            state={wallet.state}
+            connectors={wallet.connectors}
+            error={wallet.error}
+            pending={wallet.pending}
+            onConnect={wallet.connect}
+            onDisconnect={wallet.disconnect}
+            onSwitch={wallet.switchNetwork}
+          />
+          <SubmissionNotice result={submissionResult} error={submissionError} />
+        </section>
+        {config.data?.deploymentId && (
+          <TransactionObserver deploymentId={config.data.deploymentId} journal={journal} />
+        )}
+        {config.data?.deploymentId && (
+          <TransactionTimeline
+            deploymentId={config.data.deploymentId}
+            journal={journal}
+            saleId={saleId}
+          />
+        )}
+        <section className="danger">
+          <h2>Sale detail unavailable</h2>
+          <p>The sale or its read model could not be loaded.</p>
+        </section>
+      </>
     );
   if (!config.data || !sale.data || !vehicles.data) return <p>Loading sale detail…</p>;
 
@@ -94,7 +120,7 @@ export function SaleDetailPage() {
           onDisconnect={wallet.disconnect}
           onSwitch={wallet.switchNetwork}
         />
-        {message && <output>{message}</output>}
+        <SubmissionNotice result={submissionResult} error={submissionError} />
       </section>
       <Marketplace
         sales={[sale.data.data]}

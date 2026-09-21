@@ -25,6 +25,11 @@ function journal(failOnSave?: number) {
       if (index === -1) entries.push(entry);
       else entries[index] = entry;
     },
+    saveVolatile: (entry) => {
+      const index = entries.findIndex((item) => item.clientOperationId === entry.clientOperationId);
+      if (index === -1) entries.push(entry);
+      else entries[index] = entry;
+    },
     subscribe: () => () => undefined,
   };
   return { entries, port };
@@ -70,7 +75,7 @@ describe('submitOperation', () => {
         throw new Error('sale already funded');
       },
     });
-    expect(await submitOperation(context, action, store.port)).toEqual({
+    expect(await submitOperation(context, action, store.port)).toMatchObject({
       kind: 'failed',
       message: 'sale already funded',
     });
@@ -85,7 +90,7 @@ describe('submitOperation', () => {
         throw Object.assign(new Error('user denied'), { code: 4001 });
       },
     });
-    expect(await submitOperation(context, action, store.port)).toEqual({ kind: 'rejected' });
+    expect(await submitOperation(context, action, store.port)).toMatchObject({ kind: 'rejected' });
     expect(store.entries[0]?.status).toBe('REJECTED');
   });
 
@@ -95,7 +100,7 @@ describe('submitOperation', () => {
       throw new Error('wallet response channel closed');
     });
     const { action, context } = fixture({ submit });
-    expect(await submitOperation(context, action, store.port)).toEqual({ kind: 'unknown' });
+    expect(await submitOperation(context, action, store.port)).toMatchObject({ kind: 'unknown' });
     expect(submit).toHaveBeenCalledTimes(1);
     expect(store.entries[0]?.status).toBe('UNKNOWN');
   });
@@ -103,8 +108,17 @@ describe('submitOperation', () => {
   it('returns a copyable hash when the first hash write fails', async () => {
     const store = journal(3);
     const { action, context, submit } = fixture();
-    expect(await submitOperation(context, action, store.port)).toEqual({ kind: 'unknown', hash });
+    const result = await submitOperation(context, action, store.port);
+    expect(result).toMatchObject({
+      kind: 'submitted-non-durable',
+      hash,
+    });
     expect(submit).toHaveBeenCalledTimes(1);
+    expect(store.entries[0]).toMatchObject({
+      clientOperationId: result.clientOperationId,
+      currentTxHash: hash,
+      status: 'SUBMITTED',
+    });
   });
 
   it('retains a durable hash when nonce lookup fails', async () => {
@@ -114,7 +128,10 @@ describe('submitOperation', () => {
         throw new Error('RPC unavailable');
       },
     });
-    expect(await submitOperation(context, action, store.port)).toEqual({ kind: 'submitted', hash });
+    expect(await submitOperation(context, action, store.port)).toMatchObject({
+      kind: 'submitted',
+      hash,
+    });
     expect(store.entries[0]?.currentTxHash).toBe(hash);
     expect(store.entries[0]?.status).toBe('SUBMITTED');
   });
@@ -142,7 +159,7 @@ describe('submitOperation', () => {
     });
 
     resolveNonce?.(9);
-    await expect(submission).resolves.toEqual({ kind: 'submitted', hash });
+    await expect(submission).resolves.toMatchObject({ kind: 'submitted', hash });
     expect(store.entries[0]).toMatchObject({
       status: 'INCLUDED_SUCCESS',
       receiptStatus: 'SUCCESS',

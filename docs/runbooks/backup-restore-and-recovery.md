@@ -42,3 +42,15 @@ deployment mismatch. Keep marker, quarantine, and reports for diagnosis.
 Temporary tests cover WAL snapshot, corrupted backup rejection, verified restore, and one file-switch
 crash window. Hardware power loss, chain-forward catch-up after restore, and all file-system failure
 modes are not verified.
+
+## Source-schema backup evidence
+
+Backup verifies integrity, foreign keys, native history as a known prefix of the repository migration
+bundle, and the live schema fingerprint against the database's own `db_contract` row. The manifest
+records the snapshot's actual migration count, prefix digest, schema fingerprint, and source contract
+version. It does not describe the snapshot as already being at a future target schema.
+
+Restore currently installs only a snapshot that matches the running code's target schema. A valid
+older snapshot fails with `BACKUP_REQUIRES_MIGRATION` before the active database is moved; upgrade it
+through the migration workflow instead of bypassing the guard. An interrupted projection rebuild or
+reindex remains `ACTION_REQUIRED` until the matching projection command completes.

@@ -16,4 +16,9 @@ export type {
   RecoveryResult,
 } from './recovery.js';
 export { TransactionTimeline } from './ui/TransactionTimeline.js';
+export { SubmissionNotice } from './ui/SubmissionNotice.js';
+export {
+  TransactionJournalProvider,
+  useTransactionJournal,
+} from './ui/TransactionJournalContext.js';
 export { useJournalEntries } from './use-journal-entries.js';

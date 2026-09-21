@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Marketplace, MyAssets, type MarketActions } from '../features/marketplace/index.js';
 import { WalletPanel } from '../capabilities/wallet/index.js';
 import { motorCoveApi } from '../integrations/http/motorcove-api.js';
 import { useWalletState } from '../integrations/evm/use-wallet-state.js';
 import { useEscrowGateway } from '../integrations/evm/use-escrow-gateway.js';
-import { LocalStorageJournal } from '../integrations/persistence/local-storage-journal.js';
 import { TransactionObserver } from '../integrations/evm/TransactionObserver.js';
 import {
+  SubmissionNotice,
   TransactionTimeline,
+  useTransactionJournal,
   useJournalEntries,
   type SubmissionResult,
 } from '../capabilities/transactions/index.js';
@@ -38,22 +39,20 @@ export function HomePage() {
     refetchInterval: 2_000,
   });
   const wallet = useWalletState(Number(configQuery.data?.chainId ?? 31337));
-  const journal = useMemo(() => new LocalStorageJournal(), []);
+  const journal = useTransactionJournal();
   const journalEntries = useJournalEntries(journal, deploymentId);
   const gateway = useEscrowGateway(configQuery.data, journal);
-  const [message, setMessage] = useState<string>();
+  const [submissionResult, setSubmissionResult] = useState<SubmissionResult>();
+  const [submissionError, setSubmissionError] = useState<string>();
   const account = wallet.state.kind === 'connected' ? wallet.state.account : undefined;
   const submit = async (operation: () => Promise<SubmissionResult>) => {
-    const result = await operation();
-    setMessage(
-      result.kind === 'submitted'
-        ? `Submitted ${result.hash ?? ''}`
-        : result.kind === 'rejected'
-          ? 'Wallet request rejected.'
-          : result.kind === 'failed'
-            ? result.message
-            : 'Submission state is unknown. Check your wallet and the journal.',
-    );
+    setSubmissionError(undefined);
+    try {
+      setSubmissionResult(await operation());
+    } catch (error) {
+      setSubmissionResult(undefined);
+      setSubmissionError(error instanceof Error ? error.message : String(error));
+    }
   };
   const actions: MarketActions | undefined =
     gateway && account
@@ -70,10 +69,26 @@ export function HomePage() {
       : undefined;
   if (configQuery.isError || salesQuery.isError || vehiclesQuery.isError || systemQuery.isError)
     return (
-      <section className="danger">
-        <h2>Integration error</h2>
-        <p>API response failed validation or the service is unavailable.</p>
-      </section>
+      <>
+        <section className="wallet-row">
+          <WalletPanel
+            state={wallet.state}
+            connectors={wallet.connectors}
+            error={wallet.error}
+            pending={wallet.pending}
+            onConnect={wallet.connect}
+            onDisconnect={wallet.disconnect}
+            onSwitch={wallet.switchNetwork}
+          />
+          <SubmissionNotice result={submissionResult} error={submissionError} />
+        </section>
+        {deploymentId && <TransactionObserver deploymentId={deploymentId} journal={journal} />}
+        {deploymentId && <TransactionTimeline deploymentId={deploymentId} journal={journal} />}
+        <section className="danger">
+          <h2>Integration error</h2>
+          <p>API response failed validation or the service is unavailable.</p>
+        </section>
+      </>
     );
   const sales = salesQuery.data?.data ?? [];
   const vehicles = vehiclesQuery.data?.data ?? [];
@@ -120,7 +135,7 @@ export function HomePage() {
           onDisconnect={wallet.disconnect}
           onSwitch={wallet.switchNetwork}
         />
-        {message && <output>{message}</output>}
+        <SubmissionNotice result={submissionResult} error={submissionError} />
       </section>
       {deploymentId && <TransactionObserver deploymentId={deploymentId} journal={journal} />}
       {deploymentId && <TransactionTimeline deploymentId={deploymentId} journal={journal} />}

@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "6ca3f91cc9144479eba05a432b8f6f947bfe0ecc",
+    "revision": "fcaea50522b13e9a2188d9b1e7a4388dad586a5a",
     "dirty": true,
-    "capturedAt": "2026-09-21T16:00:48.672Z",
-    "sourceFingerprint": "sha256:1519023bdd13025416818e3a2e218993301dd59f2434caed62713f06d23eec30",
+    "capturedAt": "2026-09-21T17:03:27.630Z",
+    "sourceFingerprint": "sha256:3b13dccf890a1023cf4e7f479139dd6cdeca849dd4cf30ae7d35724118936180",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Local gate evidence was captured from the pre-commit source fingerprint later published as commit 6ca3f91; RUN-CI separately records the successful remote run for that commit. Manual MetaMask, public networks, prior-schema upgrade, hardware power loss, full host-filesystem exhaustion, branch protection, and repository reviewer settings remain unverified.",
+    "limits": "Local gates were captured from this dirty pre-commit source fingerprint based on the recorded revision; RUN-CI records the latest successful remote run for an earlier published commit. Manual MetaMask, public networks, a real released prior-schema upgrade, hardware power loss, full host-filesystem exhaustion, branch protection, and repository reviewer settings remain unverified.",
     "sourceFingerprintMethod": "SHA-256 over sorted NUL-separated repository-relative paths and file bytes from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -17,7 +17,7 @@
       "command": "pnpm test:migrations",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "1 file, 9 tests passed: fresh and repeat migration, injected SQL rollback, tampered and unknown history, schema-source binding, live drift, behind-code failure, and marker recovery",
+      "result": "1 file, 10 tests passed: fresh and repeat migration, injected SQL rollback, tampered and unknown history, schema-source binding, live drift, behind-code failure, verified source-prefix handling for a synthetic next bundle, and marker recovery",
       "limitations": "The repository has only its initial migration, so no truthful prior-schema upgrade fixture exists.",
       "executedAt": "2026-09-21T12:51:48.123Z"
     },
@@ -44,7 +44,7 @@
       "command": "pnpm test:db",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "4 files, 21 tests passed: numeric and identity constraints, readonly API boundary, missing metadata, lock competition and SIGKILL release, markers, active/failed projection maintenance, SQLITE_BUSY, bounded SQLITE_FULL, reset ownership, and CLI refusal",
+      "result": "4 files, 23 tests passed: numeric and identity constraints, readonly API boundary, missing metadata, lock competition and SIGKILL release, ownership-safe markers, blocked and resumable projection maintenance, SQLITE_BUSY, bounded SQLITE_FULL, reset ownership, and CLI refusal",
       "limitations": "SQLITE_FULL uses SQLite max_page_count rather than exhausting the host filesystem. The reset refusal matrix does not prove resistance to a malicious loopback Anvil impersonator.",
       "executedAt": "2026-09-21T15:52:24.155Z"
     },
@@ -66,7 +66,7 @@
       "command": "pnpm test:recovery",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "1 file, 4 tests passed: backup/restore, corrupt evidence rejection, and file-switch recovery markers",
+      "result": "1 file, 7 tests passed: WAL backup, actual source-schema manifest evidence, corrupt backup rejection, verified restore, file-switch recovery, and byte-for-byte preservation of migration, restore, and reindex markers rejected by restore",
       "limitations": "Synthetic process interruption only; no hardware power-loss claim. Restore-behind-head catch-up is recorded in RUN-INTEGRATION.",
       "executedAt": "2026-09-21T12:51:48.123Z"
     },
@@ -137,7 +137,7 @@
       "command": "pnpm test:integration",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "8 files, 27 tests passed: real one-submit convergence, replacement classes, receipt reorg/reinclusion, lifecycle, replay, atomic snapshots, same-history recanonicalization, rebuild/reindex, reconciliation, deployment reset rejection, backup restore catch-up, and child-process SIGKILL",
+      "result": "9 files, 28 tests passed against real Anvil, SQLite, API, Indexer, and browser-facing transaction ports, including canonical replay/reindex, reconciliation, replacement/reorg convergence, process-kill recovery, restore catch-up, and isolated parallel stacks",
       "limitations": "Local deterministic Anvil and ordinary process termination only; public-network finality, unavailable archive history, hardware power loss, and full host-filesystem faults remain unverified.",
       "executedAt": "2026-09-21T15:19:50Z"
     },
@@ -148,7 +148,7 @@
       "command": "pnpm test:unit",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "23 files, 116 unit, component, migration, database, seed, recovery, transport classification, and graceful polling tests passed",
+      "result": "25 files, 130 unit, component, migration, database, seed, recovery, transport classification, persistence-failure, and graceful polling tests passed",
       "limitations": "Includes controlled wallet, journal, database, migration, seed, recovery, RPC, and documentation tests; manual provider behavior is separate.",
       "executedAt": "2026-09-21T15:19:50Z"
     },
@@ -170,7 +170,7 @@
       "command": "pnpm check:architecture",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "135 source files validated and 8 negative fixtures rejected, including recovery-to-wallet-write",
+      "result": "139 source files validated and 8 negative fixtures rejected, including recovery-to-wallet-write and capability-to-adapter dependency violations",
       "limitations": "Static source imports only; runtime process behavior is verified separately.",
       "executedAt": "2026-09-21T15:19:50Z"
     },
@@ -192,7 +192,7 @@
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generation, database check, formatting, docs, architecture, typecheck, lint, 13 Foundry tests, 117 unit/component/database tests, 27 integration tests, and all 7 workspace builds passed",
+      "result": "Generation, database check, formatting, docs, architecture, typecheck, lint, 13 Foundry tests, 130 unit/component/database tests, 28 integration tests, and all 7 workspace builds passed",
       "limitations": "The gate does not establish manual MetaMask behavior, public-network safety, branch protection, hardware power-loss durability, or a prior-schema upgrade.",
       "executedAt": "2026-09-21T16:00:48.672Z"
     },
@@ -214,7 +214,7 @@
       "command": "pnpm test:components",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "1 file, 1 React Testing Library component test passed in JSDOM as part of the unit gate",
+      "result": "2 files, 3 React Testing Library component tests passed in JSDOM, covering transaction timeline and non-durable submission evidence",
       "limitations": "Controlled journal fixture only; injected provider behavior is covered separately by Playwright and still lacks manual MetaMask evidence.",
       "executedAt": "2026-09-21T12:51:48.123Z"
     },
@@ -233,10 +233,10 @@
       "id": "RUN-TRANSACTION-RECOVERY",
       "scenarios": ["SALE-002", "TX-001", "TX-002", "ARCH-001"],
       "level": "LOCAL-TEST",
-      "command": "pnpm vitest run apps/web/src/capabilities/transactions/recovery.test.ts apps/web/src/capabilities/transactions/submit-operation.test.ts apps/web/src/integrations/persistence/local-storage-journal.test.ts",
+      "command": "pnpm vitest run apps/web/src/capabilities/transactions/recovery.test.ts apps/web/src/capabilities/transactions/submit-operation.test.ts apps/web/src/integrations/persistence/local-storage-journal.test.ts apps/web/src/capabilities/transactions/ui/TransactionTimeline.test.tsx apps/web/src/capabilities/transactions/ui/SubmissionNotice.test.tsx apps/web/src/pages/transaction-surfaces.test.tsx",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "3 files, 24 tests passed for durable pre-write, wallet ambiguity, runtime journal validation, supplied hash, replacement classification, stale-result suppression, nonce merge, projection validity, lag, and evidence preservation",
+      "result": "6 files, 32 tests passed for durable pre-write, known-hash persistence failure, tab-local observation, API-error transaction surfaces, supplied hash, replacement classification, same-hash reinclusion identity, stale-result suppression, nonce merge, projection validity, lag, and evidence preservation",
       "limitations": "Controlled wallet and storage ports; real local-chain convergence is recorded by RUN-INTEGRATION and the controlled browser provider by RUN-E2E.",
       "executedAt": "2026-09-21T15:13:34Z"
     },
@@ -244,10 +244,10 @@
       "id": "RUN-INDEXER-KILL",
       "scenarios": ["IDX-002"],
       "level": "LOCAL-TEST",
-      "command": "pnpm vitest run tests/integration/indexer-kill-recovery.test.ts",
+      "command": "pnpm vitest run tests/integration/indexer-kill-recovery.test.ts tests/integration/projection-kill-recovery.test.ts",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "1 file, 3 tests passed within the integration gate at BEFORE_BEGIN, BEFORE_COMMIT, and AFTER_COMMIT with a harness-owned child-process SIGKILL",
+      "result": "2 files, 4 tests passed with harness-owned child-process SIGKILL at BEFORE_BEGIN, BEFORE_COMMIT, AFTER_COMMIT, and after committed reindex rewind before rebuild; incomplete projection recovery remained blocked until exact resume",
       "limitations": "Uses real file SQLite WAL and independent recovery connections; ordinary process termination is not a hardware power-loss claim.",
       "executedAt": "2026-09-21T12:51:48.123Z"
     },

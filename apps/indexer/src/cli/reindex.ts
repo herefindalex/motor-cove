@@ -43,6 +43,11 @@ if (!target.hash) throw new Error('REINDEX_TARGET_HASH_MISSING');
 const operation = await runProjectionMaintenance(config.environment, {
   operationType: 'REINDEX_PROJECTION',
   expectedDeploymentId: config.manifest.deploymentId,
+  recovery: {
+    reindexFromBlock: fromBlock.toString(),
+    targetBlock: target.number.toString(),
+    targetHash: target.hash,
+  },
   run: async (database) => {
     const store = new SqliteProjectionStore(
       database,

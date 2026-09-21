@@ -10,5 +10,6 @@ export interface TransactionJournal {
   load(deploymentId: string): readonly JournalEntry[];
   loadIssues(deploymentId: string): readonly JournalLoadIssue[];
   save(entry: JournalEntry): void;
+  saveVolatile?(entry: JournalEntry): void;
   subscribe(listener: () => void): () => void;
 }

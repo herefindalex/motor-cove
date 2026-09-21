@@ -30,6 +30,18 @@ and lets API and Web processes continue. A changed checkpoint hash, a provider-c
 checkpoint block, or another integrity mismatch remains `RECOVERY_REQUIRED` and stops ingestion.
 Shutdown stops scheduling polls, waits for the active poll, then closes the database writer.
 
+### Operation-specific completion
+
+An interrupted projection marker carries its deployment and recovery identity. Generic recovery does
+not treat schema integrity as proof that rewind, rebuild, and catch-up completed. It returns
+action-required and leaves the gate closed. Rerunning the exact operation may resume the marker under
+the same lock; changed parameters are rejected.
+
+Current projection success is bound to transaction hash, block hash, log index, deployment, and
+projection build. If a returned transaction hash cannot be persisted, the hash and operation context
+remain visible in a tab-local journal overlay with an explicit reload limitation. This overlay is not
+durable or cross-device recovery.
+
 ## Trade-offs
 
 - Browser generation checks coordinate saved journal evidence but do not provide a cross-device

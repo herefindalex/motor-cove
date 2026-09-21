@@ -37,3 +37,15 @@ was manually exercised.
 
 Evidence: `TX-001`, `TX-002`; source under `capabilities/wallet`, `capabilities/transactions`, and
 `integrations/evm`. Next: [transaction lifecycle](../protocol/transaction-lifecycle.md).
+
+## Evidence identity and persistence failure
+
+If the wallet returns a hash but the journal cannot persist the submitted state, the UI keeps the
+operation context in memory, displays the copyable hash with a non-durable warning, and continues
+read-only observation in the current tab. Reload recovery is explicitly limited in this state. A
+failure to persist the initial intent still stops before any wallet request.
+
+A reflected projection result is bound to the observed transaction hash, block hash, log index,
+deployment, and projection build. Re-inclusion of the same transaction in a different block or log
+invalidates the current reflection before the API lookup. An API outage may retain same-identity
+historical evidence, but it cannot promote evidence from the previous identity.

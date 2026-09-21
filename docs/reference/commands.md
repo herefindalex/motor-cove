@@ -44,7 +44,7 @@ in `_meta/commands.json` owns the table.
 | `pnpm seed:dev` | implemented | runs the local bootstrap profile | MOTORCOVE_ENV set; loopback Anvil; owned environment |
 | `pnpm seed:demo` | implemented | runs the local demo bootstrap profile | MOTORCOVE_ENV set; loopback Anvil; owned environment |
 | `pnpm seed:test` | implemented | runs the isolated test bootstrap profile | test harness environment and loopback Anvil |
-| `pnpm ops:recover --env <id> [--complete]` | implemented | inspects or completes verified marker recovery | owned environment |
+| `pnpm ops:recover --env <id> [--complete]` | implemented | Inspects markers; completes verified migration/restore recovery and keeps incomplete projection work action-required. | owned environment |
 | `pnpm ops:reindex -- --yes` | implemented | rewinds source evidence, refetches canonical history, and rebuilds projections | MOTORCOVE_ENV set; stopped services; verified loopback deployment |
 | `pnpm test:migrations` | implemented | runs native migration history and drift tests in temporary SQLite environments | native SQLite driver installed |
 | `pnpm test:db` | implemented | runs database ownership, locking, constraints, and reset-boundary tests | native SQLite driver installed |

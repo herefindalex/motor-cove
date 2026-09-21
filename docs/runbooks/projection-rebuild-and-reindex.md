@@ -30,3 +30,11 @@ block/hash. A failure must not expose half-built projections.
 
 See [indexing flow](../flows/indexing-and-recovery.md) and
 [reconciliation](reconciliation.md).
+
+## Resume an interrupted operation
+
+Inspect the marker with `pnpm ops:recover --env <id>`. For `REBUILD_PROJECTION` and
+`REINDEX_PROJECTION`, `--complete` intentionally returns `ACTION_REQUIRED`; it does not clear the
+marker. Stop the runtime and rerun the same rebuild command, or the same reindex command with the
+original `--from` value. Resume requires matching operation type, deployment, rewind point, captured
+target block, and target hash. A mismatch remains blocked.

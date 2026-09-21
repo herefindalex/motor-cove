@@ -68,12 +68,12 @@
     {
       "id": "CAP-06",
       "name": "Transaction lifecycle",
-      "behavior": "Durably records immutable intent before wallet submission and recovers receipt, event, and projection observations through read-only ports.",
+      "behavior": "Durably records immutable intent before wallet submission, exposes a returned hash even when persistence fails, and binds read-only projection proof to the exact chain event and projection build.",
       "implementation": "implemented",
       "code": ["apps/web/src/capabilities/transactions", "apps/web/src/integrations/persistence"],
       "scenarios": ["TX-001", "TX-002"],
       "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E"],
-      "limits": "Automated recovery uses local Anvil or controlled ports; real MetaMask response loss and every replacement variant remain unverified."
+      "limits": "Non-durable known-hash tracking survives only in the current tab; automated recovery uses local Anvil or controlled ports, while real MetaMask response loss and every replacement variant remain unverified."
     },
     {
       "id": "CAP-07",
@@ -201,7 +201,7 @@
     {
       "id": "CAP-13",
       "name": "Failure diagnosis and recovery",
-      "behavior": "Exposes projection status, selector-scoped funding evidence, read-only journal recovery, anchored reconciliation, maintenance markers, and recovery commands.",
+      "behavior": "Exposes projection status, selector-scoped funding evidence, read-only journal recovery, anchored reconciliation, ownership-safe maintenance markers, operation-specific projection resume, and recovery commands.",
       "implementation": "partial",
       "code": [
         "apps/web/src/pages/InspectorPage.tsx",
@@ -217,7 +217,7 @@
         "RUN-INTEGRATION",
         "RUN-DB-RECOVERY"
       ],
-      "limits": "Parallel and some process/filesystem fault cases remain unverified."
+      "limits": "Projection interruption through ordinary process SIGKILL is verified; hardware power loss, cross-device journal recovery, and some filesystem fault cases remain unverified."
     },
     {
       "id": "CAP-14",

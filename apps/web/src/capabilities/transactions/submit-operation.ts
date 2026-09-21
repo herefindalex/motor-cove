@@ -74,7 +74,11 @@ export async function submitOperation(
           ? 'OPERATION_CONTEXT_CHANGED'
           : 'CHAIN_PRECONDITION_FAILED',
     });
-    return { kind: 'failed', message: error instanceof Error ? error.message : String(error) };
+    return {
+      kind: 'failed',
+      message: error instanceof Error ? error.message : String(error),
+      clientOperationId: base.clientOperationId,
+    };
   }
 
   const awaitingWallet: JournalEntry = {
@@ -100,7 +104,9 @@ export async function submitOperation(
     } catch {
       // Persistence loss must not trigger a second wallet call.
     }
-    return rejected ? { kind: 'rejected' } : { kind: 'unknown' };
+    return rejected
+      ? { kind: 'rejected', clientOperationId: base.clientOperationId }
+      : { kind: 'unknown', clientOperationId: base.clientOperationId };
   }
 
   const submitted: JournalEntry = {
@@ -115,7 +121,12 @@ export async function submitOperation(
   try {
     journal.save(submitted);
   } catch {
-    return { kind: 'unknown', hash };
+    journal.saveVolatile?.(submitted);
+    return {
+      kind: 'submitted-non-durable',
+      hash,
+      clientOperationId: submitted.clientOperationId,
+    };
   }
 
   try {
@@ -128,5 +139,5 @@ export async function submitOperation(
   } catch {
     // Optional enrichment cannot erase the already durable hash.
   }
-  return { kind: 'submitted', hash };
+  return { kind: 'submitted', hash, clientOperationId: submitted.clientOperationId };
 }

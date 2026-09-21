@@ -12,6 +12,17 @@ export async function recoverEnvironment(paths: EnvironmentPaths, complete = fal
   if (!existsSync(paths.maintenancePath)) return { changed: false, status: 'NO_RECOVERY_REQUIRED' };
   const marker = JSON.parse(readFileSync(paths.maintenancePath, 'utf8')) as MaintenanceMarker;
   if (!complete) return { changed: false, status: 'RECOVERY_REQUIRED', marker };
+  if (
+    marker.operationType === 'REBUILD_PROJECTION' ||
+    marker.operationType === 'REINDEX_PROJECTION'
+  ) {
+    return {
+      changed: false,
+      status: 'ACTION_REQUIRED',
+      marker,
+      action: 'RERUN_MATCHING_PROJECTION_OPERATION',
+    };
+  }
   const locks = await acquireMaintenanceLocks(paths);
   try {
     if (!existsSync(paths.databasePath) && marker.operationType === 'RESTORE') {

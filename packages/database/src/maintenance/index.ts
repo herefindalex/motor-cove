@@ -18,6 +18,7 @@ export {
 export {
   inspectEnvironment,
   verifyDatabase,
+  verifyKnownSourceDatabase,
   loadSchemaContract,
   migrationBundle,
   migrationBundleDigest,
@@ -26,4 +27,5 @@ export {
   normalizedSchema,
   readNativeHistory,
   assertKnownHistory,
+  type MigrationDescriptor,
 } from './migrations.js';

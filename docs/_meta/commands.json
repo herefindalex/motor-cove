@@ -309,7 +309,7 @@
       "name": "ops:recover",
       "command": "pnpm ops:recover --env <id> [--complete]",
       "status": "implemented",
-      "effect": "inspects or completes verified marker recovery",
+      "effect": "Inspects markers; completes verified migration/restore recovery and keeps incomplete projection work action-required.",
       "prerequisite": "owned environment",
       "runbook": "../runbooks/backup-restore-and-recovery.md"
     },

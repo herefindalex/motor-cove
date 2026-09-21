@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -24,6 +24,12 @@ describe('backup, restore, recovery', () => {
       )
       .run();
     const backup = await backupEnvironment(paths);
+    expect(backup.manifest).toMatchObject({
+      migrationCount: backup.verification.historyCount,
+      migrationBundleDigest: backup.verification.migrationBundleDigest,
+      schemaFingerprint: backup.verification.fingerprint,
+      schemaContractVersion: backup.verification.contractVersion,
+    });
     writer.close();
     const snapshot = new Database(resolve(backup.path, 'database.sqlite'), {
       readonly: true,
@@ -46,6 +52,35 @@ describe('backup, restore, recovery', () => {
     expect(active.pragma('integrity_check', { simple: true })).toBe('ok');
     active.close();
   });
+  it.each(['MIGRATE', 'RESTORE', 'REINDEX_PROJECTION'] as const)(
+    'preserves an existing %s marker byte-for-byte when restore is rejected',
+    async (operationType) => {
+      const { root, paths } = await databaseFixture();
+      roots.push(root);
+      const original = `${JSON.stringify({
+        operationId: `original-${operationType.toLowerCase()}`,
+        operationType,
+        stage: 'FAILED',
+        environmentId: paths.environmentId,
+        targetDatabase: paths.databasePath,
+        expectedSchemaContract: '1',
+        startedAt: '2026-09-21T00:00:00.000Z',
+      })}\n`;
+      writeFileSync(paths.maintenancePath, original);
+      const beforeEntries = readdirSync(paths.environmentDir).sort();
+
+      await expect(
+        restoreEnvironment(paths, '2026-09-21T00-00-00-000Z-deadbeef', true),
+      ).rejects.toThrow('MAINTENANCE_INCOMPLETE');
+
+      expect(readFileSync(paths.maintenancePath, 'utf8')).toBe(original);
+      expect(readdirSync(paths.environmentDir).sort()).toEqual(beforeEntries);
+      const active = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
+      expect(active.pragma('integrity_check', { simple: true })).toBe('ok');
+      active.close();
+    },
+  );
+
   it('restores a verified snapshot while quarantining the current database', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);

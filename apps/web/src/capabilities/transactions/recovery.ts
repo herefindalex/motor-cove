@@ -201,6 +201,11 @@ export async function resumeJournalEntry(
     return { kind: 'REVERTED' };
   }
 
+  const projectionIdentityChanged =
+    verifying.projectionTransactionHash !== inspected.transactionHash ||
+    verifying.projectionBlockHash !== inspected.blockHash ||
+    verifying.projectionLogIndex !== inspected.logIndex ||
+    verifying.projectionDeploymentId !== verifying.deploymentId;
   const chainEvidenceResult = apply({
     currentTxHash: inspected.transactionHash,
     ...(verifying.originalTxHash ? {} : { originalTxHash: verifiedHash }),
@@ -217,6 +222,16 @@ export async function resumeJournalEntry(
     verificationAvailability: 'AVAILABLE',
     lastVerifiedAt: new Date().toISOString(),
     lastErrorCategory: undefined,
+    ...(projectionIdentityChanged
+      ? {
+          projectionObservation: undefined,
+          projectionTransactionHash: undefined,
+          projectionBlockHash: undefined,
+          projectionLogIndex: undefined,
+          projectionDeploymentId: undefined,
+          projectionBuildId: undefined,
+        }
+      : {}),
   });
   if (!chainEvidenceResult.applied) return { kind: 'SUPERSEDED' };
   const withChainEvidence = chainEvidenceResult.entry;
@@ -258,6 +273,11 @@ export async function resumeJournalEntry(
       ports,
       {
         projectionObservation,
+        projectionTransactionHash: inspected.transactionHash,
+        projectionBlockHash: inspected.blockHash,
+        projectionLogIndex: inspected.logIndex,
+        projectionDeploymentId: withChainEvidence.deploymentId,
+        projectionBuildId: snapshot.provenance.projectionBuildId,
         lastVerifiedAt: new Date().toISOString(),
         verificationAvailability: 'AVAILABLE',
         lastErrorCategory:

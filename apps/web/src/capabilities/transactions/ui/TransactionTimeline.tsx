@@ -9,7 +9,7 @@ export function TransactionTimeline({
 }: {
   deploymentId: string;
   journal: TransactionJournal;
-  saleId?: string;
+  saleId?: string | undefined;
 }) {
   const [entries, setEntries] = useState<readonly JournalEntry[]>(() => journal.load(deploymentId));
 

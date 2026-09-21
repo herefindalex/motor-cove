@@ -36,6 +36,9 @@ export interface MaintenanceMarker {
   readonly targetDatabase: string;
   readonly expectedSchemaContract: string;
   readonly expectedDeploymentId?: string;
+  readonly reindexFromBlock?: string;
+  readonly targetBlock?: string;
+  readonly targetHash?: string;
   readonly backupId?: string;
   readonly startedAt: string;
   readonly lastError?: string;

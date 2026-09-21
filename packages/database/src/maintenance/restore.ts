@@ -30,9 +30,11 @@ export async function restoreEnvironment(
   };
   const staging = resolve(paths.environmentDir, `.restore-${operationId}`);
   const quarantine = resolve(paths.environmentDir, `.quarantine-${operationId}`);
+  let markerOwned = false;
   try {
     if (existsSync(paths.maintenancePath)) throw new Error('MAINTENANCE_INCOMPLETE');
     writeMaintenanceMarker(paths.maintenancePath, marker);
+    markerOwned = true;
     const backup = verifyBackup(paths, backupId);
     mkdirSync(staging);
     copyFileSync(backup.databasePath, resolve(staging, 'motorcove.sqlite'));
@@ -41,7 +43,16 @@ export async function restoreEnvironment(
       fileMustExist: true,
     });
     try {
-      verifyDatabase(candidate);
+      try {
+        verifyDatabase(candidate);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          (error.message === 'DB_SCHEMA_BEHIND' || error.message === 'DB_SCHEMA_DRIFT')
+        )
+          throw new Error('BACKUP_REQUIRES_MIGRATION');
+        throw error;
+      }
     } finally {
       candidate.close();
     }
@@ -65,7 +76,7 @@ export async function restoreEnvironment(
     clearMaintenanceMarker(paths.maintenancePath);
     return { operationId, backupId, quarantine, changed: true };
   } catch (error) {
-    if (existsSync(paths.maintenancePath))
+    if (markerOwned && existsSync(paths.maintenancePath))
       writeMaintenanceMarker(paths.maintenancePath, {
         ...marker,
         stage: 'FAILED',

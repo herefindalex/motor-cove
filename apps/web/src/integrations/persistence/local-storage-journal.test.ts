@@ -59,4 +59,24 @@ describe('LocalStorageJournal', () => {
     });
     expect(() => new LocalStorageJournal().save(entry)).toThrow('quota exceeded');
   });
+
+  it('keeps a known-hash submission in memory without claiming durable storage', () => {
+    const journal = new LocalStorageJournal();
+    const volatile = {
+      ...entry,
+      originalTxHash: `0x${'4'.repeat(64)}` as const,
+      currentTxHash: `0x${'4'.repeat(64)}` as const,
+      status: 'SUBMITTED' as const,
+    };
+    journal.saveVolatile(volatile);
+    expect(journal.load(deploymentId)).toEqual([volatile]);
+    expect(localStorage.getItem(storageKey)).toBeNull();
+
+    journal.save({ ...volatile, status: 'INCLUDED_SUCCESS', receiptStatus: 'SUCCESS' });
+    expect(journal.load(deploymentId)[0]).toMatchObject({
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+    });
+    expect(localStorage.getItem(storageKey)).toBeNull();
+  });
 });

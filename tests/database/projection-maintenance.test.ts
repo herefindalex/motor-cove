@@ -6,6 +6,7 @@ import { environmentPaths } from '@motorcove/database/environment';
 import {
   acquireMaintenanceLocks,
   migrateEnvironment,
+  recoverEnvironment,
   runProjectionMaintenance,
 } from '@motorcove/database/maintenance';
 import { openProjectionWriter } from '@motorcove/database/projection-writer';
@@ -90,5 +91,70 @@ describe('projection maintenance isolation', () => {
 
     const locks = await acquireMaintenanceLocks(paths);
     await locks.release();
+  });
+
+  it('keeps an incomplete reindex blocked until the matching operation resumes', async () => {
+    const paths = await fixture();
+    const options = {
+      operationType: 'REINDEX_PROJECTION' as const,
+      expectedDeploymentId: `0x${'4'.repeat(64)}`,
+      recovery: {
+        reindexFromBlock: '105',
+        targetBlock: '110',
+        targetHash: `0x${'5'.repeat(64)}`,
+      },
+    };
+    await expect(
+      runProjectionMaintenance(paths, {
+        ...options,
+        run: () => {
+          throw new Error('killed after rewind');
+        },
+      }),
+    ).rejects.toThrow('killed after rewind');
+    const original = readFileSync(paths.maintenancePath, 'utf8');
+    const marker = JSON.parse(original) as { operationId: string };
+
+    await expect(recoverEnvironment(paths, true)).resolves.toMatchObject({
+      changed: false,
+      status: 'ACTION_REQUIRED',
+      action: 'RERUN_MATCHING_PROJECTION_OPERATION',
+    });
+    expect(readFileSync(paths.maintenancePath, 'utf8')).toBe(original);
+    await expect(openProjectionWriter(paths)).rejects.toThrow('MAINTENANCE_INCOMPLETE');
+
+    await expect(
+      runProjectionMaintenance(paths, {
+        ...options,
+        run: () => 'rebuilt',
+      }),
+    ).resolves.toEqual({ operationId: marker.operationId, result: 'rebuilt' });
+    expect(existsSync(paths.maintenancePath)).toBe(false);
+  });
+
+  it('does not resume a projection marker with different recovery parameters', async () => {
+    const paths = await fixture();
+    const deploymentId = `0x${'6'.repeat(64)}`;
+    await expect(
+      runProjectionMaintenance(paths, {
+        operationType: 'REINDEX_PROJECTION',
+        expectedDeploymentId: deploymentId,
+        recovery: { reindexFromBlock: '10', targetBlock: '12', targetHash: `0x${'7'.repeat(64)}` },
+        run: () => {
+          throw new Error('interrupted');
+        },
+      }),
+    ).rejects.toThrow('interrupted');
+    const original = readFileSync(paths.maintenancePath, 'utf8');
+
+    await expect(
+      runProjectionMaintenance(paths, {
+        operationType: 'REINDEX_PROJECTION',
+        expectedDeploymentId: deploymentId,
+        recovery: { reindexFromBlock: '11', targetBlock: '12', targetHash: `0x${'7'.repeat(64)}` },
+        run: () => undefined,
+      }),
+    ).rejects.toThrow('MAINTENANCE_INCOMPLETE');
+    expect(readFileSync(paths.maintenancePath, 'utf8')).toBe(original);
   });
 });

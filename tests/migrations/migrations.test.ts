@@ -11,6 +11,9 @@ import {
   verifyDatabase,
   schemaSourceDigest,
   loadSchemaContract,
+  migrationBundle,
+  migrationBundleDigest,
+  verifyKnownSourceDatabase,
 } from '@motorcove/database/maintenance';
 import { databaseFixture } from '../helpers/database.js';
 const roots: string[] = [];
@@ -109,6 +112,33 @@ describe('native migration path', () => {
     expect(() => verifyDatabase(db)).toThrow('DB_HISTORY_DIVERGED');
     db.close();
   });
+  it('accepts the current schema as a verified source prefix of a synthetic next bundle', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const current = migrationBundle();
+    const syntheticNext = [
+      ...current,
+      {
+        id: 'synthetic_next_migration',
+        createdAt: current.at(-1)!.createdAt + 1,
+        hash: 'synthetic-next-hash',
+      },
+    ];
+    const db = new Database(paths.databasePath);
+    const verification = verifyKnownSourceDatabase(db, syntheticNext);
+    expect(verification).toMatchObject({
+      historyCount: current.length,
+      migrationBundleDigest: migrationBundleDigest(current),
+    });
+    expect(verification.migrationBundleDigest).not.toBe(migrationBundleDigest(syntheticNext));
+
+    db.exec('DROP INDEX sales_status');
+    expect(() => verifyKnownSourceDatabase(db, syntheticNext)).toThrow(
+      'DB_SOURCE_CONTRACT_DRIFT: schema fingerprint',
+    );
+    db.close();
+  });
+
   it('DB-09 completes a verified post-migration crash marker without rerunning migration', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);

@@ -59,3 +59,15 @@ the recovery reason remain inspectable.
 
 See [projection runbook](../runbooks/projection-rebuild-and-reindex.md) and
 [backup/recovery runbook](../runbooks/backup-restore-and-recovery.md).
+
+## Interruption completion evidence
+
+Projection markers are operation-specific completion evidence. `ops:recover --complete` does not
+clear an interrupted rebuild or reindex after a generic schema check. It returns
+`ACTION_REQUIRED`, keeps API and Indexer startup blocked, and requires the same operation type,
+deployment, rewind point, and captured target anchor to resume under the existing exclusive gate.
+Only the resumed operation's projection postconditions can clear the marker.
+
+An isolated child-process test sends `SIGKILL` after `rewindFrom()` commits and before rebuild. It
+proves the mixed state remains blocked, then resumes the exact marker and verifies a new projection
+build. This covers ordinary process termination with SQLite WAL, not hardware power loss.

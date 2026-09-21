@@ -58,7 +58,7 @@ function observation(
         projectionEffect,
       },
     },
-    provenance: {} as FundingObservationResponse['provenance'],
+    provenance: { projectionBuildId: 'build-1' } as FundingObservationResponse['provenance'],
   };
 }
 
@@ -264,7 +264,13 @@ describe('read-only transaction recovery', () => {
       receiptStatus: 'SUCCESS',
       receiptBlockNumber: '105',
       receiptBlockHash: blockHash,
+      eventLogIndex: 3,
       projectionObservation: 'REFLECTED',
+      projectionTransactionHash: hash,
+      projectionBlockHash: blockHash,
+      projectionLogIndex: 3,
+      projectionDeploymentId: deploymentId,
+      projectionBuildId: 'build-0',
     });
 
     expect(isProjectionCurrentlyReflected(previouslyReflected)).toBe(true);
@@ -278,6 +284,70 @@ describe('read-only transaction recovery', () => {
       projectionObservation: 'INCONSISTENT',
     });
     expect(isProjectionCurrentlyReflected(fixture.saved[0]!)).toBe(false);
+  });
+
+  it('invalidates old reflection when the same hash is re-included with a new event identity', async () => {
+    const fixture = ports(included);
+    fixture.readObservation.mockRejectedValue(new Error('API unavailable'));
+    const oldBlockHash = `0x${'8'.repeat(64)}` as const;
+    const previouslyReflected = entry({
+      originalTxHash: hash,
+      currentTxHash: hash,
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+      receiptBlockNumber: '104',
+      receiptBlockHash: oldBlockHash,
+      eventLogIndex: 2,
+      projectionObservation: 'REFLECTED',
+      projectionTransactionHash: hash,
+      projectionBlockHash: oldBlockHash,
+      projectionLogIndex: 2,
+      projectionDeploymentId: deploymentId,
+      projectionBuildId: 'old-build',
+    });
+
+    await expect(resumeJournalEntry(previouslyReflected, fixture.recoveryPorts)).resolves.toEqual({
+      kind: 'UNAVAILABLE',
+      reason: 'API unavailable',
+    });
+    expect(fixture.saved[0]).toMatchObject({
+      currentTxHash: hash,
+      receiptBlockHash: blockHash,
+      eventLogIndex: 3,
+      verificationAvailability: 'UNAVAILABLE',
+    });
+    expect(fixture.saved[0]?.projectionObservation).toBeUndefined();
+    expect(isProjectionCurrentlyReflected(fixture.saved[0]!)).toBe(false);
+  });
+
+  it('retains same-identity historical reflection when the observation API is unavailable', async () => {
+    const fixture = ports(included);
+    fixture.readObservation.mockRejectedValue(new Error('API unavailable'));
+    const reflected = entry({
+      originalTxHash: hash,
+      currentTxHash: hash,
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+      receiptBlockNumber: '105',
+      receiptBlockHash: blockHash,
+      eventLogIndex: 3,
+      projectionObservation: 'REFLECTED',
+      projectionTransactionHash: hash,
+      projectionBlockHash: blockHash,
+      projectionLogIndex: 3,
+      projectionDeploymentId: deploymentId,
+      projectionBuildId: 'build-0',
+    });
+
+    await expect(resumeJournalEntry(reflected, fixture.recoveryPorts)).resolves.toEqual({
+      kind: 'UNAVAILABLE',
+      reason: 'API unavailable',
+    });
+    expect(fixture.saved[0]).toMatchObject({
+      projectionObservation: 'REFLECTED',
+      verificationAvailability: 'UNAVAILABLE',
+    });
+    expect(isProjectionCurrentlyReflected(fixture.saved[0]!)).toBe(true);
   });
 
   it('restores current reflection after an orphaned operation is verified on canonical history', async () => {
