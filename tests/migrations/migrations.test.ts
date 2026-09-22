@@ -141,6 +141,50 @@ describe('native migration path', () => {
     ).toBeUndefined();
     db.close();
   });
+  it('resumes a failed migration only with the matching migration bundle identity', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'motorcove-resumable-migration-'));
+    roots.push(root);
+    const paths = environmentPaths(root, 'resumable-migration');
+
+    await expect(
+      migrateEnvironment(paths, {
+        applyMigrations: () => {
+          throw new Error('CONTROLLED_MIGRATION_FAILURE');
+        },
+      }),
+    ).rejects.toThrow('CONTROLLED_MIGRATION_FAILURE');
+
+    const failedMarker = JSON.parse(readFileSync(paths.maintenancePath, 'utf8')) as {
+      operationId: string;
+      expectedMigrationBundleDigest: string;
+    };
+    expect(failedMarker.expectedMigrationBundleDigest).toBe(
+      loadSchemaContract().migrationBundleDigest,
+    );
+
+    await expect(recoverEnvironment(paths, true)).resolves.toMatchObject({
+      changed: false,
+      status: 'ACTION_REQUIRED',
+      action: 'RERUN_MATCHING_MIGRATION',
+    });
+    expect(existsSync(paths.maintenancePath)).toBe(true);
+
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(
+      paths.maintenancePath,
+      JSON.stringify({ ...failedMarker, expectedMigrationBundleDigest: 'different-bundle' }),
+    );
+    await expect(migrateEnvironment(paths)).rejects.toThrow('MAINTENANCE_INCOMPLETE');
+    writeFileSync(paths.maintenancePath, JSON.stringify(failedMarker));
+
+    const resumed = await migrateEnvironment(paths);
+    expect(resumed).toMatchObject({ operationId: failedMarker.operationId, changed: true });
+    expect(existsSync(paths.maintenancePath)).toBe(false);
+    const database = new Database(paths.databasePath);
+    expect(() => verifyKnownSourceDatabase(database)).not.toThrow();
+    database.close();
+  });
+
   it('DB-05 rejects an unknown applied migration', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);
@@ -207,6 +251,9 @@ describe('native migration path', () => {
     const before = (
       db.prepare('SELECT count(*) count FROM __drizzle_migrations').get() as { count: number }
     ).count;
+    db.prepare(
+      "UPDATE db_contract SET migration_bundle_digest='interrupted-finalization' WHERE id=1",
+    ).run();
     db.close();
     await import('node:fs').then(({ writeFileSync }) =>
       writeFileSync(
@@ -218,6 +265,7 @@ describe('native migration path', () => {
           environmentId: 'test',
           targetDatabase: paths.databasePath,
           expectedSchemaContract: '1',
+          expectedMigrationBundleDigest: loadSchemaContract().migrationBundleDigest,
           startedAt: new Date(0).toISOString(),
         }),
       ),
@@ -229,6 +277,7 @@ describe('native migration path', () => {
       (after.prepare('SELECT count(*) count FROM __drizzle_migrations').get() as { count: number })
         .count,
     ).toBe(before);
+    expect(() => verifyKnownSourceDatabase(after)).not.toThrow();
     after.close();
   });
   it('status is read-only and does not create a missing environment', () => {

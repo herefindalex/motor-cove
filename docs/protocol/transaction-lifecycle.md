@@ -68,6 +68,11 @@ uses the replacement hash for receipt and projection evidence. A wallet cancella
 `CANCELLED`; another target, call, or value is `DIFFERENT_CALL`. Neither latter case proves funding,
 and recovery does not submit another transaction.
 
+Each API verification attempt uses one deadline for response headers and body consumption. When the
+deadline expires, the HTTP adapter aborts the underlying request, the journal keeps its last known
+evidence and records verification unavailable, and the Observer releases that operation's
+single-flight slot so a later read-only check can run.
+
 Receipt identity is also canonical-chain evidence, not a permanent fact. When the RPC no longer
 returns a previously saved receipt, recovery compares the saved receipt block number and hash with
 the current canonical header. A mismatch records `NONCANONICAL` and preserves the orphaned evidence.
@@ -85,6 +90,11 @@ See [listing and funding](../flows/listing-and-funding.md),
 [System API reference](../reference/api.md).
 
 ## Supported action observation and tab coordination
+
+Both included success and included revert remain under automatic observation while they are local
+non-final evidence. A later canonicality change can therefore move either outcome to `ORPHANED` or
+replace it with same-hash reinclusion evidence. `REJECTED` and `FAILED_BEFORE_SUBMIT` never start
+receipt polling. This is a local recovery policy, not a mainnet finality guarantee.
 
 Known-hash receipt observation covers `APPROVE_TOKEN`, `CREATE_SALE`, `FUND_SALE`, `COMPLETE_SALE`,
 `CANCEL_SALE`, `EXPIRE_SALE`, `WITHDRAW_PAYMENT`, and `RECLAIM_TOKEN`. Every action verifies the saved

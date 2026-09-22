@@ -83,6 +83,10 @@ per-operation journal revisions are recorded in
 Restore file generations, reset/bootstrap lifecycle ownership, and HTTP query deployment checks are
 recorded in [restore lifecycle and query identity](adr/0013-restore-lifecycle-and-query-identity.md).
 
+Migration continuation, metadata finalization, bounded HTTP verification, and symmetric local
+receipt observation are recorded in
+[migration resume and observation deadlines](adr/0014-migration-resume-and-observation-deadlines.md).
+
 ## Evaluate current evidence
 
 - [Implementation status](implementation-status.md) and [implementation plan](implementation-plan.md)

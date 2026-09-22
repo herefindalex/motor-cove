@@ -34,6 +34,11 @@ Status and plan are read-only and do not create a missing environment. Migrate t
 service and writer locks, writes a durable marker, applies the official SQLite migrator, verifies
 history/schema/FK/integrity, writes `db_contract`, then clears the marker.
 
+The marker binds an interrupted migration to the environment, database path, schema contract, and
+migration-bundle digest. Rerunning `db:migrate` continues only that exact bundle. A known older
+prefix is verified before pending migrations run. If SQL already reached the current schema,
+recovery finalizes and re-verifies `db_contract` before clearing the marker.
+
 ## Verification
 
 The real `0000` to `0001` fixture preserves an existing chain event while adding source-record
@@ -46,6 +51,10 @@ publishing current projection metadata.
 - `RESOURCE_BUSY`: stop API/Indexer or another maintenance command; do not kill an unknown process.
 - `DB_HISTORY_DIVERGED`: preserve the DB and marker. Do not rewrite the ledger.
 - `DB_SCHEMA_DRIFT`: compare with a fresh migrated temporary DB and add a forward migration.
-- `MAINTENANCE_INCOMPLETE`: use `ops:recover`; do not delete the marker.
+- `MAINTENANCE_INCOMPLETE`: inspect with `pnpm ops:recover --env <id>`, then run it with
+  `--complete`. `RERUN_MATCHING_MIGRATION` means rerun `pnpm db:migrate --env <id>` with the same
+  checked source and migration bundle. Current-schema recovery finalizes metadata. A changed bundle,
+  unknown history, or schema drift remains blocked. A legacy marker without bundle identity reports
+  `USE_ORIGINAL_RELEASE_MIGRATION_TOOL` for a behind schema. Do not delete the marker.
 
 The inspected `data/motorcove.sqlite` was not modified and is not automatically adopted.

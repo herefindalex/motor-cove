@@ -36,6 +36,7 @@ export interface MaintenanceMarker {
   readonly environmentId: string;
   readonly targetDatabase: string;
   readonly expectedSchemaContract: string;
+  readonly expectedMigrationBundleDigest?: string;
   readonly expectedDeploymentId?: string;
   readonly reindexFromBlock?: string;
   readonly targetBlock?: string;

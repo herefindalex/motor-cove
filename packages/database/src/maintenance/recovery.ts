@@ -5,7 +5,15 @@ import { acquireMaintenanceLocks } from '../connection/flock.js';
 import { verifyOwnedEnvironment } from '../connection/environment.js';
 import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
 import { clearMaintenanceMarker } from './marker.js';
-import { verifyDatabase } from './migrations.js';
+import {
+  assertKnownHistory,
+  finalizeDatabaseContract,
+  loadSchemaContract,
+  migrationBundle,
+  readNativeHistory,
+  verifyDatabase,
+  verifyKnownSourceDatabase,
+} from './migrations.js';
 
 const sqliteSidecars = ['-wal', '-shm'] as const;
 
@@ -53,6 +61,40 @@ export async function recoverEnvironment(paths: EnvironmentPaths, complete = fal
   }
   const locks = await acquireMaintenanceLocks(paths);
   try {
+    if (marker.operationType === 'MIGRATE') {
+      const contract = loadSchemaContract();
+      if (
+        marker.environmentId !== paths.environmentId ||
+        marker.targetDatabase !== paths.databasePath ||
+        marker.expectedSchemaContract !== contract.contractVersion ||
+        (marker.expectedMigrationBundleDigest !== undefined &&
+          marker.expectedMigrationBundleDigest !== contract.migrationBundleDigest)
+      )
+        throw new Error('RECOVERY_REQUIRED: migration identity mismatch');
+      if (!existsSync(paths.databasePath))
+        throw new Error('RECOVERY_REQUIRED: active database missing');
+      const database = new Database(paths.databasePath, { fileMustExist: true });
+      try {
+        assertKnownHistory(database);
+        const historyCount = readNativeHistory(database).length;
+        if (historyCount < migrationBundle().length) {
+          verifyKnownSourceDatabase(database);
+          return {
+            changed: false,
+            status: 'ACTION_REQUIRED',
+            marker,
+            action: marker.expectedMigrationBundleDigest
+              ? 'RERUN_MATCHING_MIGRATION'
+              : 'USE_ORIGINAL_RELEASE_MIGRATION_TOOL',
+          };
+        }
+        finalizeDatabaseContract(database);
+      } finally {
+        database.close();
+      }
+      clearMaintenanceMarker(paths.maintenancePath);
+      return { changed: true, status: 'RECOVERED', operationId: marker.operationId };
+    }
     if (!existsSync(paths.databasePath) && marker.operationType === 'RESTORE') {
       const stagingDirectory = resolve(paths.environmentDir, `.restore-${marker.operationId}`);
       const quarantineDirectory = resolve(

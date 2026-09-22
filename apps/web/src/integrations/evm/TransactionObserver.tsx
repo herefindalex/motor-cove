@@ -69,9 +69,14 @@ export function TransactionObserver({
       const recoverable = journal
         .load(deploymentId)
         .filter((entry) =>
-          ['AWAITING_WALLET', 'SUBMITTED', 'INCLUDED_SUCCESS', 'UNKNOWN', 'ORPHANED'].includes(
-            entry.status,
-          ),
+          [
+            'AWAITING_WALLET',
+            'SUBMITTED',
+            'INCLUDED_SUCCESS',
+            'INCLUDED_REVERTED',
+            'UNKNOWN',
+            'ORPHANED',
+          ].includes(entry.status),
         );
       for (const entry of recoverable) {
         if (stopped) return;

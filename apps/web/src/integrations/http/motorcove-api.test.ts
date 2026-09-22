@@ -13,7 +13,10 @@ const provenance = {
   logScopeHash: `0x${'4'.repeat(64)}`,
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 function respond(data: unknown): void {
   vi.stubGlobal(
@@ -111,5 +114,35 @@ describe('MotorCove API deployment provenance', () => {
       provenance: { deploymentId: deploymentB },
     });
     queryClient.clear();
+  });
+});
+
+describe('MotorCove API request deadline', () => {
+  it('aborts a response whose body stalls and permits the next request', async () => {
+    vi.useFakeTimers();
+    let firstSignal: AbortSignal | undefined;
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        firstSignal = init?.signal ?? undefined;
+        return {
+          ok: true,
+          status: 200,
+          text: () => new Promise<string>(() => undefined),
+        } as Response;
+      })
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [], provenance }), { status: 200 }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const first = motorCoveApi.sales(deploymentB);
+    const timedOut = expect(first).rejects.toThrow('API_REQUEST_TIMEOUT');
+    await vi.advanceTimersByTimeAsync(10_000);
+    await timedOut;
+    expect(firstSignal?.aborted).toBe(true);
+
+    await expect(motorCoveApi.sales(deploymentB)).resolves.toMatchObject({ data: [] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

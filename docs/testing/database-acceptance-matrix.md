@@ -62,3 +62,4 @@ covers the stated requirement. Partial source or narrower tests remain `not run 
 
 The current executed database records are in `docs/evidence/verification.json`. This matrix does not
 convert narrower tests into full-item passes.
+| DB-55 | Interrupted migration resumes or finalizes only under the recorded bundle identity | A failed known prefix remains action-required, a mismatched bundle is rejected, the matching migration continues, and current SQL finalizes `db_contract` before marker removal | executed/pass: `test:migrations` |

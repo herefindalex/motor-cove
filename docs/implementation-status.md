@@ -14,14 +14,14 @@ the verification JSON are the machine-readable sources; this page is a human sum
 ## Current executed gates
 
 - `pnpm verify`: generation, database contract, formatting, docs, architecture, type checking,
-  lint, 13 Foundry tests, 228 unit/component/database tests, 47 integration tests, and all
+  lint, 13 Foundry tests, 232 unit/component/database tests, 47 integration tests, and all
   7 workspace builds passed.
 - `pnpm test:e2e`: 6 local Playwright scenarios passed against Anvil, managed SQLite, API,
   Indexer, and Web. The marketplace lane includes non-durable hash preservation across client
   navigation and the explicit reload limit. Two scenarios cover real Chromium multi-tab journal
   coordination and writer handoff. A fresh context also observes a stopped Indexer as stale without
   relying on local transaction evidence.
-- `pnpm test:migrations`: 1 file and 11 tests passed, including preserved data through the
+- `pnpm test:migrations`: 1 file and 12 tests passed, including preserved data through the
   `0000` to `0001` migration.
 - `pnpm test:recovery`: 1 file and 14 tests passed, including sidecar integrity,
   deployment-bound restore refusal, and process-killed hot-WAL generation isolation.

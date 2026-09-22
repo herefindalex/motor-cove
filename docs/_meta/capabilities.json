@@ -68,7 +68,7 @@
     {
       "id": "CAP-06",
       "name": "Transaction lifecycle",
-      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, preserves funding-specific projection proof, and serializes same-profile browser writes. Persists per-operation revisions, rejects stale journal writes, and rechecks live context after the final awaited pre-wallet write.",
+      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, and serializes same-profile browser writes. Persists per-operation revisions, rejects stale journal writes, and rechecks live context after the final awaited pre-wallet write.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/capabilities/transactions",
@@ -77,12 +77,12 @@
       ],
       "scenarios": ["TX-001", "TX-002"],
       "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E"],
-      "limits": "Non-durable known-hash tracking survives client-side route changes only in the current tab; reload or tab close loses it. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
+      "limits": "Non-durable known-hash tracking survives client-side route changes only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
     },
     {
       "id": "CAP-07",
       "name": "Frontend state and API integration",
-      "behavior": "Keeps query cache, wallet state, form state, transaction journal, and projection provenance in separate owners. Deployment-keyed queries pass the expected deployment into the HTTP adapter and reject mismatched response provenance.",
+      "behavior": "Keeps query cache, wallet state, form state, transaction journal, and projection provenance in separate owners. Deployment-keyed queries pass the expected deployment into the HTTP adapter and reject mismatched response provenance. One abort deadline covers HTTP headers and body consumption so stalled verification releases its single-flight slot.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/app/composition.tsx",
@@ -134,7 +134,7 @@
     {
       "id": "CAP-11",
       "name": "Database lifecycle",
-      "behavior": "Uses native Drizzle history, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, deployment-bound backup, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership.",
+      "behavior": "Uses native Drizzle history, bundle-bound resumable migration markers, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, deployment-bound backup, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership.",
       "implementation": "partial",
       "code": [
         "packages/database",

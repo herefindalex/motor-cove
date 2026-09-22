@@ -174,6 +174,28 @@ export function verifyKnownSourceDatabase(
   };
 }
 
+export function finalizeDatabaseContract(db: Database.Database) {
+  const contract = loadSchemaContract();
+  const verification = verifyDatabase(db);
+  db.prepare(
+    `INSERT INTO db_contract(
+      id,contract_version,migration_bundle_digest,schema_fingerprint,verified_at
+    ) VALUES (1,?,?,?,?)
+    ON CONFLICT(id) DO UPDATE SET
+      contract_version=excluded.contract_version,
+      migration_bundle_digest=excluded.migration_bundle_digest,
+      schema_fingerprint=excluded.schema_fingerprint,
+      verified_at=excluded.verified_at`,
+  ).run(
+    contract.contractVersion,
+    contract.migrationBundleDigest,
+    contract.schemaFingerprint,
+    new Date().toISOString(),
+  );
+  verifyKnownSourceDatabase(db);
+  return verification;
+}
+
 export function inspectEnvironment(paths: EnvironmentPaths) {
   if (!existsSync(paths.ownerPath))
     return { exists: false, environmentId: paths.environmentId, code: 'DB_NOT_INITIALIZED' };

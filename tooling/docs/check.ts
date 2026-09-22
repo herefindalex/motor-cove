@@ -334,7 +334,7 @@ if (fixtureIndex >= 0) {
     resolve(workspace, 'docs/testing/database-acceptance-matrix.md'),
     'utf8',
   );
-  for (let i = 1; i <= 54; i += 1) {
+  for (let i = 1; i <= 55; i += 1) {
     const id = `DB-${String(i).padStart(2, '0')}`;
     if (!dbMatrix.includes(`| ${id} |`)) fail(`database matrix missing ${id}`);
   }
