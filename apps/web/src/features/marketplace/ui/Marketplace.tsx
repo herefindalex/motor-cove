@@ -1,5 +1,6 @@
 import type { SaleResponse } from '@motorcove/api-contracts';
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { formatWeiAsEth } from '../../trading/index.js';
 
 interface Vehicle {
@@ -62,9 +63,9 @@ export function Marketplace({
                 <div>
                   <span className={`badge ${sale.status.toLowerCase()}`}>{sale.status}</span>
                   <h3>
-                    <a href={`/sales/${sale.saleId}`}>
+                    <Link to={`/sales/${sale.saleId}`}>
                       {vehicle?.name ?? `Vehicle #${sale.tokenId}`}
-                    </a>
+                    </Link>
                   </h3>
                   <p>{vehicle?.description}</p>
                   <dl>

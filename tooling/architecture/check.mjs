@@ -66,7 +66,9 @@ function resolveImport(importer, specifier) {
       );
   }
   if (specifier.startsWith('@fixture/'))
-    return resolveCandidate(path.join(scanRoot, specifier.slice('@fixture/'.length)));
+    return resolveCandidate(
+      path.join(scanRoot, specifier.slice('@fixture/'.length).replace(/\.js$/, '')),
+    );
   return undefined;
 }
 
@@ -121,7 +123,9 @@ for (const importer of files) {
       violations.push(`${importerRel}: packages cannot import applications (${specifier})`);
     if (
       importerRel.startsWith('apps/web/') &&
-      (specifier === '@motorcove/database' || specifier.startsWith('@motorcove/database/'))
+      (specifier === '@motorcove/database' ||
+        specifier.startsWith('@motorcove/database/') ||
+        targetRel.startsWith('packages/database/'))
     )
       violations.push(`${importerRel}: web cannot import server-only database packages`);
     if (

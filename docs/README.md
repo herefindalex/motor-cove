@@ -74,6 +74,9 @@ prerequisites are recorded in
 
 Historical reconciliation scope, exact value boundaries, and worker observation freshness are
 recorded in [API values and observation freshness](adr/0010-api-values-and-observation-freshness.md).
+Live deployment rechecks, volatile navigation, maintenance preconditions, lock cleanup, raw event
+validity, resolved dependency boundaries, and independent liability evidence are recorded in
+[runtime identity and diagnostic evidence](adr/0011-runtime-identity-and-diagnostic-evidence.md).
 
 ## Evaluate current evidence
 

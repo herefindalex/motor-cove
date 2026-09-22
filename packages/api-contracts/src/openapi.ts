@@ -125,7 +125,7 @@ export function createOpenApiDocument(): Record<string, unknown> {
       '/v1/system/events': {
         get: {
           responses: {
-            '200': response('Recent canonical events', 'EventsEnvelope'),
+            '200': response('Recent source events with branch validity', 'EventsEnvelope'),
             ...readErrors,
           },
         },

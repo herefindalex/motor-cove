@@ -30,8 +30,19 @@ export function useEscrowGateway(
   const liveContext = useRef({
     account: wallet.data?.account.address,
     chainId: wallet.data?.chain.id,
+    deploymentId: config?.deploymentId,
+    protocolVersion: config?.protocolVersion,
+    nftAddress: config?.nftAddress,
+    escrowAddress: config?.escrowAddress,
   });
-  liveContext.current = { account: wallet.data?.account.address, chainId: wallet.data?.chain.id };
+  liveContext.current = {
+    account: wallet.data?.account.address,
+    chainId: wallet.data?.chain.id,
+    deploymentId: config?.deploymentId,
+    protocolVersion: config?.protocolVersion,
+    nftAddress: config?.nftAddress,
+    escrowAddress: config?.escrowAddress,
+  };
 
   return useMemo(() => {
     if (!config || !wallet.data?.account || !publicClient) return null;
@@ -49,7 +60,11 @@ export function useEscrowGateway(
           protocolVersion: config.protocolVersion,
           contextStillCurrent: () =>
             liveContext.current.account?.toLowerCase() === account.toLowerCase() &&
-            liveContext.current.chainId === chainId,
+            liveContext.current.chainId === chainId &&
+            liveContext.current.deploymentId?.toLowerCase() === config.deploymentId.toLowerCase() &&
+            liveContext.current.protocolVersion === config.protocolVersion &&
+            liveContext.current.nftAddress?.toLowerCase() === nft.toLowerCase() &&
+            liveContext.current.escrowAddress?.toLowerCase() === escrow.toLowerCase(),
         },
         {
           ...action,

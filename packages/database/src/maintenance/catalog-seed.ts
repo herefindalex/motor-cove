@@ -3,6 +3,7 @@ import { acquireMaintenanceLocks } from '../connection/flock.js';
 import { verifyOwnedEnvironment } from '../connection/environment.js';
 import { openMaintenanceDatabase } from '../connection/sqlite.js';
 import type { EnvironmentPaths } from '../types/index.js';
+import { assertMaintenanceComplete } from './marker.js';
 import { verifyDatabase } from './migrations.js';
 
 export interface CatalogVehicleSeed {
@@ -37,6 +38,7 @@ export async function seedCatalog(
   verifyOwnedEnvironment(paths);
   const locks = options.locksAlreadyHeld ? undefined : await acquireMaintenanceLocks(paths);
   try {
+    assertMaintenanceComplete(paths.maintenancePath);
     const db = openMaintenanceDatabase(paths.databasePath);
     try {
       verifyDatabase(db);

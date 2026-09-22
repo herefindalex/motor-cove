@@ -30,12 +30,18 @@ mint or list again.
 `dev:bootstrap` deploys local contracts through the environment-owned `seed-journal.json`, registers
 deployment evidence, seeds catalog bindings, catches up through the captured block/hash, and writes
 the receipt. Each deployment, mint, approval, and listing step binds its parameters to an intent
-A nonblocking ownership lock covers this complete callback, so two bootstrap processes for
-the same environment cannot both enter chain submission.
-digest. A rerun with a known hash waits for that receipt; a verified step rechecks the same receipt
+digest. A nonblocking ownership lock covers this complete callback, so two bootstrap processes for
+the same environment cannot both enter chain submission. A rerun with a known hash waits for that
+receipt; a verified step rechecks the same receipt
 and never submits again. A stranded `PREPARED` step or a submit call whose outcome cannot be proven
 becomes `UNKNOWN` and stops for operator review. The command never guesses whether an ambiguous
 transaction should be sent again.
+
+Catalog seeding acquires the existing exclusive maintenance gate and then checks the durable marker
+before opening the database or changing rows. A `PENDING` or `FAILED` marker from an incomplete
+operation returns `MAINTENANCE_INCOMPLETE`; catalog rows, deployment bindings, and the marker remain
+unchanged. Do not remove or ignore the marker to make seeding continue. Use the identity-matched
+recovery command for the recorded operation.
 
 Once `deployment.json` exists, a rerun verifies runtime code hashes and the deployment ID getter,
 then performs database registration, catalog idempotence, and catch-up only. It does not mint, list,
@@ -48,7 +54,9 @@ environment and diagnose the RPC and transaction evidence.
 of a changed seed version without overwriting the applied dataset. Journal unit tests cover
 successful transitions, known-hash resume, verified receipt revalidation, identity/intent mismatch,
 and conservative `UNKNOWN` handling. The real-stack test covers fresh event-derived bootstrap and a
-A two-process regression proves that only one bootstrap callback enters while the owner is active.
-rerun after user settlement, refund, withdrawal, and NFT reclaim. A real process-kill injection in
+rerun after user settlement, refund, withdrawal, and NFT reclaim. A two-process regression proves
+that only one bootstrap callback enters while the owner is active. Maintenance tests prove catalog
+seeding is read-only when an incomplete marker exists. Lock lifecycle tests cover normal exit,
+signal exit before release, repeated release, and composite cleanup. A real process-kill injection in
 the broadcast-to-hash persistence window remains unverified. See the
 [database matrix](../testing/database-acceptance-matrix.md).

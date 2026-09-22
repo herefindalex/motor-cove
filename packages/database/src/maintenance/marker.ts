@@ -19,6 +19,10 @@ function syncDirectory(path: string): void {
   }
 }
 
+export function assertMaintenanceComplete(path: string): void {
+  if (existsSync(path)) throw new Error('MAINTENANCE_INCOMPLETE');
+}
+
 export function writeMaintenanceMarker(path: string, marker: MaintenanceMarker): void {
   const temporary = `${path}.${marker.operationId}.tmp`;
   writeFileSync(temporary, `${JSON.stringify(marker, null, 2)}\n`, { flag: 'wx', flush: true });

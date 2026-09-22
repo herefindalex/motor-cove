@@ -26,7 +26,7 @@ identity, target, exact calldata, value, and sale before any wallet call. The su
 
 ```text
 PREPARING saved
-→ simulation and context recheck
+→ simulation and full live-context recheck
 → AWAITING_WALLET saved
 → one wallet call
 → returned hash saved immediately
@@ -38,6 +38,17 @@ hash returns, reload changes the observation to `UNKNOWN`; it never submits auto
 hash returns but its save fails, the in-memory result still exposes a copyable hash and remains an
 unknown recovery case. Journal input is runtime validated. Corrupt JSON, partial entries, and
 unknown schema versions are reported as load issues instead of becoming trusted operations.
+
+The last check before the wallet compares the active account, chain, deployment ID, protocol
+version, NFT address, and escrow address with the immutable intent. If the application receives a
+new valid deployment while simulation is pending, the old action stops before the wallet request.
+Once a wallet request has started, a later context change does not prove that submission did not
+occur; hash preservation and `UNKNOWN` recovery remain authoritative.
+
+Normal internal product links use client-side routing, so the application-owned journal instance
+and any memory-only returned hash survive a route change within the tab. A real document reload,
+tab close, browser crash, or device change still discards a non-durable hash. The warning shown for
+that state is a recovery boundary, not a promise of reload durability.
 
 ## Read-only recovery evidence
 

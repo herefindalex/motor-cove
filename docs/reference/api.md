@@ -39,6 +39,22 @@ historical report. `provenance.logScopeHash` belongs to the current snapshot use
 report. They may differ after an allowed scope transition and must not be substituted for each
 other.
 
+## Recent event evidence
+
+`GET /v1/system/events` is a raw audit feed. It intentionally retains source events from displaced
+blocks as well as current canonical events. Each row includes:
+
+| Field                | Meaning                                                                      |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `canonical`          | Whether the row's source block is on the currently selected canonical branch |
+| `scanComplete`       | Whether that block's configured log scope was completely scanned             |
+| `sourceLogScopeHash` | The log-scope identity recorded with that source block                       |
+
+Consumers must evaluate these fields for each event. The response envelope describes the current
+projection snapshot and cannot label an older row as canonical or displaced. A reindex can update a
+retained event's canonical status when its block becomes canonical again; the source event itself is
+not deleted or rewritten into a business projection result.
+
 ## Projection status and observation freshness
 
 `projectionStatus` is the last state persisted by the Indexer. `observationFreshness` describes

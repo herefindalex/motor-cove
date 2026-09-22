@@ -412,17 +412,32 @@ export async function createReadOnlyReader(
         snapshot(() => {
           const rows = db
             .prepare(
-              `SELECT CAST(block_number AS TEXT) AS blockNumber,block_hash AS blockHash,
-                      tx_hash AS transactionHash,log_index AS logIndex,decoded_json AS decoded
-               FROM chain_events WHERE deployment_id=?
-               ORDER BY block_number DESC,transaction_index DESC,log_index DESC LIMIT ?`,
+              `SELECT CAST(e.block_number AS TEXT) AS blockNumber,e.block_hash AS blockHash,
+                      e.tx_hash AS transactionHash,e.log_index AS logIndex,e.decoded_json AS decoded,
+                      b.is_canonical AS canonical,b.scan_complete AS scanComplete,
+                      b.log_scope_hash AS sourceLogScopeHash
+               FROM chain_events e
+               JOIN indexed_blocks b
+                 ON b.deployment_id=e.deployment_id AND b.block_hash=e.block_hash
+               WHERE e.deployment_id=?
+               ORDER BY e.block_number DESC,e.transaction_index DESC,e.log_index DESC LIMIT ?`,
             )
             .all(deploymentId, Math.max(1, Math.min(limit, 100))) as Array<
-            Omit<EventRecord, 'eventName' | 'decoded'> & { decoded: string }
+            Omit<EventRecord, 'eventName' | 'decoded' | 'canonical' | 'scanComplete'> & {
+              decoded: string;
+              canonical: number;
+              scanComplete: number;
+            }
           >;
           return rows.map((row) => {
             const decoded = JSON.parse(row.decoded) as { kind?: string };
-            return { ...row, eventName: decoded.kind ?? 'Unknown', decoded };
+            return {
+              ...row,
+              canonical: row.canonical === 1,
+              scanComplete: row.scanComplete === 1,
+              eventName: decoded.kind ?? 'Unknown',
+              decoded,
+            };
           });
         }),
       latestReconciliation: () =>

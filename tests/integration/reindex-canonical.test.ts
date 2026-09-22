@@ -123,6 +123,16 @@ describe('same-history reindex', () => {
 
     const reader = await createReadOnlyReader(paths, deploymentId);
     expect(reader.getSale('1').data).toMatchObject({ status: 'FUNDED', buyer });
+    expect(reader.recentEvents(100).data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          eventName: 'SaleFunded',
+          canonical: true,
+          scanComplete: true,
+          sourceLogScopeHash: scopeHash,
+        }),
+      ]),
+    );
     await reader.close();
   });
 });

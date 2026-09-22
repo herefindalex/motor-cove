@@ -88,6 +88,9 @@ export const systemEventSchema = z.object({
   blockHash: bytes32,
   transactionHash: bytes32,
   logIndex: z.number().int().nonnegative(),
+  canonical: z.boolean(),
+  scanComplete: z.boolean(),
+  sourceLogScopeHash: bytes32,
   eventName: z.string(),
   decoded: z.unknown(),
 });

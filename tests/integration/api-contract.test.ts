@@ -111,7 +111,20 @@ const reader: ReadModelReader = {
       workerHeartbeatAt: '2026-09-21T00:00:00.000Z',
       recoveryReason: null,
     }),
-  recentEvents: () => snapshot([]),
+  recentEvents: () =>
+    snapshot([
+      {
+        blockNumber: '7',
+        blockHash,
+        transactionHash: `0x${'8'.repeat(64)}`,
+        logIndex: 0,
+        canonical: false,
+        scanComplete: true,
+        sourceLogScopeHash: provenance.logScopeHash,
+        eventName: 'SaleFunded',
+        decoded: { kind: 'SaleFunded' },
+      },
+    ]),
   latestReconciliation: () => snapshot(null),
   close: async () => {},
 };
@@ -142,6 +155,20 @@ describe('API wire contracts', () => {
     expect(() => {
       void response.json();
     }).not.toThrow();
+  });
+
+  it('returns event-level canonical and source-scan evidence', async () => {
+    const response = await app.inject({ method: 'GET', url: '/v1/system/events' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      data: [
+        {
+          canonical: false,
+          scanComplete: true,
+          sourceLogScopeHash: provenance.logScopeHash,
+        },
+      ],
+    });
   });
 
   it('returns stable errors for invalid and missing sale IDs', async () => {

@@ -169,8 +169,54 @@ test('lists, expires, refunds, and reclaims through distinct real transactions',
       window as unknown as { __motorCoveTestWallet: { select(index: number): Promise<void> } }
     ).__motorCoveTestWallet.select(2),
   );
+  await page.evaluate(() => {
+    const prototype = Object.getPrototypeOf(window.localStorage) as Storage;
+    const original = prototype.setItem;
+    let journalWrites = 0;
+    Object.defineProperty(prototype, 'setItem', {
+      configurable: true,
+      value(this: Storage, key: string, value: string) {
+        if (key.startsWith('motorcove:journal:v1:')) {
+          journalWrites += 1;
+          if (journalWrites >= 3) throw new Error('CONTROLLED_JOURNAL_WRITE_FAILURE');
+        }
+        return original.call(this, key, value);
+      },
+    });
+  });
   await card.getByRole('button', { name: 'Fund exactly' }).click();
+  const nonDurableNotice = page.getByRole('alert');
+  await expect(nonDurableNotice).toContainText('journal could not persist it');
+  await expect(nonDurableNotice).toContainText('reloading can lose recovery context');
+  const submittedHash = await nonDurableNotice.locator('code').textContent();
+  if (!submittedHash) throw new Error('Missing non-durable transaction hash');
+  const submissionsBeforeNavigation = await page.evaluate(() =>
+    (
+      window as unknown as {
+        __motorCoveTestWallet: { submissionCount(): number };
+      }
+    ).__motorCoveTestWallet.submissionCount(),
+  );
+  await card.getByRole('link', { name: 'Harbor RS' }).click();
+  await expect(page).toHaveURL(/\/sales\/\d+$/);
+  await expect(page.getByText(submittedHash, { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      (
+        window as unknown as {
+          __motorCoveTestWallet: { submissionCount(): number };
+        }
+      ).__motorCoveTestWallet.submissionCount(),
+    ),
+  ).toBe(submissionsBeforeNavigation);
+
+  await page.reload();
+  await expect(page.getByText(submittedHash, { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole('listitem').filter({ hasText: 'FUND SALE' }).getByText('AWAITING_WALLET'),
+  ).toBeVisible();
   await expect(card.getByText('FUNDED')).toBeVisible();
+  await page.getByRole('button', { name: 'Connect wallet' }).click();
   await request.post('http://127.0.0.1:19545', {
     data: { jsonrpc: '2.0', id: 1, method: 'evm_increaseTime', params: [301] },
   });

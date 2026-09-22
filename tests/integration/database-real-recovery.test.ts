@@ -156,21 +156,13 @@ describe('real database recovery against a local chain', () => {
 
     reader = await createReadOnlyReader(paths, manifest.deploymentId);
     expect(reader.getSale('1').data?.status).toBe('LISTED');
+    const orphanedEvent = reader
+      .recentEvents(100)
+      .data.find((event) => event.transactionHash === receipt.transactionHash.toLowerCase());
+    expect(orphanedEvent?.canonical).toBe(false);
+    expect(orphanedEvent?.scanComplete).toBe(true);
+    expect(orphanedEvent?.sourceLogScopeHash).toBe(reader.systemStatus().provenance.logScopeHash);
     await reader.close();
-    const Database = (await import('better-sqlite3')).default;
-    const db = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
-    expect(
-      db
-        .prepare(
-          `SELECT b.is_canonical AS canonical
-           FROM chain_events e
-           JOIN indexed_blocks b
-             ON b.deployment_id=e.deployment_id AND b.block_hash=e.block_hash
-           WHERE e.deployment_id=? AND e.tx_hash=?`,
-        )
-        .get(manifest.deploymentId, receipt.transactionHash.toLowerCase()),
-    ).toEqual({ canonical: 0 });
-    db.close();
   }, 60_000);
 
   it('DB-49 catches up from a verified backup restored behind the live chain head', async () => {

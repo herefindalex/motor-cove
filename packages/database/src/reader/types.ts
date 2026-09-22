@@ -62,6 +62,9 @@ export interface EventRecord {
   readonly blockHash: string;
   readonly transactionHash: string;
   readonly logIndex: number;
+  readonly canonical: boolean;
+  readonly scanComplete: boolean;
+  readonly sourceLogScopeHash: string;
   readonly eventName: string;
   readonly decoded: unknown;
 }

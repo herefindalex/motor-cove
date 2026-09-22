@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SaleResponse } from '@motorcove/api-contracts';
 import { Marketplace, type MarketActions } from './Marketplace.js';
@@ -33,14 +34,16 @@ describe('Marketplace exact price presentation', () => {
     ['123456789012345678901234567890', '123456789012.34567890123456789 ETH'],
   ])('shows %s wei as %s', (priceWei, expected) => {
     render(
-      <Marketplace
-        sales={[sale(priceWei)]}
-        vehicles={[]}
-        account={buyer}
-        actions={undefined}
-        provenance={null}
-        currentTimestamp={undefined}
-      />,
+      <MemoryRouter>
+        <Marketplace
+          sales={[sale(priceWei)]}
+          vehicles={[]}
+          account={buyer}
+          actions={undefined}
+          provenance={null}
+          currentTimestamp={undefined}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByText(expected)).toBeTruthy();
   });
@@ -57,14 +60,16 @@ describe('Marketplace exact price presentation', () => {
       reclaim: vi.fn(),
     } satisfies MarketActions;
     render(
-      <Marketplace
-        sales={[selected]}
-        vehicles={[]}
-        account={buyer}
-        actions={actions}
-        provenance={null}
-        currentTimestamp={undefined}
-      />,
+      <MemoryRouter>
+        <Marketplace
+          sales={[selected]}
+          vehicles={[]}
+          account={buyer}
+          actions={actions}
+          provenance={null}
+          currentTimestamp={undefined}
+        />
+      </MemoryRouter>,
     );
     expect(screen.getByText('0.0005 ETH')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Fund exactly' }));

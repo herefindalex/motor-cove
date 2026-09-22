@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { EnvironmentPaths } from '../types/index.js';
@@ -7,9 +7,14 @@ export interface AdvisoryLock {
   release(): Promise<void>;
 }
 
+export interface AdvisoryLockHooks {
+  readonly onSpawn?: (child: ChildProcess) => void;
+}
+
 export async function acquireAdvisoryLock(
   path: string,
   mode: 'shared' | 'exclusive',
+  hooks: AdvisoryLockHooks = {},
 ): Promise<AdvisoryLock> {
   const child = spawn(
     'flock',
@@ -23,6 +28,11 @@ export async function acquireAdvisoryLock(
     ],
     { stdio: ['pipe', 'pipe', 'pipe'] },
   );
+  hooks.onSpawn?.(child);
+  const completion = new Promise<void>((resolveCompletion) => {
+    child.once('exit', () => resolveCompletion());
+    child.once('error', () => resolveCompletion());
+  });
   const outcome = await new Promise<'acquired' | 'busy'>((resolveOutcome, reject) => {
     let output = '';
     child.stdout.on('data', (chunk: Buffer) => {
@@ -36,16 +46,14 @@ export async function acquireAdvisoryLock(
     child.stdin.destroy();
     throw new Error('RESOURCE_BUSY');
   }
-  let released = false;
+  let releasePromise: Promise<void> | undefined;
   return {
-    async release() {
-      if (released) return;
-      released = true;
-      child.stdin.end();
-      await new Promise<void>((resolveExit) => {
-        if (child.exitCode !== null) resolveExit();
-        else child.once('exit', () => resolveExit());
-      });
+    release() {
+      releasePromise ??= (async () => {
+        child.stdin.end();
+        await completion;
+      })();
+      return releasePromise;
     },
   };
 }

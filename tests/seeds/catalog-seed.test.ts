@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { seedCatalog, type CatalogSeedSet } from '@motorcove/database/maintenance';
 import { databaseFixture, hashes } from '../helpers/database.js';
@@ -33,6 +33,39 @@ describe('catalog seed semantics', () => {
       (db.prepare('SELECT count(*) count FROM catalog_vehicles').get() as { count: number }).count,
     ).toBe(1);
     db.close();
+  });
+
+  it('rejects catalog writes while an incomplete maintenance marker exists', async () => {
+    const { root, paths } = await databaseFixture('seed-maintenance-incomplete');
+    roots.push(root);
+    const marker = `${JSON.stringify(
+      {
+        operationId: 'failed-reindex',
+        operationType: 'REINDEX_PROJECTION',
+        stage: 'FAILED',
+        environmentId: 'seed-maintenance-incomplete',
+        targetDatabase: paths.databasePath,
+        expectedSchemaContract: 'test-contract',
+        expectedDeploymentId: hashes.deployment,
+        startedAt: '2026-09-22T00:00:00.000Z',
+        lastError: 'controlled failure',
+      },
+      null,
+      2,
+    )}\n`;
+    writeFileSync(paths.maintenancePath, marker);
+
+    await expect(seedCatalog(paths, seed())).rejects.toThrow('MAINTENANCE_INCOMPLETE');
+
+    const db = new Database(paths.databasePath, { readonly: true });
+    expect(db.prepare('SELECT count(*) AS count FROM catalog_vehicles').get()).toEqual({
+      count: 0,
+    });
+    expect(db.prepare('SELECT count(*) AS count FROM catalog_asset_bindings').get()).toEqual({
+      count: 0,
+    });
+    db.close();
+    expect(readFileSync(paths.maintenancePath, 'utf8')).toBe(marker);
   });
   it('DB-24 preserves manual changes and reports SEED_CONFLICT atomically', async () => {
     const { root, paths } = await databaseFixture();

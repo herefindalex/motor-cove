@@ -275,7 +275,7 @@
       "get": {
         "responses": {
           "200": {
-            "description": "Recent canonical events",
+            "description": "Recent source events with branch validity",
             "content": {
               "application/json": {
                 "schema": {
@@ -1692,6 +1692,16 @@
                   "minimum": 0,
                   "maximum": 9007199254740991
                 },
+                "canonical": {
+                  "type": "boolean"
+                },
+                "scanComplete": {
+                  "type": "boolean"
+                },
+                "sourceLogScopeHash": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-fA-F]{64}$"
+                },
                 "eventName": {
                   "type": "string"
                 },
@@ -1702,6 +1712,9 @@
                 "blockHash",
                 "transactionHash",
                 "logIndex",
+                "canonical",
+                "scanComplete",
+                "sourceLogScopeHash",
                 "eventName",
                 "decoded"
               ],
