@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "fc054c8b6964704c521511a9def4d46adc1fcdfb",
+    "revision": "50184aced18b22c64ce4523ddfb416d1fad737d3",
     "dirty": true,
-    "capturedAt": "2026-09-22T06:56:28Z",
-    "sourceFingerprint": "sha256:64c27cad59f1f17c443a6a5070901ed68434f1c4c35a8a55700b9f6851a2c64c",
+    "capturedAt": "2026-09-22T07:05:09Z",
+    "sourceFingerprint": "sha256:39771112468f4f6fcca6c550ab7a390bad6a856d8560a595abd93ae646782cbe",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Captured R10 pre-commit source from fc054c8b6964704c521511a9def4d46adc1fcdfb plus the dirty-worktree implementation, tests, documentation, and evidence update. The required fingerprint binds this exact workspace excluding verification.json. Local deterministic evidence does not establish hardware power loss, public-network, manual MetaMask, or cross-device behavior.",
+    "limits": "Captured committed R10 source 50184aced18b22c64ce4523ddfb416d1fad737d3 plus the generated evidence update. The required dirty-worktree fingerprint binds the evidence follow-up itself. Local and GitHub-hosted deterministic evidence does not establish hardware power loss, public-network, manual MetaMask, or cross-device behavior.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, and NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -297,12 +297,13 @@
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (R10 pending)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35697345520)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
-      "status": "not run",
-      "result": "R10 remote CI had not run before the source commit.",
-      "executedAt": "2026-09-22T06:46:28Z",
-      "limitations": "A successful prior-revision CI run is not reused as R10 evidence. Update this record only after the R10 source commit run completes."
+      "status": "executed/pass",
+      "result": "GitHub Actions run 35697345520 completed successfully for R10 source 50184aced18b22c64ce4523ddfb416d1fad737d3: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
+      "executedAt": "2026-09-22T07:05:09Z",
+      "limitations": "GitHub-hosted deterministic local stack only; branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35697345520"
     }
   ]
 }
