@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { JournalEntry, TransactionJournal } from '../../capabilities/transactions/index.js';
 import { TransactionObserver } from './TransactionObserver.js';
@@ -67,5 +67,31 @@ describe('TransactionObserver automatic receipt observation', () => {
 
     await Promise.resolve();
     expect(resumeJournalEntry).not.toHaveBeenCalled();
+  });
+
+  it('accepts a read-only alternative hash when the saved hash is unavailable', async () => {
+    render(
+      <TransactionObserver
+        deploymentId={deploymentId}
+        journal={journalWith([
+          {
+            ...entry,
+            status: 'REPLACED_OR_CANCELLED',
+            verificationAvailability: 'UNAVAILABLE',
+          },
+        ])}
+      />,
+    );
+
+    const alternativeHash = `0x${'6'.repeat(64)}`;
+    fireEvent.change(screen.getByLabelText('Alternative transaction hash from wallet activity'), {
+      target: { value: alternativeHash },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Recheck evidence' }));
+
+    await waitFor(() => expect(resumeJournalEntry).toHaveBeenCalled());
+    const lastCall = resumeJournalEntry.mock.calls.at(-1);
+    expect(lastCall?.[0]).toMatchObject({ originalTxHash: entry.originalTxHash });
+    expect(lastCall?.[2]).toBe(alternativeHash);
   });
 });

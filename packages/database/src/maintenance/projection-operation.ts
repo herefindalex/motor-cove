@@ -23,6 +23,9 @@ export interface ProjectionMaintenanceOptions<T> {
   readonly operationType: 'REBUILD_PROJECTION' | 'REINDEX_PROJECTION';
   readonly expectedDeploymentId: string;
   readonly recovery?: ProjectionRecovery;
+  readonly sourceIncompleteRebuildTransition?: {
+    readonly requiredReindexFromBlock: string;
+  };
   readonly resolveRecovery?: (
     existing: MaintenanceMarker | undefined,
   ) => ProjectionRecovery | Promise<ProjectionRecovery>;
@@ -40,12 +43,39 @@ function existingMarker(path: string): MaintenanceMarker | undefined {
 function assertMarkerOwner(
   existing: MaintenanceMarker,
   options: ProjectionMaintenanceOptions<unknown>,
+  paths: EnvironmentPaths,
 ): void {
   if (
     existing.operationType !== options.operationType ||
-    existing.expectedDeploymentId !== options.expectedDeploymentId
+    existing.expectedDeploymentId !== options.expectedDeploymentId ||
+    existing.environmentId !== paths.environmentId ||
+    existing.targetDatabase !== paths.databasePath ||
+    existing.expectedSchemaContract !== loadSchemaContract().contractVersion
   )
     throw new Error('MAINTENANCE_INCOMPLETE');
+}
+
+function isSourceIncompleteRebuildTransition(
+  existing: MaintenanceMarker,
+  options: ProjectionMaintenanceOptions<unknown>,
+  paths: EnvironmentPaths,
+): boolean {
+  if (
+    !options.sourceIncompleteRebuildTransition ||
+    options.operationType !== 'REINDEX_PROJECTION' ||
+    existing.operationType !== 'REBUILD_PROJECTION' ||
+    existing.stage !== 'FAILED' ||
+    !existing.lastError?.startsWith('REBUILD_SOURCE_INCOMPLETE')
+  )
+    return false;
+  if (
+    existing.expectedDeploymentId !== options.expectedDeploymentId ||
+    existing.environmentId !== paths.environmentId ||
+    existing.targetDatabase !== paths.databasePath ||
+    existing.expectedSchemaContract !== loadSchemaContract().contractVersion
+  )
+    throw new Error('MAINTENANCE_INCOMPLETE');
+  return true;
 }
 
 function assertMarkerRecovery(existing: MaintenanceMarker, recovery: ProjectionRecovery): void {
@@ -66,13 +96,42 @@ export async function runProjectionMaintenance<T>(
   let currentMarker: MaintenanceMarker | undefined;
   try {
     const existing = existingMarker(paths.maintenancePath);
-    if (existing) assertMarkerOwner(existing, options);
+    const transition = existing
+      ? isSourceIncompleteRebuildTransition(existing, options, paths)
+      : false;
+    if (existing && !transition) assertMarkerOwner(existing, options, paths);
     const recovery = options.resolveRecovery
-      ? await options.resolveRecovery(existing)
+      ? await options.resolveRecovery(transition ? undefined : existing)
       : (options.recovery ?? {});
-    if (existing) assertMarkerRecovery(existing, recovery);
-    const operationId = existing?.operationId ?? randomUUID();
-    currentMarker = {
+    if (
+      transition &&
+      (recovery.reindexFromBlock !==
+        options.sourceIncompleteRebuildTransition?.requiredReindexFromBlock ||
+        recovery.targetBlock === undefined ||
+        recovery.targetHash === undefined)
+    )
+      throw new Error('MAINTENANCE_INCOMPLETE');
+    if (existing && !transition) assertMarkerRecovery(existing, recovery);
+    const operationId = transition ? randomUUID() : (existing?.operationId ?? randomUUID());
+    const transitionEvidence: Partial<MaintenanceMarker> =
+      transition && existing
+        ? {
+            transitionedFromOperationId: existing.operationId,
+            transitionedFromOperationType: existing.operationType,
+            ...(existing.lastError ? { transitionedFromLastError: existing.lastError } : {}),
+          }
+        : {
+            ...(existing?.transitionedFromOperationId
+              ? { transitionedFromOperationId: existing.transitionedFromOperationId }
+              : {}),
+            ...(existing?.transitionedFromOperationType
+              ? { transitionedFromOperationType: existing.transitionedFromOperationType }
+              : {}),
+            ...(existing?.transitionedFromLastError
+              ? { transitionedFromLastError: existing.transitionedFromLastError }
+              : {}),
+          };
+    const preparedMarker: MaintenanceMarker = {
       operationId,
       operationType: options.operationType,
       stage: 'PREPARED',
@@ -82,13 +141,18 @@ export async function runProjectionMaintenance<T>(
       expectedDeploymentId: options.expectedDeploymentId,
       ...recovery,
       ...(existing?.backupId ? { backupId: existing.backupId } : {}),
-      startedAt: existing?.startedAt ?? new Date().toISOString(),
+      ...transitionEvidence,
+      startedAt: transition
+        ? new Date().toISOString()
+        : (existing?.startedAt ?? new Date().toISOString()),
     };
-    if (!existing) writeMaintenanceMarker(paths.maintenancePath, currentMarker);
+    currentMarker = preparedMarker;
+    if (!existing || transition) writeMaintenanceMarker(paths.maintenancePath, preparedMarker);
     database = openProjectionDatabase(paths.databasePath);
     verifyDatabase(database);
-    currentMarker = { ...currentMarker, stage: 'ACTIVE' };
-    writeMaintenanceMarker(paths.maintenancePath, currentMarker);
+    const activeMarker: MaintenanceMarker = { ...preparedMarker, stage: 'ACTIVE' };
+    currentMarker = activeMarker;
+    writeMaintenanceMarker(paths.maintenancePath, activeMarker);
     const context: ProjectionMaintenanceContext = {
       get marker() {
         if (!currentMarker) throw new Error('MAINTENANCE_MARKER_UNAVAILABLE');

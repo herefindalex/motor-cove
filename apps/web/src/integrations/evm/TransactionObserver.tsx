@@ -103,6 +103,7 @@ export function TransactionObserver({
       {recoverable.map((entry) => {
         const hash = entry.currentTxHash ?? entry.originalTxHash;
         const candidate = candidates[entry.clientOperationId] ?? '';
+        const canSupplyCandidate = !hash || entry.verificationAvailability === 'UNAVAILABLE';
         return (
           <article key={entry.clientOperationId}>
             <p>
@@ -118,11 +119,17 @@ export function TransactionObserver({
             {entry.verificationAvailability === 'UNAVAILABLE' && (
               <p>Last known evidence is retained. Verification is currently unavailable.</p>
             )}
-            {!hash && (
+            {canSupplyCandidate && (
               <label>
-                Candidate transaction hash from wallet activity
+                {hash
+                  ? 'Alternative transaction hash from wallet activity'
+                  : 'Candidate transaction hash from wallet activity'}
                 <input
-                  aria-label="Candidate transaction hash from wallet activity"
+                  aria-label={
+                    hash
+                      ? 'Alternative transaction hash from wallet activity'
+                      : 'Candidate transaction hash from wallet activity'
+                  }
                   value={candidate}
                   onChange={(event) =>
                     setCandidates((current) => ({
@@ -140,15 +147,17 @@ export function TransactionObserver({
                 const candidateHash = /^0x[0-9a-fA-F]{64}$/.test(candidate)
                   ? (candidate as `0x${string}`)
                   : undefined;
-                void recheck(entry, hash ? undefined : candidateHash);
+                void recheck(entry, candidateHash);
               }}
             >
               Recheck evidence
             </button>
-            {!hash && (
+            {canSupplyCandidate && (
               <p>
-                The wallet request may have been submitted. Rechecking is read-only; a new
-                transaction must be started separately by an explicit action.
+                The saved or returned transaction may be unavailable from this RPC. Rechecking an
+                alternative hash is read-only and still verifies the saved account, chain,
+                deployment, target, calldata, and value. A new transaction must be started
+                separately by an explicit action.
               </p>
             )}
           </article>

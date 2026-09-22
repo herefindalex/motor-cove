@@ -86,6 +86,9 @@ recorded in [restore lifecycle and query identity](adr/0013-restore-lifecycle-an
 Migration continuation, metadata finalization, bounded HTTP verification, and symmetric local
 receipt observation are recorded in
 [migration resume and observation deadlines](adr/0014-migration-resume-and-observation-deadlines.md).
+Failed-rebuild transition rules, alternative transaction candidates, and predeployment backup
+identity are recorded in
+[projection transition and predeployment evidence](adr/0015-projection-transition-and-predeployment-evidence.md).
 
 ## Evaluate current evidence
 

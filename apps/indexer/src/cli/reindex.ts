@@ -50,6 +50,13 @@ let completedRecovery:
 const operation = await runProjectionMaintenance(config.environment, {
   operationType: 'REINDEX_PROJECTION',
   expectedDeploymentId: config.manifest.deploymentId,
+  ...(fromBlock === BigInt(config.manifest.scanStartBlock)
+    ? {
+        sourceIncompleteRebuildTransition: {
+          requiredReindexFromBlock: config.manifest.scanStartBlock,
+        },
+      }
+    : {}),
   recovery: {
     reindexFromBlock: fromBlock.toString(),
   },

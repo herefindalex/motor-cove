@@ -42,6 +42,9 @@ export interface MaintenanceMarker {
   readonly targetBlock?: string;
   readonly targetHash?: string;
   readonly backupId?: string;
+  readonly transitionedFromOperationId?: string;
+  readonly transitionedFromOperationType?: string;
+  readonly transitionedFromLastError?: string;
   readonly startedAt: string;
   readonly lastError?: string;
 }

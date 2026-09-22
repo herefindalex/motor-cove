@@ -70,6 +70,8 @@ export async function restoreEnvironment(
     writeMaintenanceMarker(paths.maintenancePath, marker);
     markerOwned = true;
     const backup = verifyBackup(paths, backupId);
+    if (backup.manifest.deploymentState === 'PREDEPLOYMENT')
+      throw new Error('BACKUP_PREDEPLOYMENT_RESTORE_UNSUPPORTED');
     const backupDeploymentId = backup.manifest.deploymentId;
     const activeId = activeDeploymentId(paths);
     const manifestId = manifestDeploymentId(paths);

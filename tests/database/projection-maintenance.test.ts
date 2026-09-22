@@ -132,6 +132,83 @@ describe('projection maintenance isolation', () => {
     expect(existsSync(paths.maintenancePath)).toBe(false);
   });
 
+  it('transitions a source-incomplete rebuild to an explicitly authorized full reindex', async () => {
+    const paths = await fixture();
+    const deploymentId = `0x${'5'.repeat(64)}`;
+    await expect(
+      runProjectionMaintenance(paths, {
+        operationType: 'REBUILD_PROJECTION',
+        expectedDeploymentId: deploymentId,
+        run: () => {
+          throw new Error('REBUILD_SOURCE_INCOMPLETE: event evidence');
+        },
+      }),
+    ).rejects.toThrow('REBUILD_SOURCE_INCOMPLETE');
+    const failed = JSON.parse(readFileSync(paths.maintenancePath, 'utf8')) as {
+      operationId: string;
+    };
+
+    await expect(
+      runProjectionMaintenance(paths, {
+        operationType: 'REINDEX_PROJECTION',
+        expectedDeploymentId: deploymentId,
+        recovery: {
+          reindexFromBlock: '1',
+          targetBlock: '2',
+          targetHash: `0x${'6'.repeat(64)}`,
+        },
+        run: () => undefined,
+      }),
+    ).rejects.toThrow('MAINTENANCE_INCOMPLETE');
+
+    await expect(
+      runProjectionMaintenance(paths, {
+        operationType: 'REINDEX_PROJECTION',
+        expectedDeploymentId: deploymentId,
+        sourceIncompleteRebuildTransition: { requiredReindexFromBlock: '0' },
+        recovery: {
+          reindexFromBlock: '1',
+          targetBlock: '2',
+          targetHash: `0x${'6'.repeat(64)}`,
+        },
+        run: () => undefined,
+      }),
+    ).rejects.toThrow('MAINTENANCE_INCOMPLETE');
+
+    let transitionedMarker:
+      | {
+          operationId: string;
+          transitionedFromOperationId?: string;
+          transitionedFromOperationType?: string;
+          transitionedFromLastError?: string;
+        }
+      | undefined;
+    const result = await runProjectionMaintenance(paths, {
+      operationType: 'REINDEX_PROJECTION',
+      expectedDeploymentId: deploymentId,
+      sourceIncompleteRebuildTransition: { requiredReindexFromBlock: '1' },
+      recovery: {
+        reindexFromBlock: '1',
+        targetBlock: '2',
+        targetHash: `0x${'6'.repeat(64)}`,
+      },
+      run: (_database, context) => {
+        transitionedMarker = context.marker;
+        return 'reindexed';
+      },
+    });
+
+    expect(result.result).toBe('reindexed');
+    expect(result.operationId).not.toBe(failed.operationId);
+    expect(transitionedMarker).toMatchObject({
+      operationId: result.operationId,
+      transitionedFromOperationId: failed.operationId,
+      transitionedFromOperationType: 'REBUILD_PROJECTION',
+      transitionedFromLastError: 'REBUILD_SOURCE_INCOMPLETE: event evidence',
+    });
+    expect(existsSync(paths.maintenancePath)).toBe(false);
+  });
+
   it('does not resume a projection marker with different recovery parameters', async () => {
     const paths = await fixture();
     const deploymentId = `0x${'6'.repeat(64)}`;

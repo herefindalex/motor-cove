@@ -63,6 +63,12 @@ RPC or API failure marks current verification unavailable while keeping the last
 evidence. A user-supplied match records `USER_SUPPLIED` and `INTENT_MATCH`; it proves the funding
 effect matches the intent, while it may not prove that it was the exact lost wallet response.
 
+When verification is unavailable for an entry that already has a saved hash, the Observer also
+accepts an alternative candidate hash copied from wallet activity. The read-only check keeps the
+original hash and verifies the candidate against the saved account, chain, deployment, target,
+calldata, and value before associating any evidence. Supplying a candidate never starts a wallet
+write or treats the original transaction as safely replaceable.
+
 A replacement with the same sender, nonce, target, calldata, and value continues as `REPRICED` and
 uses the replacement hash for receipt and projection evidence. A wallet cancellation is recorded as
 `CANCELLED`; another target, call, or value is `DIFFERENT_CALL`. Neither latter case proves funding,

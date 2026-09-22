@@ -23,18 +23,23 @@ const sidecars = [
   ['seedJournal', 'seed-journal.json'],
 ] as const;
 
-function databaseDeploymentId(db: Database.Database): string {
+type BackupDeploymentIdentity =
+  | { readonly state: 'PREDEPLOYMENT'; readonly deploymentId: null }
+  | { readonly state: 'DEPLOYED'; readonly deploymentId: string };
+
+function databaseDeploymentIdentity(db: Database.Database): BackupDeploymentIdentity {
   const rows = db.prepare('SELECT deployment_id AS deploymentId FROM deployments').all() as Array<{
     deploymentId: string;
   }>;
+  if (rows.length === 0) return { state: 'PREDEPLOYMENT', deploymentId: null };
   if (rows.length !== 1 || !rows[0]) throw new Error('BACKUP_INVALID: deployment identity');
-  return rows[0].deploymentId;
+  return { state: 'DEPLOYED', deploymentId: rows[0].deploymentId };
 }
 
-function databaseDeploymentIdFromPath(path: string): string {
+function databaseDeploymentIdentityFromPath(path: string): BackupDeploymentIdentity {
   const db = new Database(path, { readonly: true, fileMustExist: true });
   try {
-    return databaseDeploymentId(db);
+    return databaseDeploymentIdentity(db);
   } finally {
     db.close();
   }
@@ -63,15 +68,12 @@ export async function backupEnvironment(
 ) {
   verifyOwnedEnvironment(paths);
   if (!existsSync(paths.databasePath)) throw new Error('DB_NOT_INITIALIZED');
-  if (!existsSync(paths.deploymentPath))
-    throw new Error('BACKUP_INVALID: deployment sidecar required');
-  const expectedDeploymentId = deploymentSidecarId(paths.deploymentPath);
   const locks = options.locksAlreadyHeld ? undefined : await acquireMaintenanceLocks(paths);
   const backupId = `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}`;
   const staging = resolve(paths.backupsDir, `.${backupId}.incomplete`);
   const destination = resolve(paths.backupsDir, backupId);
-  mkdirSync(staging, { recursive: true });
   try {
+    mkdirSync(staging, { recursive: true });
     const source = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
     try {
       await source.backup(resolve(staging, 'database.sqlite'));
@@ -93,14 +95,22 @@ export async function backupEnvironment(
       [paths.bootstrapReceiptPath, 'bootstrap-receipt.json'],
       [paths.seedJournalPath, 'seed-journal.json'],
     ] as const;
+    const snapshotDeployment = databaseDeploymentIdentityFromPath(
+      resolve(staging, 'database.sqlite'),
+    );
+    if (snapshotDeployment.state === 'DEPLOYED') {
+      if (!existsSync(paths.deploymentPath))
+        throw new Error('BACKUP_INVALID: deployment sidecar required');
+      if (deploymentSidecarId(paths.deploymentPath) !== snapshotDeployment.deploymentId)
+        throw new Error('BACKUP_INVALID: deployment identity');
+    } else if (sourceSidecars.some(([sourcePath]) => existsSync(sourcePath))) {
+      throw new Error('BACKUP_INVALID: predeployment sidecar state');
+    }
     for (const [sourcePath, name] of sourceSidecars)
       if (existsSync(sourcePath)) copyFileSync(sourcePath, resolve(staging, name));
     const engineDb = new Database(':memory:');
     const sqliteEngine = engineDb.prepare('select sqlite_version() version').get();
     engineDb.close();
-    const snapshotDeploymentId = databaseDeploymentIdFromPath(resolve(staging, 'database.sqlite'));
-    if (snapshotDeploymentId !== expectedDeploymentId)
-      throw new Error('BACKUP_INVALID: deployment identity');
     const manifest = {
       formatVersion: 2,
       backupId,
@@ -108,7 +118,8 @@ export async function backupEnvironment(
       reason: options.reason ?? 'manual',
       createdAt: new Date().toISOString(),
       databaseSha256: fileHash(resolve(staging, 'database.sqlite')),
-      deploymentId: snapshotDeploymentId,
+      deploymentState: snapshotDeployment.state,
+      deploymentId: snapshotDeployment.deploymentId,
       sidecars: Object.fromEntries(
         sidecars.map(([name, file]) => {
           const path = resolve(staging, file);
@@ -161,7 +172,15 @@ export function verifyBackup(paths: EnvironmentPaths, backupId: string) {
   const db = new Database(databasePath, { readonly: true, fileMustExist: true });
   try {
     const verification = verifyKnownSourceDatabase(db);
-    if (manifest.formatVersion !== 2 || manifest.deploymentId !== databaseDeploymentId(db))
+    const snapshotDeployment = databaseDeploymentIdentity(db);
+    const deploymentState =
+      manifest.deploymentState ??
+      (typeof manifest.deploymentId === 'string' ? 'DEPLOYED' : undefined);
+    if (
+      manifest.formatVersion !== 2 ||
+      deploymentState !== snapshotDeployment.state ||
+      manifest.deploymentId !== snapshotDeployment.deploymentId
+    )
       throw new Error('BACKUP_INVALID: deployment identity');
     if (typeof manifest.sidecars !== 'object' || manifest.sidecars === null)
       throw new Error('BACKUP_INVALID: sidecar evidence');
@@ -169,8 +188,6 @@ export function verifyBackup(paths: EnvironmentPaths, backupId: string) {
       string,
       { present?: unknown; sha256?: unknown } | undefined
     >;
-    if (evidence.deployment?.present !== true)
-      throw new Error('BACKUP_INVALID: deployment sidecar required');
     for (const [name, file] of sidecars) {
       const expected = evidence[name];
       const path = resolve(directory, file);
@@ -183,9 +200,16 @@ export function verifyBackup(paths: EnvironmentPaths, backupId: string) {
       )
         throw new Error(`BACKUP_INVALID: sidecar ${file}`);
     }
+    if (snapshotDeployment.state === 'DEPLOYED' && evidence.deployment?.present !== true)
+      throw new Error('BACKUP_INVALID: deployment sidecar required');
+    if (
+      snapshotDeployment.state === 'PREDEPLOYMENT' &&
+      Object.values(evidence).some((entry) => entry?.present === true)
+    )
+      throw new Error('BACKUP_INVALID: predeployment sidecar state');
     const deploymentSidecar = resolve(directory, 'deployment.json');
     if (existsSync(deploymentSidecar)) {
-      if (deploymentSidecarId(deploymentSidecar) !== manifest.deploymentId)
+      if (deploymentSidecarId(deploymentSidecar) !== snapshotDeployment.deploymentId)
         throw new Error('BACKUP_INVALID: sidecar deployment.json');
     }
     if (
@@ -198,5 +222,15 @@ export function verifyBackup(paths: EnvironmentPaths, backupId: string) {
   } finally {
     db.close();
   }
-  return { directory, databasePath, manifest };
+  return {
+    directory,
+    databasePath,
+    manifest: {
+      ...manifest,
+      deploymentId: manifest.deploymentId,
+      deploymentState:
+        manifest.deploymentState ??
+        (typeof manifest.deploymentId === 'string' ? 'DEPLOYED' : undefined),
+    },
+  };
 }

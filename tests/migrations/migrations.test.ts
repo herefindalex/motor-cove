@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -15,6 +15,7 @@ import {
   migrationBundle,
   migrationBundleDigest,
   verifyKnownSourceDatabase,
+  verifyBackup,
 } from '@motorcove/database/maintenance';
 import { databaseFixture } from '../helpers/database.js';
 const roots: string[] = [];
@@ -106,6 +107,49 @@ describe('native migration path', () => {
     ).toBe(2);
     upgraded.close();
   });
+  it('backs up and upgrades a verified predeployment schema without inventing chain identity', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'motorcove-predeployment-migration-'));
+    roots.push(root);
+    const paths = environmentPaths(root, 'predeployment-migration');
+    await migrateEnvironment(paths);
+    const db = new Database(paths.databasePath);
+    db.prepare(
+      `INSERT INTO catalog_vehicles VALUES ('predeploy','Predeploy','kept','M','2026','/p.svg','MANUAL',NULL,NULL,'x','x')`,
+    ).run();
+    db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
+    db.prepare(
+      'DELETE FROM __drizzle_migrations WHERE created_at=(SELECT MAX(created_at) FROM __drizzle_migrations)',
+    ).run();
+    db.prepare(
+      'UPDATE db_contract SET migration_bundle_digest=?,schema_fingerprint=? WHERE id=1',
+    ).run(migrationBundleDigest(migrationBundle().slice(0, 1)), schemaFingerprint(db));
+    db.close();
+
+    await expect(migrateEnvironment(paths)).resolves.toMatchObject({ changed: true });
+    const backupIds = readdirSync(paths.backupsDir);
+    expect(backupIds).toHaveLength(1);
+    const backup = verifyBackup(paths, backupIds[0]!);
+    expect(backup.manifest).toMatchObject({
+      deploymentState: 'PREDEPLOYMENT',
+      deploymentId: null,
+      sidecars: {
+        deployment: { present: false },
+        bootstrapReceipt: { present: false },
+        seedJournal: { present: false },
+      },
+    });
+    const upgraded = new Database(paths.databasePath);
+    expect(
+      upgraded.prepare("SELECT name FROM catalog_vehicles WHERE catalog_id='predeploy'").get(),
+    ).toEqual({ name: 'Predeploy' });
+    expect(
+      (upgraded.prepare('SELECT count(*) AS count FROM deployments').get() as { count: number })
+        .count,
+    ).toBe(0);
+    expect(() => verifyKnownSourceDatabase(upgraded)).not.toThrow();
+    upgraded.close();
+  });
+
   it('DB-05 rejects tampered native history', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);

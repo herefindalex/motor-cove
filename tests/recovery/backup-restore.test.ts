@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import {
   copyFileSync,
   existsSync,
+  mkdtempSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -12,20 +13,53 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   backupEnvironment,
+  migrateEnvironment,
   recoverEnvironment,
   restoreEnvironment,
 } from '@motorcove/database/maintenance';
+import { environmentPaths } from '@motorcove/database/environment';
 import { databaseFixture, hashes } from '../helpers/database.js';
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 describe('backup, restore, recovery', () => {
+  it('rejects predeployment backup when any deployment lifecycle sidecar exists', async () => {
+    const root = mkdtempSync(resolve(tmpdir(), 'motorcove-predeployment-sidecar-'));
+    roots.push(root);
+    const paths = environmentPaths(root, 'predeployment-sidecar');
+    await migrateEnvironment(paths);
+    writeFileSync(paths.deploymentPath, `${JSON.stringify({ deploymentId: hashes.deployment })}\n`);
+
+    await expect(backupEnvironment(paths)).rejects.toThrow(
+      'BACKUP_INVALID: predeployment sidecar state',
+    );
+    expect(readdirSync(paths.backupsDir)).toHaveLength(0);
+  });
+
+  it('rejects predeployment restore before replacing the active database', async () => {
+    const root = mkdtempSync(resolve(tmpdir(), 'motorcove-predeployment-restore-'));
+    roots.push(root);
+    const paths = environmentPaths(root, 'predeployment-restore');
+    await migrateEnvironment(paths);
+    const backup = await backupEnvironment(paths);
+    const activeBefore = readFileSync(paths.databasePath);
+
+    await expect(restoreEnvironment(paths, backup.backupId, true)).rejects.toThrow(
+      'BACKUP_PREDEPLOYMENT_RESTORE_UNSUPPORTED',
+    );
+    expect(readFileSync(paths.databasePath)).toEqual(activeBefore);
+    expect(
+      readdirSync(paths.environmentDir).some((entry) => entry.startsWith('.quarantine-')),
+    ).toBe(false);
+  });
+
   it('DB-47 snapshots committed WAL data into a standalone database', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);

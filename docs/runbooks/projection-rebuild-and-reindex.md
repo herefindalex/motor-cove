@@ -49,6 +49,13 @@ match the stored event rows, and every event must retain its raw-envelope, decod
 version binding. `REBUILD_SOURCE_INCOMPLETE` leaves the existing projection in place; use reindex to
 reacquire the source instead of editing journal rows.
 
+A failed rebuild with that exact error may transition to a full reindex under the same exclusive
+maintenance gate. The reindex must start at the deployment scan-start block, capture and verify a
+target block/hash, and match the marker's environment, database, deployment, and schema contract.
+The new marker receives a new operation ID and records the failed rebuild operation ID, type, and
+error as lineage. Other failed rebuild reasons, partial reindex ranges, and implicit marker changes
+remain blocked.
+
 Reindex captures `head - indexingDepth` and its hash as the completion target. A non-zero depth does
 not wait for an ineligible live head, and an idle chain does not need an extra transaction to finish.
 If the target hash changes while it is captured, reindex stops before the maintenance rewind.

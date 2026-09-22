@@ -63,11 +63,18 @@ reindex remains `ACTION_REQUIRED` until the matching projection command complete
 
 ## Deployment and sidecar identity
 
-Backup format 2 binds the database deployment ID and records presence and SHA-256 evidence for the
-deployment, bootstrap receipt, and seed journal sidecars. Restore compares the verified backup
-deployment with both the active database and the active deployment manifest before creating a
-quarantine directory. A missing or changed recorded sidecar fails verification. A backup from an
-earlier deployment of the same environment name is rejected.
+Backup format 2 records an explicit deployment state. `DEPLOYED` snapshots bind the database
+deployment ID and record presence and SHA-256 evidence for the deployment, bootstrap receipt, and
+seed journal sidecars. `PREDEPLOYMENT` snapshots are valid only when the database has zero deployment
+rows and all three sidecars are absent. This lets migration protect an initialized predeployment
+database without inventing chain identity. A sidecar in a predeployment snapshot, or a missing or
+changed sidecar in a deployed snapshot, fails verification.
+
+Restore compares a deployed backup with both the active database and active deployment manifest
+before creating a quarantine directory. A backup from an earlier deployment of the same environment
+name is rejected. Predeployment backups are migration evidence and currently return
+`BACKUP_PREDEPLOYMENT_RESTORE_UNSUPPORTED` from the restore command; they are not installed as a
+deployed environment.
 
 Restore does not install sidecars, reset Anvil, deploy contracts, or replay seed transactions. Moving
 an entire environment requires a separate, explicit workflow; database restore is for the same
