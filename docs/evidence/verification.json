@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "787b093dbb3a08eda28669106a7978c703e5c426",
-    "dirty": true,
-    "capturedAt": "2026-09-22T04:03:18Z",
-    "sourceFingerprint": "sha256:7a519b7eef82fba03a3e651a79489ca37f048d0ff2cf6e5b7075890ea517b678",
+    "revision": "67c54e69df59bc5d13fcfc242cc30f6f8228dc3f",
+    "dirty": false,
+    "capturedAt": "2026-09-22T04:11:38Z",
+    "sourceFingerprint": "sha256:2aea87c52c93670dc8bf3c6fe4e9bad255fd034c8c6232642cce58a626a7488d",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Captured from the uncommitted R7 working tree based on committed R6 revision 787b093dbb3a08eda28669106a7978c703e5c426. Local deterministic Anvil, SQLite, Fastify, JSDOM, Playwright, and Foundry evidence does not establish public-network behavior, hardware power-loss durability, cross-device journal coordination, broad wallet-provider compatibility, or external security audit.",
+    "limits": "Captured from committed R7 source 67c54e69df59bc5d13fcfc242cc30f6f8228dc3f. Local and GitHub-hosted deterministic Anvil, SQLite, Fastify, JSDOM, Playwright, and Foundry evidence does not establish public-network behavior, hardware power-loss durability, cross-device journal coordination, broad wallet-provider compatibility, or an external security audit.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, and NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -277,13 +277,13 @@
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35679573677)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35685573324)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
-      "status": "executed/fail",
-      "result": "The committed R6 remote job passed docs:smoke and pnpm verify, then failed pnpm test:e2e because a hash locator matched both the non-durable alert and transaction timeline. R7 scopes that assertion to the timeline; current R7 local verify and all 6 E2E scenarios pass.",
-      "executedAt": "2026-09-22T02:33:51Z",
-      "limitations": "This remote result covers committed R6 source 787b093dbb3a08eda28669106a7978c703e5c426. The R7 changes remain local dirty-worktree evidence until their commit is pushed and its workflow completes.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35679573677"
+      "status": "executed/pass",
+      "result": "GitHub-hosted verify job completed successfully: dependency installation, documentation smoke, pnpm verify, and pnpm test:e2e all passed for R7 source 67c54e69df59bc5d13fcfc242cc30f6f8228dc3f",
+      "executedAt": "2026-09-22T04:11:38Z",
+      "limitations": "The hosted run uses controlled local Anvil, SQLite, and Playwright Chromium. It does not establish public-network behavior, manual MetaMask behavior, cross-device journal coordination, or hardware power-loss durability.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35685573324"
     }
   ]
 }
