@@ -130,6 +130,15 @@ unrelated operation write does not erase that durable fallback.
 Tabs in one browser profile serialize deployment journal writes with the Web Locks API. Closing the
 lock owner releases the lock for another tab. The journal does not coordinate different devices.
 
+Receipt and projection observation has a separate exclusive owner keyed by deployment and client
+operation. The owner reloads the latest journal revision before it creates a verification generation
+and keeps ownership through RPC/API inspection and the controlled save. Automatic polling uses a
+non-blocking Web Lock request and skips a busy tick; a manual candidate check waits for the current
+owner and then uses the latest revision. Different operations still run concurrently, and the
+deployment-wide journal write lock remains a short storage critical section rather than spanning
+network requests. When Web Locks are unavailable, the in-memory fallback coordinates only one
+JavaScript realm and does not provide a cross-tab guarantee.
+
 ## Concurrent wallet and observer evidence
 
 `AWAITING_WALLET` can be inspected before the wallet returns. The observer may therefore advance

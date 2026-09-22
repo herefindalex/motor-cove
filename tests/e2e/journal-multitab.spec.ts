@@ -37,6 +37,58 @@ async function save(page: Page, value: ReturnType<typeof entry>) {
   }, value);
 }
 
+async function runObservation(page: Page, clientOperationId: string) {
+  return page.evaluate(
+    async ({ currentDeploymentId, currentOperationId }) => {
+      const module = (await eval(
+        "import('/src/integrations/persistence/browser-observation-coordinator.ts')",
+      )) as {
+        BrowserTransactionObservationCoordinator: new () => {
+          run<T>(
+            identity: { deploymentId: string; clientOperationId: string },
+            options: { wait: boolean },
+            operation: () => Promise<T>,
+          ): Promise<{ acquired: boolean; result?: T }>;
+        };
+      };
+      return new module.BrowserTransactionObservationCoordinator().run(
+        { deploymentId: currentDeploymentId, clientOperationId: currentOperationId },
+        { wait: false },
+        async () => 'completed',
+      );
+    },
+    { currentDeploymentId: deploymentId, currentOperationId: clientOperationId },
+  );
+}
+
+async function holdObservation(page: Page, clientOperationId: string) {
+  await page.evaluate(
+    async ({ currentDeploymentId, currentOperationId }) => {
+      const module = (await eval(
+        "import('/src/integrations/persistence/browser-observation-coordinator.ts')",
+      )) as {
+        BrowserTransactionObservationCoordinator: new () => {
+          run<T>(
+            identity: { deploymentId: string; clientOperationId: string },
+            options: { wait: boolean },
+            operation: () => Promise<T>,
+          ): Promise<unknown>;
+        };
+      };
+      const hold = new Promise<void>(() => undefined);
+      void new module.BrowserTransactionObservationCoordinator().run(
+        { deploymentId: currentDeploymentId, clientOperationId: currentOperationId },
+        { wait: false },
+        async () => {
+          await hold;
+          return 'released';
+        },
+      );
+    },
+    { currentDeploymentId: deploymentId, currentOperationId: clientOperationId },
+  );
+}
+
 test('keeps different operations written concurrently by two tabs', async ({ browser }) => {
   const context = await browser.newContext();
   const first = await context.newPage();
@@ -131,5 +183,52 @@ test('preserves newer same-operation evidence and releases lock when a writer ta
     updatedAt: '2026-09-21T00:00:03.000Z',
     revision: 1,
   });
+  await context.close();
+});
+
+test('coordinates observation ownership across tabs without blocking journal writes', async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const owner = await context.newPage();
+  const contender = await context.newPage();
+  await Promise.all([owner.goto('/'), contender.goto('/')]);
+  await owner.evaluate(() => localStorage.clear());
+
+  const operationId = 'observed-operation';
+  const lockName = `motorcove:transaction-observation:v1:${deploymentId}:${operationId}`;
+  await holdObservation(owner, operationId);
+  await expect
+    .poll(() =>
+      owner.evaluate(
+        (name) =>
+          navigator.locks.query().then((state) => state.held.some((lock) => lock.name === name)),
+        lockName,
+      ),
+    )
+    .toBe(true);
+
+  await expect(runObservation(contender, operationId)).resolves.toEqual({ acquired: false });
+  await expect(runObservation(contender, 'different-operation')).resolves.toEqual({
+    acquired: true,
+    result: 'completed',
+  });
+
+  await save(contender, entry('journal-operation', '2026-09-22T00:00:04.000Z'));
+  const storedIds = await contender.evaluate((key) => {
+    const parsed = JSON.parse(localStorage.getItem(key) ?? '[]') as Array<{
+      clientOperationId: string;
+    }>;
+    return parsed.map((item) => item.clientOperationId);
+  }, storageKey);
+  expect(storedIds).toContain('journal-operation');
+
+  await owner.close();
+  await expect
+    .poll(() => runObservation(contender, operationId))
+    .toEqual({
+      acquired: true,
+      result: 'completed',
+    });
   await context.close();
 });

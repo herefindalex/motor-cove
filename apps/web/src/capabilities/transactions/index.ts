@@ -4,7 +4,11 @@ export {
   transactionObservationSchema,
 } from './model.js';
 export type { JournalEntry, SubmissionResult, TransactionObservation } from './model.js';
-export type { JournalLoadIssue, TransactionJournal } from './ports.js';
+export type {
+  JournalLoadIssue,
+  TransactionJournal,
+  TransactionObservationCoordinator,
+} from './ports.js';
 export { submitOperation } from './submit-operation.js';
 export type { SubmissionAction, SubmissionContext } from './submit-operation.js';
 export { resumeJournalEntry } from './recovery.js';

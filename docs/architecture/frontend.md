@@ -62,6 +62,10 @@ passed to `MarketActions.fund` remains the original decimal wei string. UI code 
 - The wallet capability owns current connection, account, chain, pending, and wrong-network state.
 - The transaction capability owns durable operation context in the journal. A page unmount does not
   cancel observation of a known hash.
+- The transaction observation port owns one verification workflow per deployment and operation.
+  Its browser adapter uses Web Locks across tabs, skips busy automatic polls, queues explicit manual
+  checks, and reloads the journal after ownership is acquired. The in-memory fallback is limited to
+  one JavaScript realm.
 - Reload restores journal entries with enough evidence to query. Later account or chain changes do
   not rewrite the original operation's account, chain, contract, or hash.
 - `TransactionObserver` can record included success, included revert, replacement/cancellation, or
@@ -74,6 +78,8 @@ passed to `MarketActions.fund` remains the original decimal wei string. UI code 
 Library. `WalletPanel.test.tsx` covers missing-provider and connector-choice rendering.
 `tests/e2e/marketplace.spec.ts` uses the loopback demo connector for normal settlement and a
 controlled EIP-1193 provider for reload, account/network changes, and stale/catch-up behavior.
+`tests/e2e/journal-multitab.spec.ts` uses two Chromium pages to verify operation-scoped observation
+ownership and that unrelated journal writes remain available while an observation is pending.
 Manual MetaMask behavior has not been recorded.
 
 See [wallet and network flow](../flows/wallet-and-network.md),

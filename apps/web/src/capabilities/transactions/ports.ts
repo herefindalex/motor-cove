@@ -14,3 +14,11 @@ export interface TransactionJournal {
   retryDurableSave?(entry: JournalEntry): JournalEntry | Promise<JournalEntry>;
   subscribe(listener: () => void): () => void;
 }
+
+export interface TransactionObservationCoordinator {
+  run<T>(
+    identity: { readonly deploymentId: string; readonly clientOperationId: string },
+    options: { readonly wait: boolean },
+    operation: () => Promise<T>,
+  ): Promise<{ readonly acquired: false } | { readonly acquired: true; readonly result: T }>;
+}

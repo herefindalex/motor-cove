@@ -68,7 +68,7 @@
     {
       "id": "CAP-06",
       "name": "Transaction lifecycle",
-      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, serializes same-profile browser writes, and preserves tab-local evidence when durable storage reads are unavailable. Synchronously serializes one in-flight immutable intent before any await and exposes matching per-action pending state. Candidate inspection validates the saved descriptor against configured contracts, the actual RPC chain, and the on-chain deployment getter before transaction lookup. Known-hash verification continues in the volatile overlay when a durable update fails.",
+      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, serializes same-profile browser writes, assigns operation-scoped cross-tab observation ownership, and preserves tab-local evidence when durable storage reads are unavailable. Synchronously serializes one in-flight immutable intent before any await and exposes matching per-action pending state. Candidate inspection validates the saved descriptor against configured contracts, the actual RPC chain, and the on-chain deployment getter before transaction lookup. Known-hash verification continues in the volatile overlay when a durable update fails.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/capabilities/transactions",
@@ -77,23 +77,26 @@
         "apps/web/src/pages/HomePage.inflight.test.tsx",
         "docs/adr/0018-in-flight-intent-and-source-identity.md",
         "apps/web/src/integrations/evm/inspect-transaction.test.ts",
-        "apps/web/src/integrations/persistence/local-storage-journal.test.ts"
+        "apps/web/src/integrations/persistence/local-storage-journal.test.ts",
+        "apps/web/src/integrations/persistence/browser-observation-coordinator.ts",
+        "apps/web/src/integrations/evm/TransactionObserver.coordination.test.tsx",
+        "docs/adr/0020-cross-tab-transaction-observation-ownership.md"
       ],
-      "scenarios": ["TX-001", "TX-002", "TX-003", "TX-004", "TX-005"],
+      "scenarios": ["TX-001", "TX-002", "TX-003", "TX-004", "TX-005", "TX-006"],
       "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E"],
-      "limits": "Non-durable known-hash tracking survives client-side route changes and storage read denial only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
+      "limits": "Non-durable known-hash tracking survives client-side route changes and storage read denial only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-tab observation ownership requires Web Locks; the fallback coordinates one JavaScript realm only. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
     },
     {
       "id": "CAP-07",
       "name": "Frontend state and API integration",
-      "behavior": "Keeps query cache, wallet state, form state, transaction journal, and projection provenance in separate owners. Deployment-keyed queries pass the expected deployment into the HTTP adapter and reject mismatched response provenance. One abort deadline covers HTTP headers and body consumption so stalled verification releases its single-flight slot.",
+      "behavior": "Keeps query cache, wallet state, form state, transaction journal, and projection provenance in separate owners. Deployment-keyed queries pass the expected deployment into the HTTP adapter and reject mismatched response provenance. One abort deadline covers HTTP headers and body consumption so stalled verification releases its operation-scoped observation ownership.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/app/composition.tsx",
         "apps/web/src/integrations/http",
         "apps/web/src/capabilities/transactions"
       ],
-      "scenarios": ["TX-002", "IDX-001"],
+      "scenarios": ["TX-002", "TX-006", "IDX-001"],
       "verification": ["RUN-API-CONTRACT", "RUN-E2E"],
       "limits": "Automated browser coverage separates the local demo connector from controlled provider faults; manual injected-wallet behavior remains unverified."
     },

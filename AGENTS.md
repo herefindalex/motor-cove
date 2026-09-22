@@ -54,6 +54,10 @@ fixture when introducing a new dependency rule.
 - A successful receipt does not prove projection convergence. A stale projection is not a reason to
   resubmit a transaction.
 - Browser recovery is read-only. It must not reach a wallet-write port.
+- Coordinate receipt and projection observation per deployment and client operation. Automatic
+  polling must skip a busy owner, manual evidence checks may wait, and ownership must include the
+  latest-journal reload through the controlled result save. Do not hold the deployment journal write
+  lock across RPC or HTTP work; the no-Web-Locks fallback is same-realm only.
 - Acquire same-intent submission ownership synchronously before simulation or persistence awaits;
   keep unrelated action intents independent and preserve the durable pre-wallet write.
 - Preserve historical receipt and event evidence when a transaction becomes noncanonical; derive

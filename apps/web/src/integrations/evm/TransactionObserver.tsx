@@ -5,23 +5,31 @@ import {
   isProjectionCurrentlyReflected,
   resumeJournalEntry,
   type JournalEntry,
+  type TransactionObservationCoordinator,
   type TransactionJournal,
 } from '../../capabilities/transactions/index.js';
 import { motorCoveApi } from '../http/motorcove-api.js';
+import { BrowserTransactionObservationCoordinator } from '../persistence/browser-observation-coordinator.js';
 import { createTransactionChainReader } from './inspect-transaction.js';
 
 export function TransactionObserver({
   config,
   journal,
+  coordinator,
 }: {
   config: PublicConfig;
   journal: TransactionJournal;
+  coordinator?: TransactionObservationCoordinator;
 }) {
   const deploymentId = config.deploymentId;
   const client = usePublicClient();
   const [entries, setEntries] = useState<readonly JournalEntry[]>(() => journal.load(deploymentId));
   const [candidates, setCandidates] = useState<Record<string, string>>({});
   const inFlight = useRef(new Set<string>());
+  const observationCoordinator = useMemo(
+    () => coordinator ?? new BrowserTransactionObservationCoordinator(),
+    [coordinator],
+  );
   const chain = useMemo(
     () =>
       client
@@ -43,34 +51,49 @@ export function TransactionObserver({
   }, [deploymentId, journal]);
 
   const recheck = useCallback(
-    async (entry: JournalEntry, candidateHash?: `0x${string}`) => {
+    async (
+      entry: JournalEntry,
+      candidateHash: `0x${string}` | undefined,
+      mode: 'AUTOMATIC' | 'MANUAL',
+    ) => {
       if (!chain) return;
-      if (inFlight.current.has(entry.clientOperationId)) return;
-      inFlight.current.add(entry.clientOperationId);
+      const ownsAutomaticGuard = mode === 'AUTOMATIC';
+      if (ownsAutomaticGuard && inFlight.current.has(entry.clientOperationId)) return;
+      if (ownsAutomaticGuard) inFlight.current.add(entry.clientOperationId);
       try {
-        await resumeJournalEntry(
-          entry,
-          {
-            chain,
-            observation: {
-              observeFunding: (input) =>
-                motorCoveApi.fundingObservation(input.saleId, {
-                  deploymentId: input.deploymentId,
-                  observeTxHash: input.observeTxHash,
-                  observeBlockNumber: input.observeBlockNumber,
-                  observeBlockHash: input.observeBlockHash,
-                  observeLogIndex: input.observeLogIndex,
-                }),
-            },
-            journal,
+        await observationCoordinator.run(
+          { deploymentId: entry.deploymentId, clientOperationId: entry.clientOperationId },
+          { wait: mode === 'MANUAL' },
+          async () => {
+            const current = journal
+              .load(entry.deploymentId)
+              .find((candidate) => candidate.clientOperationId === entry.clientOperationId);
+            if (!current) return;
+            await resumeJournalEntry(
+              current,
+              {
+                chain,
+                observation: {
+                  observeFunding: (input) =>
+                    motorCoveApi.fundingObservation(input.saleId, {
+                      deploymentId: input.deploymentId,
+                      observeTxHash: input.observeTxHash,
+                      observeBlockNumber: input.observeBlockNumber,
+                      observeBlockHash: input.observeBlockHash,
+                      observeLogIndex: input.observeLogIndex,
+                    }),
+                },
+                journal,
+              },
+              candidateHash,
+            );
           },
-          candidateHash,
         );
       } finally {
-        inFlight.current.delete(entry.clientOperationId);
+        if (ownsAutomaticGuard) inFlight.current.delete(entry.clientOperationId);
       }
     },
-    [chain, journal],
+    [chain, journal, observationCoordinator],
   );
 
   useEffect(() => {
@@ -92,7 +115,7 @@ export function TransactionObserver({
       for (const entry of recoverable) {
         if (stopped) return;
         if (entry.status === 'UNKNOWN' && !entry.currentTxHash && !entry.originalTxHash) continue;
-        await recheck(entry);
+        await recheck(entry, undefined, 'AUTOMATIC');
       }
     };
     void observe();
@@ -167,7 +190,7 @@ export function TransactionObserver({
                 const candidateHash = /^0x[0-9a-fA-F]{64}$/.test(candidate)
                   ? (candidate as `0x${string}`)
                   : undefined;
-                void recheck(entry, candidateHash);
+                void recheck(entry, candidateHash, 'MANUAL');
               }}
             >
               Recheck evidence
