@@ -40,3 +40,10 @@ Database acceptance IDs `DB-01` through `DB-62` are maintained in the
 [database acceptance matrix](database-acceptance-matrix.md). Documentation acceptance IDs
 `DOC-01` through `DOC-32` are maintained in the
 [documentation acceptance matrix](documentation-acceptance-matrix.md).
+
+## R14 source identity and long-running recovery coverage
+
+- **IDX-003:** `IDX-026` uses an Anvil snapshot/revert at the same height to prove that logs are fetched
+  against the post-reorg header hash before a scan-complete block is committed.
+- **IDX-004:** reindex can exceed 1,000 successful batches, stops on successful no-progress responses,
+  and resumes a durable `CATCHING_UP` marker without repeating its source rewind.

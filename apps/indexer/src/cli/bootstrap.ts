@@ -48,7 +48,10 @@ async function bootstrap(): Promise<void> {
     nativeCurrency: { name: 'Test Ether', symbol: 'ETH', decimals: 18 },
     rpcUrls: { default: { http: [config.rpcUrl] } },
   });
-  const publicClient = createPublicClient({ chain: localChain, transport: http(config.rpcUrl) });
+  const publicClient = createPublicClient({
+    chain: localChain,
+    transport: http(config.rpcUrl, { batch: true }),
+  });
   const chainId = await publicClient.getChainId();
   if (chainId !== 31337) throw new Error(`CHAIN_MISMATCH: expected 31337, got ${chainId}`);
   await claimManagedNode(config.environment, config.rpcUrl);

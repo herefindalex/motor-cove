@@ -17,6 +17,7 @@ export interface ProjectionRecovery {
 export interface ProjectionMaintenanceContext {
   readonly marker: MaintenanceMarker;
   recordBackup(backupId: string): void;
+  recordProjectionPhase(phase: 'PREPARING' | 'CATCHING_UP'): void;
 }
 
 export interface ProjectionMaintenanceOptions<T> {
@@ -141,6 +142,7 @@ export async function runProjectionMaintenance<T>(
       expectedDeploymentId: options.expectedDeploymentId,
       ...recovery,
       ...(existing?.backupId ? { backupId: existing.backupId } : {}),
+      ...(existing?.projectionPhase ? { projectionPhase: existing.projectionPhase } : {}),
       ...transitionEvidence,
       startedAt: transition
         ? new Date().toISOString()
@@ -161,6 +163,11 @@ export async function runProjectionMaintenance<T>(
       recordBackup(backupId) {
         if (!currentMarker) throw new Error('MAINTENANCE_MARKER_UNAVAILABLE');
         currentMarker = { ...currentMarker, backupId };
+        writeMaintenanceMarker(paths.maintenancePath, currentMarker);
+      },
+      recordProjectionPhase(projectionPhase) {
+        if (!currentMarker) throw new Error('MAINTENANCE_MARKER_UNAVAILABLE');
+        currentMarker = { ...currentMarker, projectionPhase };
         writeMaintenanceMarker(paths.maintenancePath, currentMarker);
       },
     };

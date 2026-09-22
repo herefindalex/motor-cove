@@ -122,10 +122,13 @@
     {
       "id": "CAP-10",
       "name": "Event-driven backend",
-      "behavior": "Reads bounded eligible log ranges, orders events, applies pure projectors, advances a checkpoint, verifies bound raw and decoded source evidence before rebuild, and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse and verify their captured target, source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert.",
+      "behavior": "Observes headers before requesting logs by exact block hash, orders events, applies pure projectors, and atomically advances source and checkpoint state. Verifies bound raw and decoded source evidence before rebuild and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse their verified captured target and durable catch-up checkpoint without repeating the source rewind. Source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert.",
       "implementation": "implemented",
       "code": [
         "apps/indexer/src/application/ingest-range.ts",
+        "apps/indexer/src/application/reindex-catchup.ts",
+        "apps/indexer/src/application/reindex-replay.ts",
+        "apps/indexer/src/adapters/evm/viem-chain-reader.ts",
         "apps/indexer/src/domain/projectors",
         "apps/indexer/src/adapters/sqlite/sqlite-projection-store.ts",
         "tests/integration/database-real-recovery.test.ts",

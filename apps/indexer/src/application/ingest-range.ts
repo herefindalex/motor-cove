@@ -18,6 +18,7 @@ const transportErrorNames = new Set([
   'TimeoutError',
   'WebSocketRequestError',
 ]);
+const SOURCE_READ_CONCURRENCY = 8;
 
 function isTransportFailure(error: unknown, seen = new Set<unknown>()): boolean {
   if (typeof error !== 'object' || error === null || seen.has(error)) return false;
@@ -32,6 +33,15 @@ function isTransportFailure(error: unknown, seen = new Set<unknown>()): boolean 
   )
     return true;
   return isTransportFailure(candidate.cause, seen);
+}
+
+function isRangeLimitFailure(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const candidate = error as { message?: unknown; shortMessage?: unknown };
+  const message = [candidate.message, candidate.shortMessage]
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ');
+  return /range.?limit|too many (?:blocks|results)|response size|limit exceeded/i.test(message);
 }
 
 async function readChain<T>(operation: string, read: () => Promise<T>): Promise<T> {
@@ -59,6 +69,7 @@ export async function ingestRange(
   batchSize = 100n,
   startBlock = 0n,
   indexingDepth = 0n,
+  maximumTarget?: bigint,
 ): Promise<void> {
   if (batchSize < 1n) throw new Error('INDEX_BATCH_SIZE_INVALID');
   if (indexingDepth < 0n) throw new Error('INDEXING_DEPTH_INVALID');
@@ -88,7 +99,9 @@ export async function ingestRange(
     if (checkpoint) await store.markCurrent?.(head.number);
     return;
   }
-  const target = head.number - indexingDepth;
+  const eligibleTarget = head.number - indexingDepth;
+  const target =
+    maximumTarget !== undefined && maximumTarget < eligibleTarget ? maximumTarget : eligibleTarget;
   const from = checkpoint ? checkpoint.number + 1n : startBlock;
   if (from > target) {
     await store.markCurrent?.(head.number);
@@ -97,11 +110,23 @@ export async function ingestRange(
 
   let to = from + batchSize - 1n < target ? from + batchSize - 1n : target;
   let events: Awaited<ReturnType<ChainReader['getEvents']>>;
+  let headers: Awaited<ReturnType<ChainReader['getBlock']>>[];
   for (;;) {
+    headers = [];
+    let headerReads: Array<Promise<Awaited<ReturnType<ChainReader['getBlock']>>>> = [];
+    for (let number = from; number <= to; number += 1n) {
+      headerReads.push(readChain(`block ${number}`, () => chain.getBlock(number)));
+      if (headerReads.length === SOURCE_READ_CONCURRENCY) {
+        headers.push(...(await Promise.all(headerReads)));
+        headerReads = [];
+      }
+    }
+    headers.push(...(await Promise.all(headerReads)));
     try {
-      events = await chain.getEvents(from, to);
+      events = await chain.getEvents(headers);
       break;
     } catch (error) {
+      if (!isTransportFailure(error) && !isRangeLimitFailure(error)) throw error;
       if (to === from) {
         if (isTransportFailure(error))
           throw new ChainTransportUnavailableError('event range', error);
@@ -111,10 +136,6 @@ export async function ingestRange(
     }
   }
 
-  const headers: Awaited<ReturnType<ChainReader['getBlock']>>[] = [];
-  for (let number = from; number <= to; number += 1n) {
-    headers.push(await readChain(`block ${number}`, () => chain.getBlock(number)));
-  }
   const first = headers[0];
   if (!first || first.number !== from) {
     await store.markRecoveryRequired('RANGE_START_MISMATCH');

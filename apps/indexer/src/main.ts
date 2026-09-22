@@ -10,7 +10,7 @@ import { loadConfig, logScopeHash } from './runtime/config.js';
 
 const config = loadConfig();
 await verifyManagedNodeOwnership(config.environment, config.rpcUrl);
-const client = createPublicClient({ transport: http(config.rpcUrl) });
+const client = createPublicClient({ transport: http(config.rpcUrl, { batch: true }) });
 const chainId = await client.getChainId();
 if (String(chainId) !== config.manifest.chainId) {
   throw new Error('DEPLOYMENT_MISMATCH: chain id');

@@ -42,12 +42,23 @@ export class ViemChainReader implements ChainReader {
   getBlock(number: bigint) {
     return this.block(number);
   }
-  async getEvents(from: bigint, to: bigint): Promise<readonly OrderedEvent[]> {
-    const logs = await this.client.getLogs({
-      address: [this.nft, this.escrow],
-      fromBlock: from,
-      toBlock: to,
-    });
+  async getEvents(headers: readonly BlockHeader[]): Promise<readonly OrderedEvent[]> {
+    const logs = [];
+    for (let offset = 0; offset < headers.length; offset += 8) {
+      const batch = headers.slice(offset, offset + 8);
+      logs.push(
+        ...(
+          await Promise.all(
+            batch.map((header) =>
+              this.client.getLogs({
+                address: [this.nft, this.escrow],
+                blockHash: header.hash,
+              }),
+            ),
+          )
+        ).flat(),
+      );
+    }
     return logs.flatMap((log): OrderedEvent[] => {
       const isNft = log.address.toLowerCase() === this.nft.toLowerCase();
       const decoded = decodeEventLog({

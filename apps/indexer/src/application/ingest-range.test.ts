@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { OrderedEvent } from '../domain/events.js';
 import type { BlockHeader, ChainReader, ProjectionUnitOfWork } from '../ports/index.js';
 import { ChainTransportUnavailableError, ingestRange } from './ingest-range.js';
 
@@ -14,13 +15,17 @@ function header(number: bigint): BlockHeader {
 }
 
 function store(checkpoint: BlockHeader | null = null) {
-  const commits: Array<{ headers: readonly BlockHeader[]; checkpoint: BlockHeader }> = [];
+  const commits: Array<{
+    headers: readonly BlockHeader[];
+    events: readonly OrderedEvent[];
+    checkpoint: BlockHeader;
+  }> = [];
   const recoveries: string[] = [];
   const current: bigint[] = [];
   const unit: ProjectionUnitOfWork = {
     checkpoint: async () => checkpoint,
-    commit: async (headers, _events, checkpoint) => {
-      commits.push({ headers, checkpoint });
+    commit: async (headers, events, checkpoint) => {
+      commits.push({ headers, events, checkpoint });
     },
     markRecoveryRequired: async (reason) => {
       recoveries.push(reason);
@@ -38,7 +43,9 @@ describe('ingestRange', () => {
     const chain: ChainReader = {
       getHead: async () => header(9n),
       getBlock: async (number) => header(number),
-      getEvents: async (from, to) => {
+      getEvents: async (headers) => {
+        const from = headers[0]?.number ?? 0n;
+        const to = headers.at(-1)?.number ?? from;
         attempts.push(`${from}:${to}`);
         if (to - from > 1n) throw new Error('RPC_RANGE_LIMIT');
         return [];
@@ -59,7 +66,9 @@ describe('ingestRange', () => {
     const chain: ChainReader = {
       getHead: async () => header(9n),
       getBlock: async (number) => header(number),
-      getEvents: async (from, to) => {
+      getEvents: async (headers) => {
+        const from = headers[0]?.number ?? 0n;
+        const to = headers.at(-1)?.number ?? from;
         ranges.push(`${from}:${to}`);
         return [];
       },
@@ -69,6 +78,26 @@ describe('ingestRange', () => {
     await ingestRange(chain, target.unit, 100n, 0n, 2n);
 
     expect(ranges).toEqual(['0:7']);
+    expect(target.commits[0]?.checkpoint.number).toBe(7n);
+  });
+
+  it('does not advance beyond a fixed maintenance target when the live head moves', async () => {
+    const ranges: string[] = [];
+    const chain: ChainReader = {
+      getHead: async () => header(12n),
+      getBlock: async (number) => header(number),
+      getEvents: async (headers) => {
+        const from = headers[0]?.number ?? 0n;
+        const to = headers.at(-1)?.number ?? from;
+        ranges.push(`${from}:${to}`);
+        return [];
+      },
+    };
+    const target = store(header(3n));
+
+    await ingestRange(chain, target.unit, 100n, 0n, 0n, 7n);
+
+    expect(ranges).toEqual(['4:7']);
     expect(target.commits[0]?.checkpoint.number).toBe(7n);
   });
 
@@ -85,6 +114,50 @@ describe('ingestRange', () => {
 
     expect(target.commits).toHaveLength(0);
     expect(target.current).toEqual([9n]);
+  });
+
+  it('binds event reads to headers captured after the head changes branches', async () => {
+    const branchHash = (number: bigint, branch: bigint) => hash(number * 10n + branch);
+    const branchHeader = (number: bigint, branch: bigint): BlockHeader => ({
+      number,
+      hash: branchHash(number, branch),
+      parentHash: number === 104n ? hash(104n) : branchHash(number - 1n, branch),
+      timestamp: 1_700_000_000n + number,
+    });
+    const requestedHashes: string[][] = [];
+    const funded: OrderedEvent = {
+      blockNumber: 105n,
+      transactionIndex: 0,
+      logIndex: 0,
+      blockHash: branchHash(105n, 2n),
+      transactionHash: hash(999n),
+      contractAddress: '0x0000000000000000000000000000000000000001',
+      topics: [],
+      data: '0x',
+      event: {
+        kind: 'SaleFunded',
+        saleId: '1',
+        buyer: '0x0000000000000000000000000000000000000002',
+        amountWei: '1',
+        fundedAt: '1',
+        expiresAt: '2',
+      },
+    };
+    const chain: ChainReader = {
+      getHead: async () => branchHeader(105n, 1n),
+      getBlock: async (number) => branchHeader(number, 2n),
+      getEvents: async (headers) => {
+        requestedHashes.push(headers.map((item) => item.hash));
+        return [funded];
+      },
+    };
+    const target = store();
+
+    await ingestRange(chain, target.unit, 2n, 104n);
+
+    expect(requestedHashes).toEqual([[branchHash(104n, 2n), branchHash(105n, 2n)]]);
+    expect(target.commits[0]?.events).toEqual([funded]);
+    expect(target.commits[0]?.checkpoint.hash).toBe(branchHash(105n, 2n));
   });
 
   it('does not mark a checkpoint behind the eligible head current', async () => {

@@ -8,6 +8,8 @@ import { createPublicClient, http, keccak256, type Address } from 'viem';
 import { ViemChainReader } from '../adapters/evm/viem-chain-reader.js';
 import { SqliteProjectionStore } from '../adapters/sqlite/sqlite-projection-store.js';
 import { ingestRange } from '../application/ingest-range.js';
+import { catchUpToReindexTarget } from '../application/reindex-catchup.js';
+import { prepareReindexReplay } from '../application/reindex-replay.js';
 import { resolveReindexOperationRecovery } from '../application/reindex-target.js';
 import { loadConfig, logScopeHash } from '../runtime/config.js';
 
@@ -24,7 +26,7 @@ const fromBlock = BigInt(fromRaw);
 if (fromBlock < BigInt(config.manifest.scanStartBlock))
   throw new Error('REINDEX_BEFORE_SCAN_START');
 
-const client = createPublicClient({ transport: http(config.rpcUrl) });
+const client = createPublicClient({ transport: http(config.rpcUrl, { batch: true }) });
 const chainId = await client.getChainId();
 const nft = config.manifest.nft.address as Address;
 const escrow = config.manifest.escrow.address as Address;
@@ -85,8 +87,9 @@ const operation = await runProjectionMaintenance(config.environment, {
         allowLogScopeChange: fromBlock === BigInt(config.manifest.scanStartBlock),
       },
     );
+    const resumesCatchup = maintenance.marker.projectionPhase === 'CATCHING_UP';
     let verifiedBackupId: string | undefined;
-    if (store.requiresSourceRefresh()) {
+    if (!resumesCatchup && store.requiresSourceRefresh()) {
       if (maintenance.marker.backupId) {
         verifyBackup(config.environment, maintenance.marker.backupId);
         verifiedBackupId = maintenance.marker.backupId;
@@ -100,19 +103,24 @@ const operation = await runProjectionMaintenance(config.environment, {
         verifiedBackupId = backup.backupId;
       }
     }
-    store.prepareForReindex(fromBlock, verifiedBackupId ? { verifiedBackupId } : undefined);
-    const rebuild = store.rebuildFromJournal();
-    for (let attempt = 0; attempt < 1_000; attempt += 1) {
-      const checkpoint = await store.checkpoint();
-      if (checkpoint && checkpoint.number >= target.number) break;
-      await ingestRange(
-        chain,
-        store,
-        config.batchSize,
-        BigInt(config.manifest.scanStartBlock),
-        config.indexingDepth,
-      );
+    if (!resumesCatchup) {
+      maintenance.recordProjectionPhase('PREPARING');
     }
+    const rebuild = prepareReindexReplay(store, fromBlock, resumesCatchup, verifiedBackupId);
+    maintenance.recordProjectionPhase('CATCHING_UP');
+    await catchUpToReindexTarget(
+      () => store.checkpoint(),
+      () =>
+        ingestRange(
+          chain,
+          store,
+          config.batchSize,
+          BigInt(config.manifest.scanStartBlock),
+          config.indexingDepth,
+          target.number,
+        ),
+      target,
+    );
     const checkpoint = await store.checkpoint();
     if (
       !checkpoint ||

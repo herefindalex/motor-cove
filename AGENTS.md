@@ -63,6 +63,10 @@ fixture when introducing a new dependency rule.
   requires recovery.
 - Rebuild uses verified local raw evidence. Reindex revalidates canonical chain evidence. Both use
   the exclusive maintenance gate and durable operation marker and preserve catalog authority.
+- Bind every fetched log batch to the exact headers observed for that batch. Query logs by block
+  hash and reject any event whose block hash differs from the supplied header snapshot.
+- A reindex marker in `CATCHING_UP` is durable progress. Resume from its checkpoint and fixed target
+  without rewinding the source journal again; fail if a successful ingestion step makes no progress.
 - Reconciliation keeps `(deployment, collection, token)` ownership identity. Source content
   mismatches require a verified archive before reacquisition; a pure missing row may use rewind and
   reinsert.

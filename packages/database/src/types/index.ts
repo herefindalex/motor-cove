@@ -42,6 +42,7 @@ export interface MaintenanceMarker {
   readonly reindexFromBlock?: string;
   readonly targetBlock?: string;
   readonly targetHash?: string;
+  readonly projectionPhase?: 'PREPARING' | 'CATCHING_UP';
   readonly backupId?: string;
   readonly transitionedFromOperationId?: string;
   readonly transitionedFromOperationType?: string;

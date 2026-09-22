@@ -8,7 +8,7 @@ export interface BlockHeader {
 export interface ChainReader {
   getHead(): Promise<BlockHeader>;
   getBlock(number: bigint): Promise<BlockHeader>;
-  getEvents(from: bigint, to: bigint): Promise<readonly OrderedEvent[]>;
+  getEvents(headers: readonly BlockHeader[]): Promise<readonly OrderedEvent[]>;
 }
 export interface ProjectionUnitOfWork {
   checkpoint(): Promise<BlockHeader | null>;

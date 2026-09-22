@@ -82,3 +82,34 @@ or the completed block's same-count digest is inconsistent. Reindex must begin a
 scan-start block, record and verify the backup, then reacquire canonical source. A pure missing event
 row follows ordinary rewind and reinsert instead of being mislabeled as contradictory content.
 `EVENT_IDENTITY_CONTENT_MISMATCH` remains a hard failure during normal ingestion.
+
+## Verify source snapshot identity
+
+Normal catch-up and reindex fetch headers before logs, then request logs with the exact observed block
+hashes. A compliant chain provider must support EIP-234 block-hash log filters. MotorCove does not
+combine logs from a numeric range with headers observed after that request.
+
+When diagnosis shows a header/log identity error:
+
+1. Keep the current checkpoint and maintenance marker.
+2. Confirm the configured RPC can serve logs by block hash for the deployment range.
+3. Rerun the same reindex operation after transport health is restored.
+4. Do not edit scan-complete metadata or source rows to force progress.
+
+JSON-RPC batching is enabled for the local Indexer transport so the per-header identity checks do not
+turn a large catch-up range into serialized HTTP round trips.
+
+## Resume a long reindex
+
+A reindex may require more than 1,000 successful batches. The command runs until its fixed eligible
+target is reached, provided each successful iteration advances the durable checkpoint.
+
+The marker's `projectionPhase` determines safe recovery:
+
+- `PREPARING`: the operation may still perform its owned source rewind and projection preparation.
+- `CATCHING_UP`: rerun the same command with the same `--from` value. It rebuilds derived projection
+  state from retained source evidence and continues from the checkpoint without rewinding again.
+
+`REINDEX_CATCHUP_NO_PROGRESS` means the adapter returned successfully but did not advance durable
+state. Keep the marker, inspect the checkpoint and provider response, then resume only after correcting
+the cause. Do not clear the marker or start a new target to bypass this error.

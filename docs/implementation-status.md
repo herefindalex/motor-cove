@@ -13,21 +13,20 @@ the verification JSON are the machine-readable sources; this page is a human sum
 
 ## Current executed gates
 
-R13 hardening is implemented in the working source: one immutable in-flight intent owns the
-pre-wallet boundary; the UI exposes the matching pending action; NFT reconciliation preserves
-collection identity; contradictory non-null source evidence is archived before scan-start
-reacquisition while pure missing rows remain reinsertable.
+R14 hardening is implemented in the working source: every source log read is bound to the exact
+observed block-header hash, reindex can complete more than 1,000 successful batches, and an
+interrupted `CATCHING_UP` phase resumes from its durable checkpoint without repeating the source
+rewind or changing the fixed target.
 
 - `pnpm verify`: generation, database contract, formatting, docs, architecture, type checking, lint,
-  13 Foundry tests, 38 files / 258 unit/component/database tests, 14 files / 57 integration tests,
-  and all 7 workspace builds passed.
+  13 Foundry tests, 44 files / 271 unit, component, and database tests, 14 files / 58 integration
+  tests, and all 7 workspace builds passed.
 - `pnpm test:e2e`: 6 local Playwright scenarios passed against Anvil, managed SQLite, API, Indexer,
   and Web. Existing multi-tab, volatile journal, recovery, and stopped-Indexer coverage remained green.
-- Focused R13 transaction coverage: 9 files / 73 tests passed, including same-intent suppression,
-  independent intents, pending UI state, journal recovery, and replacement inspection.
-- Focused R13 database/indexer coverage: 5 files / 43 tests passed before the additional independent
-  intent case; the full gates then passed the complete 258/57 test sets. Separate real Anvil runs
-  passed the source archive/reacquisition and wrong-collection reconciliation paths.
+- Focused R14 coverage passed the header-bound log adapter, branch-change ingestion, 1,001-batch
+  catch-up, no-progress rejection, phase-aware resume, marker persistence, and kill recovery cases.
+- Dedicated real Anvil runs passed all 5 database recovery cases and all 3 real-stack cases,
+  including a same-height branch replacement that persisted the post-reorg funding event.
 - Documentation checks generated 18 capabilities and 48 commands, required DB-01 through DB-62,
   and rejected all 8 negative fixtures. Architecture validation passed 154 source files and rejected
   all 10 dependency fixtures.

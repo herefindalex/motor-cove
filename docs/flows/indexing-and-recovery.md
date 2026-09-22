@@ -71,3 +71,30 @@ Only the resumed operation's projection postconditions can clear the marker.
 An isolated child-process test sends `SIGKILL` after `rewindFrom()` commits and before rebuild. It
 proves the mixed state remains blocked, then resumes the exact marker and verifies a new projection
 build. This covers ordinary process termination with SQLite WAL, not hardware power loss.
+
+## Snapshot-consistent source reads
+
+Each ingestion batch observes its block headers first. The chain adapter then requests logs by each
+observed `blockHash`, instead of issuing an independent number-range query that could resolve against
+a different branch. The application still checks every decoded event against the supplied header and
+rechecks the final canonical anchor before committing headers, source events, projections, and the
+checkpoint in one transaction.
+
+This ordering closes the case where the chain changes between `getLogs(fromBlock, toBlock)` and
+`getBlock(number)`: an empty log result from branch A can no longer be combined with headers from
+branch B and published as a scan-complete block. Header transport errors and deterministic adapter
+errors remain distinct from provider range-limit errors, so a deterministic failure is not retried by
+shrinking the range.
+
+## Durable reindex catch-up
+
+Reindex records two projection phases in its existing maintenance marker:
+
+1. `PREPARING` owns the source rewind and projection preparation.
+2. `CATCHING_UP` owns replay from the durable checkpoint to the previously captured target.
+
+There is no fixed successful-batch ceiling. Catch-up continues while the durable checkpoint advances.
+If ingestion reports success without advancing the checkpoint, reindex stops with
+`REINDEX_CATCHUP_NO_PROGRESS`. A process restart in `CATCHING_UP` rebuilds the derived projection from
+the retained source journal and continues from that checkpoint; it does not rewind the source again or
+move the captured target.

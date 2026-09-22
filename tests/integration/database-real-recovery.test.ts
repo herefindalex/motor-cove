@@ -23,6 +23,11 @@ import {
   restoreEnvironment,
 } from '../../packages/database/src/maintenance/index.js';
 import { createReadOnlyReader } from '../../packages/database/src/reader/index.js';
+import { ViemChainReader } from '../../apps/indexer/src/adapters/evm/viem-chain-reader.js';
+import { SqliteProjectionStore } from '../../apps/indexer/src/adapters/sqlite/sqlite-projection-store.js';
+import { ingestRange } from '../../apps/indexer/src/application/ingest-range.js';
+import type { ChainReader } from '../../apps/indexer/src/ports/index.js';
+import { logScopeHash } from '../../apps/indexer/src/runtime/config.js';
 
 describe('real database recovery against a local chain', () => {
   const projectRoot = resolve(import.meta.dirname, '../..');
@@ -163,6 +168,60 @@ describe('real database recovery against a local chain', () => {
     expect(orphanedEvent?.canonical).toBe(false);
     expect(orphanedEvent?.scanComplete).toBe(true);
     expect(orphanedEvent?.sourceLogScopeHash).toBe(reader.systemStatus().provenance.logScopeHash);
+    await reader.close();
+  }, 60_000);
+
+  it('IDX-026 binds an empty observation to the post-reorg block hash', async () => {
+    const base = await rpc<string>('evm_snapshot');
+    await rpc('evm_mine');
+    const underlying = new ViemChainReader(
+      publicClient,
+      manifest.nft.address as Address,
+      manifest.escrow.address as Address,
+    );
+    const branchAHead = await underlying.getHead();
+    let headObserved = false;
+    let branchBReceipt: Awaited<ReturnType<typeof fundSaleOne>> | undefined;
+    const switchingReader: ChainReader = {
+      getHead: async () => {
+        headObserved = true;
+        return branchAHead;
+      },
+      getBlock: async (number) => {
+        if (headObserved && !branchBReceipt) {
+          expect(await rpc<boolean>('evm_revert', [base])).toBe(true);
+          branchBReceipt = await fundSaleOne();
+        }
+        return underlying.getBlock(number);
+      },
+      getEvents: (headers) => underlying.getEvents(headers),
+    };
+    const database = new Database(paths.databasePath);
+    try {
+      const store = new SqliteProjectionStore(
+        database,
+        manifest.deploymentId,
+        manifest.nft.address,
+        logScopeHash(manifest),
+      );
+
+      await ingestRange(switchingReader, store, 100n, BigInt(manifest.scanStartBlock), 0n);
+    } finally {
+      database.close();
+    }
+
+    expect(branchBReceipt).toBeDefined();
+    expect(branchBReceipt?.blockNumber).toBe(branchAHead.number);
+    expect(branchBReceipt?.blockHash).not.toBe(branchAHead.hash);
+    const reader = await createReadOnlyReader(paths, manifest.deploymentId);
+    expect(reader.getSale('1').data?.status).toBe('FUNDED');
+    expect(
+      reader
+        .recentEvents(100)
+        .data.some(
+          (event) => event.transactionHash === branchBReceipt?.transactionHash.toLowerCase(),
+        ),
+    ).toBe(true);
     await reader.close();
   }, 60_000);
 

@@ -107,13 +107,15 @@ describe('projection maintenance isolation', () => {
     await expect(
       runProjectionMaintenance(paths, {
         ...options,
-        run: () => {
+        run: (_database, maintenance) => {
+          maintenance.recordProjectionPhase('CATCHING_UP');
           throw new Error('killed after rewind');
         },
       }),
     ).rejects.toThrow('killed after rewind');
     const original = readFileSync(paths.maintenancePath, 'utf8');
-    const marker = JSON.parse(original) as { operationId: string };
+    const marker = JSON.parse(original) as { operationId: string; projectionPhase?: string };
+    expect(marker.projectionPhase).toBe('CATCHING_UP');
 
     await expect(recoverEnvironment(paths, true)).resolves.toMatchObject({
       changed: false,
@@ -126,7 +128,10 @@ describe('projection maintenance isolation', () => {
     await expect(
       runProjectionMaintenance(paths, {
         ...options,
-        run: () => 'rebuilt',
+        run: (_database, maintenance) => {
+          expect(maintenance.marker.projectionPhase).toBe('CATCHING_UP');
+          return 'rebuilt';
+        },
       }),
     ).resolves.toEqual({ operationId: marker.operationId, result: 'rebuilt' });
     expect(existsSync(paths.maintenancePath)).toBe(false);
