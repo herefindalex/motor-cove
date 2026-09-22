@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "c9acc87800008877d61838a467c5b074e5493d21",
+    "revision": "f1a1525ca0c1b58accd5bfc3d2d81d0118621afe",
     "dirty": true,
-    "capturedAt": "2026-09-22T04:57:53Z",
-    "sourceFingerprint": "sha256:5ed1bc61c644c1d911684e42a4df82fd9e1f208a4bcab02e97c3292c21d9939f",
+    "capturedAt": "2026-09-22T05:05:10Z",
+    "sourceFingerprint": "sha256:c29f3308aa8a259c02acdb3d1f5ce1519ca8161944489350d244a929ed49c6bc",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Captured from the uncommitted R8 working tree based on committed R7 evidence revision c9acc87800008877d61838a467c5b074e5493d21. Local pnpm verify and all 6 E2E scenarios passed. Commit-specific remote CI remains pending until R8 is pushed. Hardware power loss, public-network behavior, manual MetaMask behavior, and cross-device coordination remain outside local claims.",
+    "limits": "Captured from committed R8 source f1a1525ca0c1b58accd5bfc3d2d81d0118621afe plus this generated evidence update. The required dirty-worktree fingerprint binds the evidence follow-up itself. Local and GitHub-hosted deterministic Anvil, SQLite, Fastify, QueryClient, Playwright, and Foundry evidence does not establish hardware power-loss, public-network, manual MetaMask, or cross-device behavior.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, and NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -277,13 +277,13 @@
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35686106287)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35688940388)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
-      "status": "executed/fail",
-      "result": "The R7 evidence-only follow-up reached documentation validation and failed because sourceContext.dirty was false. The R7 source run 35685573324 had already passed docs:smoke, pnpm verify, and pnpm test:e2e. The R8 worktree restores dirty=true and passes the same local docs contract; R8 remote CI is pending.",
-      "executedAt": "2026-09-22T04:15:06Z",
-      "limitations": "This failure belongs to docs-only commit c9acc87800008877d61838a467c5b074e5493d21 and does not invalidate the successful R7 source run. It is not evidence for R8 until R8 is committed and its own workflow completes.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35686106287"
+      "status": "executed/pass",
+      "result": "GitHub-hosted verify job completed successfully for R8 source f1a1525ca0c1b58accd5bfc3d2d81d0118621afe: dependency installation, documentation smoke, pnpm verify, and pnpm test:e2e all passed",
+      "executedAt": "2026-09-22T05:05:10Z",
+      "limitations": "The hosted run uses controlled local Anvil, SQLite, and Playwright Chromium. It does not establish public-network behavior, manual MetaMask behavior, cross-device coordination, or hardware power-loss durability.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35688940388"
     }
   ]
 }
