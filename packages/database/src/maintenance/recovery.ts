@@ -1,11 +1,39 @@
 import Database from 'better-sqlite3';
-import { existsSync, readFileSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { acquireMaintenanceLocks } from '../connection/flock.js';
 import { verifyOwnedEnvironment } from '../connection/environment.js';
 import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
 import { clearMaintenanceMarker } from './marker.js';
 import { verifyDatabase } from './migrations.js';
+
+const sqliteSidecars = ['-wal', '-shm'] as const;
+
+function quarantineActiveRestoreSidecars(
+  paths: EnvironmentPaths,
+  quarantineDirectory: string,
+): void {
+  mkdirSync(quarantineDirectory, { recursive: true });
+  for (const suffix of sqliteSidecars) {
+    const active = `${paths.databasePath}${suffix}`;
+    if (!existsSync(active)) continue;
+    const quarantined = resolve(quarantineDirectory, `motorcove.sqlite${suffix}`);
+    if (existsSync(quarantined)) throw new Error('RECOVERY_REQUIRED: ambiguous SQLite file set');
+    renameSync(active, quarantined);
+  }
+}
+
+function restoreQuarantinedFileSet(paths: EnvironmentPaths, quarantineDirectory: string): void {
+  const quarantinedDatabase = resolve(quarantineDirectory, 'motorcove.sqlite');
+  for (const suffix of sqliteSidecars) {
+    const active = `${paths.databasePath}${suffix}`;
+    const quarantined = resolve(quarantineDirectory, `motorcove.sqlite${suffix}`);
+    if (existsSync(active) && existsSync(quarantined))
+      throw new Error('RECOVERY_REQUIRED: ambiguous SQLite file set');
+    if (!existsSync(active) && existsSync(quarantined)) renameSync(quarantined, active);
+  }
+  renameSync(quarantinedDatabase, paths.databasePath);
+}
 
 export async function recoverEnvironment(paths: EnvironmentPaths, complete = false) {
   verifyOwnedEnvironment(paths);
@@ -26,22 +54,19 @@ export async function recoverEnvironment(paths: EnvironmentPaths, complete = fal
   const locks = await acquireMaintenanceLocks(paths);
   try {
     if (!existsSync(paths.databasePath) && marker.operationType === 'RESTORE') {
-      const staged = resolve(
-        paths.environmentDir,
-        `.restore-${marker.operationId}`,
-        'motorcove.sqlite',
-      );
-      const quarantined = resolve(
+      const stagingDirectory = resolve(paths.environmentDir, `.restore-${marker.operationId}`);
+      const quarantineDirectory = resolve(
         paths.environmentDir,
         `.quarantine-${marker.operationId}`,
-        'motorcove.sqlite',
       );
-      const candidate = existsSync(staged)
-        ? staged
-        : existsSync(quarantined)
-          ? quarantined
-          : undefined;
-      if (candidate) renameSync(candidate, paths.databasePath);
+      const staged = resolve(stagingDirectory, 'motorcove.sqlite');
+      const quarantined = resolve(quarantineDirectory, 'motorcove.sqlite');
+      if (existsSync(staged)) {
+        quarantineActiveRestoreSidecars(paths, quarantineDirectory);
+        renameSync(staged, paths.databasePath);
+      } else if (existsSync(quarantined)) {
+        restoreQuarantinedFileSet(paths, quarantineDirectory);
+      }
     }
     if (!existsSync(paths.databasePath))
       throw new Error('RECOVERY_REQUIRED: active database missing');

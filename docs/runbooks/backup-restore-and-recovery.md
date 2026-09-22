@@ -34,14 +34,20 @@ The first command reports the marker. `--complete` reacquires locks and clears t
 an active, staged, or quarantined candidate becomes a verified DB. Never delete `maintenance.json`
 as a normal recovery method.
 
+SQLite main, WAL, and SHM files are one generation. If restore stopped after moving only the active
+main file, recovery first moves the remaining active sidecars into the same quarantine before it
+installs the staged standalone snapshot. If it rolls back from quarantine, it reunites that
+quarantine's main and sidecars. Duplicate sidecars in active and quarantine locations are ambiguous;
+recovery stops and preserves the marker instead of choosing one.
+
 ## Stop conditions
 
 Stop on checksum/identity mismatch, missing candidate, schema drift, history divergence, or a chain
 deployment mismatch. Keep marker, quarantine, and reports for diagnosis.
 
-Temporary tests cover WAL snapshot, corrupted backup rejection, verified restore, and one file-switch
-crash window. Hardware power loss, chain-forward catch-up after restore, and all file-system failure
-modes are not verified.
+Temporary tests cover WAL snapshot, corrupted backup rejection, verified restore, and a process-killed
+hot-WAL file-switch crash window. Hardware power loss, chain-forward catch-up after restore, and all
+file-system failure modes are not verified.
 
 ## Source-schema backup evidence
 

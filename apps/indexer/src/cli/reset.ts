@@ -1,4 +1,5 @@
 import {
+  acquireBootstrapOwnership,
   acquireMaintenanceLocks,
   resetEnvironment,
   verifyOwnedEnvironment,
@@ -38,19 +39,24 @@ if (chainId !== '0x7a69')
 if (typeof clientVersion !== 'string' || !clientVersion.toLowerCase().includes('anvil'))
   throw new Error(`RESET_CLIENT_REFUSED: expected Anvil, got ${String(clientVersion)}`);
 
-const locks = await acquireMaintenanceLocks(config.environment);
+const ownership = await acquireBootstrapOwnership(config.environment);
 try {
-  await rpcRequest('anvil_reset');
-  const result = await resetEnvironment(config.environment, true, { locksAlreadyHeld: true });
-  console.log(
-    JSON.stringify({
-      service: 'reset',
-      status: 'complete',
-      environmentId: config.environment.environmentId,
-      chainId: 31337,
-      ...result,
-    }),
-  );
+  const locks = await acquireMaintenanceLocks(config.environment);
+  try {
+    await rpcRequest('anvil_reset');
+    const result = await resetEnvironment(config.environment, true, { locksAlreadyHeld: true });
+    console.log(
+      JSON.stringify({
+        service: 'reset',
+        status: 'complete',
+        environmentId: config.environment.environmentId,
+        chainId: 31337,
+        ...result,
+      }),
+    );
+  } finally {
+    await locks.release();
+  }
 } finally {
-  await locks.release();
+  await ownership.release();
 }

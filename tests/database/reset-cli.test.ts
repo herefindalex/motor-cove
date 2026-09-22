@@ -1,10 +1,14 @@
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { environmentPaths, initializeOwnedEnvironment } from '@motorcove/database/maintenance';
+import {
+  acquireBootstrapOwnership,
+  environmentPaths,
+  initializeOwnedEnvironment,
+} from '@motorcove/database/maintenance';
 
 const roots: string[] = [];
 afterEach(() => {
@@ -80,6 +84,66 @@ describe('local reset CLI refusal matrix', () => {
       });
       expect(result.code).not.toBe(0);
       expect(result.output).toContain(expected);
+    } finally {
+      await new Promise<void>((resolveClose, reject) =>
+        server.close((error) => (error ? reject(error) : resolveClose())),
+      );
+    }
+  });
+
+  it('holds lifecycle ownership before invoking anvil_reset', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'motorcove-reset-cli-'));
+    roots.push(root);
+    const paths = environmentPaths(root, 'reset-cli');
+    initializeOwnedEnvironment(paths);
+    let resetCalls = 0;
+    const server = createServer((request, response) => {
+      let body = '';
+      request.on('data', (chunk: Buffer) => (body += chunk.toString()));
+      request.on('end', () => {
+        const method = (JSON.parse(body) as { method: string }).method;
+        if (method === 'anvil_reset') resetCalls += 1;
+        response.setHeader('content-type', 'application/json');
+        response.end(
+          JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            result:
+              method === 'eth_chainId'
+                ? '0x7a69'
+                : method === 'web3_clientVersion'
+                  ? 'anvil/v1.8.3'
+                  : true,
+          }),
+        );
+      });
+    });
+    await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('test server address unavailable');
+    const environment = {
+      ...process.env,
+      MOTORCOVE_WORKSPACE_ROOT: root,
+      MOTORCOVE_ENV: 'reset-cli',
+      MOTORCOVE_RPC_URL: `http://127.0.0.1:${address.port}`,
+    };
+    const before = readdirSync(paths.environmentDir).sort();
+    try {
+      const ownership = await acquireBootstrapOwnership(paths);
+      try {
+        const blocked = await runReset(environment);
+        expect(blocked.code).not.toBe(0);
+        expect(blocked.output).toContain('RESOURCE_BUSY');
+        expect(resetCalls).toBe(0);
+        expect(readdirSync(paths.environmentDir).sort()).toEqual(before);
+        expect(existsSync(paths.maintenancePath)).toBe(false);
+      } finally {
+        await ownership.release();
+      }
+
+      const allowed = await runReset(environment);
+      expect(allowed.code).toBe(0);
+      expect(resetCalls).toBe(1);
     } finally {
       await new Promise<void>((resolveClose, reject) =>
         server.close((error) => (error ? reject(error) : resolveClose())),

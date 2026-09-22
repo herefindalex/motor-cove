@@ -54,8 +54,11 @@ passed to `MarketActions.fund` remains the original decimal wei string. UI code 
 ## State ownership across page and wallet changes
 
 - Component-local state owns form input, disclosure, and the immediate feedback message.
-- TanStack Query owns API snapshots keyed by deployment identity; a fresh query is not proof that
-  the Indexer reached the chain head.
+- TanStack Query owns API snapshots keyed by deployment identity. Each query function also passes the
+  expected deployment to the HTTP adapter, which rejects response provenance from another
+  deployment. A cache key alone does not validate response identity, and a fresh query is not proof
+  that the Indexer reached the chain head. Config polling supplies the new deployment context after a
+  local service replacement; it does not replace the response check.
 - The wallet capability owns current connection, account, chain, pending, and wrong-network state.
 - The transaction capability owns durable operation context in the journal. A page unmount does not
   cancel observation of a known hash.

@@ -17,17 +17,22 @@ import { useWalletState } from '../integrations/evm/use-wallet-state.js';
 
 export function SaleDetailPage() {
   const { saleId } = useParams();
-  const config = useQuery({ queryKey: ['config'], queryFn: motorCoveApi.config });
+  const config = useQuery({
+    queryKey: ['config'],
+    queryFn: motorCoveApi.config,
+    refetchInterval: 2_000,
+  });
+  const deploymentId = config.data?.deploymentId;
   const sale = useQuery({
-    queryKey: ['sale', config.data?.deploymentId, saleId],
-    queryFn: () => motorCoveApi.sale(saleId ?? ''),
-    enabled: Boolean(config.data && saleId),
+    queryKey: ['sale', deploymentId, saleId],
+    queryFn: () => motorCoveApi.sale(saleId ?? '', deploymentId ?? ''),
+    enabled: Boolean(deploymentId && saleId),
     refetchInterval: 2_000,
   });
   const vehicles = useQuery({
-    queryKey: ['vehicles', config.data?.deploymentId],
-    queryFn: motorCoveApi.vehicles,
-    enabled: Boolean(config.data),
+    queryKey: ['vehicles', deploymentId],
+    queryFn: () => motorCoveApi.vehicles(deploymentId ?? ''),
+    enabled: Boolean(deploymentId),
     refetchInterval: 2_000,
   });
   const wallet = useWalletState(Number(config.data?.chainId ?? 31337));

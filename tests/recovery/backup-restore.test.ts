@@ -1,6 +1,19 @@
 import Database from 'better-sqlite3';
-import { readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { resolve } from 'node:path';
+import { setTimeout as wait } from 'node:timers/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   backupEnvironment,
@@ -216,5 +229,66 @@ describe('backup, restore, recovery', () => {
     const db = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok');
     db.close();
+  });
+
+  it('recovers a staged snapshot without attaching the previous active WAL generation', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const original = new Database(paths.databasePath);
+    original
+      .prepare(
+        `INSERT INTO catalog_vehicles VALUES
+          ('kept','BACKUP_VALUE','snapshot','M','2026','/before.svg','MANUAL',NULL,NULL,'x','x')`,
+      )
+      .run();
+    original.close();
+    const backup = await backupEnvironment(paths);
+
+    const ready = resolve(root, 'hot-wal-ready');
+    const helper = resolve(import.meta.dirname, '../helpers/hot-wal-writer-child.ts');
+    const writer = spawn(process.execPath, ['--import', 'tsx', helper, paths.databasePath, ready], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    for (let attempt = 0; attempt < 100 && !existsSync(ready); attempt += 1) await wait(20);
+    expect(readFileSync(ready, 'utf8')).toBe('ready\n');
+    writer.kill('SIGKILL');
+    await new Promise<void>((resolveExit, reject) => {
+      writer.once('error', reject);
+      writer.once('exit', () => resolveExit());
+    });
+    expect(statSync(`${paths.databasePath}-wal`).size).toBeGreaterThan(0);
+
+    const operationId = 'restore-hot-wal-crash';
+    const staging = resolve(paths.environmentDir, `.restore-${operationId}`);
+    const quarantine = resolve(paths.environmentDir, `.quarantine-${operationId}`);
+    mkdirSync(staging);
+    mkdirSync(quarantine);
+    copyFileSync(resolve(backup.path, 'database.sqlite'), resolve(staging, 'motorcove.sqlite'));
+    renameSync(paths.databasePath, resolve(quarantine, 'motorcove.sqlite'));
+    writeFileSync(
+      paths.maintenancePath,
+      `${JSON.stringify({
+        operationId,
+        operationType: 'RESTORE',
+        stage: 'ACTIVE_QUARANTINED',
+        environmentId: paths.environmentId,
+        targetDatabase: paths.databasePath,
+        expectedSchemaContract: '1',
+        backupId: backup.backupId,
+        startedAt: new Date(0).toISOString(),
+      })}\n`,
+    );
+
+    await expect(recoverEnvironment(paths, true)).resolves.toMatchObject({
+      status: 'RECOVERED',
+      operationId,
+    });
+    const recovered = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
+    expect(
+      recovered.prepare("SELECT name FROM catalog_vehicles WHERE catalog_id='kept'").get(),
+    ).toEqual({ name: 'BACKUP_VALUE' });
+    expect(recovered.pragma('integrity_check', { simple: true })).toBe('ok');
+    recovered.close();
+    expect(existsSync(resolve(quarantine, 'motorcove.sqlite-wal'))).toBe(true);
   });
 });

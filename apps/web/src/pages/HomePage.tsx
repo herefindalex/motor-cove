@@ -18,24 +18,28 @@ import { useChainTime } from '../integrations/evm/use-chain-time.js';
 import { presentProjectionHealth } from '../features/diagnostics/index.js';
 
 export function HomePage() {
-  const configQuery = useQuery({ queryKey: ['config'], queryFn: motorCoveApi.config });
+  const configQuery = useQuery({
+    queryKey: ['config'],
+    queryFn: motorCoveApi.config,
+    refetchInterval: 2_000,
+  });
   const deploymentId = configQuery.data?.deploymentId;
   const chainTime = useChainTime(deploymentId);
   const salesQuery = useQuery({
     queryKey: ['sales', deploymentId],
-    queryFn: motorCoveApi.sales,
+    queryFn: () => motorCoveApi.sales(deploymentId ?? ''),
     enabled: Boolean(deploymentId),
     refetchInterval: 2000,
   });
   const vehiclesQuery = useQuery({
     queryKey: ['vehicles', deploymentId],
-    queryFn: motorCoveApi.vehicles,
+    queryFn: () => motorCoveApi.vehicles(deploymentId ?? ''),
     enabled: Boolean(deploymentId),
     refetchInterval: 2000,
   });
   const systemQuery = useQuery({
     queryKey: ['system', deploymentId],
-    queryFn: motorCoveApi.system,
+    queryFn: () => motorCoveApi.system(deploymentId ?? ''),
     enabled: Boolean(deploymentId),
     refetchInterval: 2_000,
   });

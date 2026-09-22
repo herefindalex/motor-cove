@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "67c54e69df59bc5d13fcfc242cc30f6f8228dc3f",
-    "dirty": false,
-    "capturedAt": "2026-09-22T04:11:38Z",
-    "sourceFingerprint": "sha256:2aea87c52c93670dc8bf3c6fe4e9bad255fd034c8c6232642cce58a626a7488d",
+    "revision": "c9acc87800008877d61838a467c5b074e5493d21",
+    "dirty": true,
+    "capturedAt": "2026-09-22T04:57:53Z",
+    "sourceFingerprint": "sha256:5ed1bc61c644c1d911684e42a4df82fd9e1f208a4bcab02e97c3292c21d9939f",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Captured from committed R7 source 67c54e69df59bc5d13fcfc242cc30f6f8228dc3f. Local and GitHub-hosted deterministic Anvil, SQLite, Fastify, JSDOM, Playwright, and Foundry evidence does not establish public-network behavior, hardware power-loss durability, cross-device journal coordination, broad wallet-provider compatibility, or an external security audit.",
+    "limits": "Captured from the uncommitted R8 working tree based on committed R7 evidence revision c9acc87800008877d61838a467c5b074e5493d21. Local pnpm verify and all 6 E2E scenarios passed. Commit-specific remote CI remains pending until R8 is pushed. Hardware power loss, public-network behavior, manual MetaMask behavior, and cross-device coordination remain outside local claims.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, and NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -44,9 +44,9 @@
       "command": "pnpm test:db",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "The full unit/database gate passed, including malformed and mismatched projection marker failures followed by successful same-process reacquisition of the real maintenance locks",
+      "result": "5 database files and 29 tests passed, including full reset CLI lifecycle ownership: real bootstrap flock contention stopped before anvil_reset, left environment state unchanged, and reset completed after release",
       "limitations": "SQLITE_FULL uses SQLite max_page_count rather than exhausting the host filesystem. The reset refusal matrix does not prove resistance to a malicious loopback Anvil impersonator.",
-      "executedAt": "2026-09-22T03:59:28Z"
+      "executedAt": "2026-09-22T04:48:09Z"
     },
     {
       "id": "RUN-DB-SEEDS",
@@ -66,9 +66,9 @@
       "command": "pnpm test:recovery",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "1 file, 13 tests passed: WAL backup, source-schema evidence, required sidecar checksums and identity, corrupt backup rejection, same-deployment restore, different-deployment and missing-manifest pre-quarantine refusal, and file-switch recovery",
+      "result": "1 file and 14 tests passed: WAL backup, source-schema and sidecar identity evidence, corrupt backup rejection, deployment-bound restore, and a child-process-killed hot WAL isolated before staged snapshot recovery",
       "limitations": "Synthetic process interruption only; no hardware power-loss claim. Restore-behind-head catch-up is recorded in RUN-INTEGRATION.",
-      "executedAt": "2026-09-22T03:59:28Z"
+      "executedAt": "2026-09-22T04:48:09Z"
     },
     {
       "id": "RUN-CONTRACTS",
@@ -97,9 +97,9 @@
       "command": "pnpm test:e2e",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "6 Playwright scenarios passed, including a wallet-returned hash racing hashless recovery, durable evidence after reload, explicit non-durable reload limits, real Chromium multi-tab revision conflicts and writer handoff, local marketplace recovery, and stopped-Indexer freshness from a clean context",
+      "result": "6 Playwright scenarios passed against harness-owned Anvil, SQLite, API, Indexer, and Chromium, including transaction reload, non-durable limits, multi-tab journal locking, marketplace lifecycle, and stopped-Indexer freshness",
       "limitations": "Wallet fault injection uses a controlled EIP-1193 adapter. Manual MetaMask and cross-device journal behavior are not verified.",
-      "executedAt": "2026-09-22T03:57:59Z"
+      "executedAt": "2026-09-22T04:48:09Z"
     },
     {
       "id": "RUN-INTEGRATION",
@@ -137,9 +137,9 @@
       "command": "pnpm test:integration",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "11 files and 47 tests passed in the full integration gate. Focused R7 execution also passed 6 files and 25 tests covering reindex, verified source archives, database recovery, process interruption, and transaction convergence",
+      "result": "11 files and 47 tests passed in the full integration gate for local Anvil, SQLite, Indexer, API, recovery, reconciliation, and transaction convergence",
       "limitations": "Local deterministic Anvil and ordinary process termination only; public-network finality, unavailable archive history, hardware power loss, and full host-filesystem faults remain unverified.",
-      "executedAt": "2026-09-22T03:57:59Z"
+      "executedAt": "2026-09-22T04:48:09Z"
     },
     {
       "id": "RUN-INDEXER-UNIT",
@@ -148,9 +148,9 @@
       "command": "pnpm test:unit",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "The full 34-file, 220-test unit/component/database gate passed. Focused R7 execution passed fixed-target resume, changed-anchor refusal, maintenance cleanup, and source-refresh archive cases",
+      "result": "The full 36-file, 228-test unit/component/database gate passed, including R8 restore file generations, reset lifecycle ownership, API response deployment provenance, and existing recovery contracts",
       "limitations": "Includes controlled wallet, journal, database, migration, seed, recovery, RPC, and documentation tests; manual provider behavior is separate.",
-      "executedAt": "2026-09-22T03:57:59Z"
+      "executedAt": "2026-09-22T04:55:08Z"
     },
     {
       "id": "RUN-API-CONTRACT",
@@ -170,9 +170,9 @@
       "command": "pnpm check:architecture",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Architecture graph valid for 150 source files; all 10 invalid dependency fixtures were rejected",
+      "result": "Architecture graph valid for 151 source files; all 10 invalid dependency fixtures were rejected",
       "limitations": "Static source imports only; runtime process behavior is verified separately.",
-      "executedAt": "2026-09-22T03:57:59Z"
+      "executedAt": "2026-09-22T04:48:09Z"
     },
     {
       "id": "RUN-GENERATE-CHECK",
@@ -192,9 +192,9 @@
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "pnpm verify passed generation and database checks, formatting, documentation, architecture, type checking, lint, 13 Foundry tests, 34 files and 220 unit/component/database tests, 11 files and 47 integration tests, and all workspace builds",
+      "result": "pnpm verify passed generation and database checks, formatting, documentation, architecture, type checking, lint, 13 Foundry tests, 36 files and 228 unit/component/database tests, 11 files and 47 integration tests, and all workspace builds",
       "limitations": "The gate does not establish manual MetaMask behavior, public-network safety, branch protection, hardware power-loss durability, or cross-device journal coordination.",
-      "executedAt": "2026-09-22T03:57:59Z"
+      "executedAt": "2026-09-22T04:55:08Z"
     },
     {
       "id": "RUN-DOCS-CHECK",
@@ -205,7 +205,7 @@
       "status": "executed/pass",
       "result": "Documentation generation and checks passed for 18 capabilities and 48 commands; all 8 documentation negative fixtures were rejected",
       "limitations": "Mermaid visual rendering and independent contributor onboarding remain manual checks.",
-      "executedAt": "2026-09-22T03:59:28Z"
+      "executedAt": "2026-09-22T04:55:08Z"
     },
     {
       "id": "RUN-WEB-COMPONENT",
@@ -214,9 +214,9 @@
       "command": "pnpm test:components",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Web unit and component coverage passed within the 34-file, 220-test gate, including durable returned-hash merge, exact amount display, transaction notices, wallet errors, and observation freshness",
+      "result": "Web unit, component, adapter, and real QueryClient coverage passed within the 36-file, 228-test gate, including rejection without wrong-key caching and recovery under the replacement deployment key",
       "limitations": "Controlled journal fixture only; injected provider behavior is covered separately by Playwright and still lacks manual MetaMask evidence.",
-      "executedAt": "2026-09-22T03:57:59Z"
+      "executedAt": "2026-09-22T04:55:08Z"
     },
     {
       "id": "RUN-CHAIN-SEED-JOURNAL",
@@ -277,13 +277,13 @@
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35685573324)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35686106287)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
-      "status": "executed/pass",
-      "result": "GitHub-hosted verify job completed successfully: dependency installation, documentation smoke, pnpm verify, and pnpm test:e2e all passed for R7 source 67c54e69df59bc5d13fcfc242cc30f6f8228dc3f",
-      "executedAt": "2026-09-22T04:11:38Z",
-      "limitations": "The hosted run uses controlled local Anvil, SQLite, and Playwright Chromium. It does not establish public-network behavior, manual MetaMask behavior, cross-device journal coordination, or hardware power-loss durability.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35685573324"
+      "status": "executed/fail",
+      "result": "The R7 evidence-only follow-up reached documentation validation and failed because sourceContext.dirty was false. The R7 source run 35685573324 had already passed docs:smoke, pnpm verify, and pnpm test:e2e. The R8 worktree restores dirty=true and passes the same local docs contract; R8 remote CI is pending.",
+      "executedAt": "2026-09-22T04:15:06Z",
+      "limitations": "This failure belongs to docs-only commit c9acc87800008877d61838a467c5b074e5493d21 and does not invalidate the successful R7 source run. It is not evidence for R8 until R8 is committed and its own workflow completes.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35686106287"
     }
   ]
 }

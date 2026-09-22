@@ -82,7 +82,7 @@
     {
       "id": "CAP-07",
       "name": "Frontend state and API integration",
-      "behavior": "Keeps query cache, wallet state, form state, transaction journal, and projection provenance in separate owners.",
+      "behavior": "Keeps query cache, wallet state, form state, transaction journal, and projection provenance in separate owners. Deployment-keyed queries pass the expected deployment into the HTTP adapter and reject mismatched response provenance.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/app/composition.tsx",
@@ -134,7 +134,7 @@
     {
       "id": "CAP-11",
       "name": "Database lifecycle",
-      "behavior": "Uses native Drizzle history, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, deployment-bound backup, and sidecar-verified restore.",
+      "behavior": "Uses native Drizzle history, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, deployment-bound backup, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership.",
       "implementation": "partial",
       "code": [
         "packages/database",
@@ -172,6 +172,7 @@
         "DB-47",
         "DB-48",
         "DB-50",
+        "DB-51",
         "DB-26",
         "DB-27",
         "DB-28",

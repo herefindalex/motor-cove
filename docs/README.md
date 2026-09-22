@@ -80,6 +80,8 @@ validity, resolved dependency boundaries, and independent liability evidence are
 Fixed-target maintenance resume, verified source archives, final pre-wallet context checks, and
 per-operation journal revisions are recorded in
 [resumable maintenance and journal revisions](adr/0012-resumable-maintenance-and-journal-revisions.md).
+Restore file generations, reset/bootstrap lifecycle ownership, and HTTP query deployment checks are
+recorded in [restore lifecycle and query identity](adr/0013-restore-lifecycle-and-query-identity.md).
 
 ## Evaluate current evidence
 

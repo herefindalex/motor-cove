@@ -37,12 +37,29 @@ export interface ApiSnapshot<T> {
   };
 }
 
+function assertDeployment<T>(
+  snapshot: ApiSnapshot<T>,
+  expectedDeploymentId: string,
+): ApiSnapshot<T> {
+  if (snapshot.provenance.deploymentId.toLowerCase() !== expectedDeploymentId.toLowerCase())
+    throw new Error(
+      `API_DEPLOYMENT_MISMATCH: expected ${expectedDeploymentId}, got ${snapshot.provenance.deploymentId}`,
+    );
+  return snapshot;
+}
+
 export const motorCoveApi = {
   config: async (): Promise<PublicConfig> => publicConfigSchema.parse(await getJson('/v1/config')),
-  sales: async (): Promise<ApiSnapshot<readonly SaleResponse[]>> =>
-    responseEnvelope(saleSchema.array()).parse(await getJson('/v1/sales')),
-  sale: async (saleId: string): Promise<ApiSnapshot<SaleResponse>> =>
-    responseEnvelope(saleSchema).parse(await getJson(`/v1/sales/${encodeURIComponent(saleId)}`)),
+  sales: async (expectedDeploymentId: string): Promise<ApiSnapshot<readonly SaleResponse[]>> =>
+    assertDeployment(
+      responseEnvelope(saleSchema.array()).parse(await getJson('/v1/sales')),
+      expectedDeploymentId,
+    ),
+  sale: async (saleId: string, expectedDeploymentId: string): Promise<ApiSnapshot<SaleResponse>> =>
+    assertDeployment(
+      responseEnvelope(saleSchema).parse(await getJson(`/v1/sales/${encodeURIComponent(saleId)}`)),
+      expectedDeploymentId,
+    ),
   fundingObservation: async (
     saleId: string,
     query: FundingObservationQuery,
@@ -58,8 +75,16 @@ export const motorCoveApi = {
       await getJson(`/v1/sales/${encodeURIComponent(saleId)}?${params.toString()}`),
     );
   },
-  vehicles: async (): Promise<ApiSnapshot<readonly VehicleResponse[]>> =>
-    responseEnvelope(vehicleSchema.array()).parse(await getJson('/v1/vehicles')),
-  system: async (): Promise<ApiSnapshot<SystemStatus>> =>
-    responseEnvelope(systemStatusSchema).parse(await getJson('/v1/system/status')),
+  vehicles: async (
+    expectedDeploymentId: string,
+  ): Promise<ApiSnapshot<readonly VehicleResponse[]>> =>
+    assertDeployment(
+      responseEnvelope(vehicleSchema.array()).parse(await getJson('/v1/vehicles')),
+      expectedDeploymentId,
+    ),
+  system: async (expectedDeploymentId: string): Promise<ApiSnapshot<SystemStatus>> =>
+    assertDeployment(
+      responseEnvelope(systemStatusSchema).parse(await getJson('/v1/system/status')),
+      expectedDeploymentId,
+    ),
 };

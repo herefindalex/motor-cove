@@ -2,11 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 import { SystemInspector } from '../features/diagnostics/index.js';
 import { motorCoveApi } from '../integrations/http/motorcove-api.js';
 export function InspectorPage() {
-  const config = useQuery({ queryKey: ['config'], queryFn: motorCoveApi.config });
+  const config = useQuery({
+    queryKey: ['config'],
+    queryFn: motorCoveApi.config,
+    refetchInterval: 2_000,
+  });
+  const deploymentId = config.data?.deploymentId;
   const status = useQuery({
-    queryKey: ['system', config.data?.deploymentId],
-    queryFn: motorCoveApi.system,
-    enabled: Boolean(config.data),
+    queryKey: ['system', deploymentId],
+    queryFn: () => motorCoveApi.system(deploymentId ?? ''),
+    enabled: Boolean(deploymentId),
     refetchInterval: 2000,
   });
   if (!config.data || !status.data)
