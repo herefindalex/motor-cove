@@ -34,6 +34,12 @@ The first command reports the marker. `--complete` reacquires locks and clears t
 an active, staged, or quarantined candidate becomes a verified DB. Never delete `maintenance.json`
 as a normal recovery method.
 
+The reporting command may read a marker without ownership because it is only a preview. The
+`--complete` path acquires the environment maintenance locks first and then reads the marker again;
+all recovery selection and mutation use that lock-owned snapshot. A marker observed before lock
+acquisition is never used to clear or complete an operation because another owner may have replaced
+it while the command waited.
+
 SQLite main, WAL, and SHM files are one generation. If restore stopped after moving only the active
 main file, recovery first moves the remaining active sidecars into the same quarantine before it
 installs the staged standalone snapshot. If it rolls back from quarantine, it reunites that

@@ -1,16 +1,28 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { JournalEntry, TransactionJournal } from '../../capabilities/transactions/index.js';
+import type { PublicConfig } from '@motorcove/api-contracts';
+import type {
+  JournalEntry,
+  JournalLoadIssue,
+  TransactionJournal,
+} from '../../capabilities/transactions/index.js';
 import { TransactionObserver } from './TransactionObserver.js';
 
 const resumeJournalEntry = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
-
 vi.mock('wagmi', () => ({ usePublicClient: () => ({}) }));
 vi.mock('./inspect-transaction.js', () => ({ createTransactionChainReader: () => ({}) }));
 vi.mock('../../capabilities/transactions/index.js', () => ({ resumeJournalEntry }));
 
 const deploymentId = `0x${'1'.repeat(64)}`;
+const config = {
+  deploymentId,
+  chainId: '31337',
+  protocolVersion: '1',
+  nftAddress: `0x${'3'.repeat(40)}`,
+  escrowAddress: `0x${'7'.repeat(40)}`,
+  fundingPeriodSeconds: '300',
+} satisfies PublicConfig;
 const entry = {
   schemaVersion: 1,
   clientOperationId: 'reverted-operation',
@@ -22,7 +34,7 @@ const entry = {
   protocolVersion: '1',
   action: 'APPROVE_TOKEN',
   tokenId: '7',
-  intendedContract: `0x${'3'.repeat(40)}`,
+  intendedContract: config.nftAddress,
   intendedCalldata: '0x1234',
   calldataSummary: 'APPROVE_TOKEN',
   valueWei: '0',
@@ -34,10 +46,13 @@ const entry = {
   status: 'INCLUDED_REVERTED',
 } satisfies JournalEntry;
 
-function journalWith(entries: readonly JournalEntry[]): TransactionJournal {
+function journalWith(
+  entries: readonly JournalEntry[],
+  issues: readonly JournalLoadIssue[] = [],
+): TransactionJournal {
   return {
     load: () => entries,
-    loadIssues: () => [],
+    loadIssues: () => issues,
     save: (saved) => saved,
     subscribe: () => () => undefined,
   };
@@ -49,18 +64,18 @@ afterEach(() => {
 });
 
 describe('TransactionObserver automatic receipt observation', () => {
-  it('continues observing a locally non-final reverted receipt', async () => {
-    render(<TransactionObserver deploymentId={deploymentId} journal={journalWith([entry])} />);
+  it('continues observing non-final reverted evidence', async () => {
+    render(<TransactionObserver config={config} journal={journalWith([entry])} />);
 
     await waitFor(() =>
       expect(resumeJournalEntry).toHaveBeenCalledWith(entry, expect.anything(), undefined),
     );
   });
 
-  it('does not poll an operation known to have been rejected before submission', async () => {
+  it('does not automatically observe a rejected operation', async () => {
     render(
       <TransactionObserver
-        deploymentId={deploymentId}
+        config={config}
         journal={journalWith([{ ...entry, status: 'REJECTED', receiptStatus: undefined }])}
       />,
     );
@@ -69,10 +84,10 @@ describe('TransactionObserver automatic receipt observation', () => {
     expect(resumeJournalEntry).not.toHaveBeenCalled();
   });
 
-  it('accepts a read-only alternative hash when the saved hash is unavailable', async () => {
+  it('allows a read-only alternative hash for unavailable verification', async () => {
     render(
       <TransactionObserver
-        deploymentId={deploymentId}
+        config={config}
         journal={journalWith([
           {
             ...entry,
@@ -82,8 +97,8 @@ describe('TransactionObserver automatic receipt observation', () => {
         ])}
       />,
     );
-
     const alternativeHash = `0x${'6'.repeat(64)}`;
+
     fireEvent.change(screen.getByLabelText('Alternative transaction hash from wallet activity'), {
       target: { value: alternativeHash },
     });
@@ -93,5 +108,25 @@ describe('TransactionObserver automatic receipt observation', () => {
     const lastCall = resumeJournalEntry.mock.calls.at(-1);
     expect(lastCall?.[0]).toMatchObject({ originalTxHash: entry.originalTxHash });
     expect(lastCall?.[2]).toBe(alternativeHash);
+  });
+
+  it('shows that the latest verification is tab-local when durable writes fail', () => {
+    render(
+      <TransactionObserver
+        config={config}
+        journal={journalWith(
+          [entry],
+          [
+            {
+              deploymentId,
+              reason: 'STORAGE_UNAVAILABLE',
+              detail: 'Quota exceeded',
+            },
+          ],
+        )}
+      />,
+    );
+
+    expect(screen.getByText(/Latest verification is available only in this tab/)).toBeTruthy();
   });
 });

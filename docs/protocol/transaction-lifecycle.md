@@ -59,6 +59,13 @@ transaction sender, escrow target, exact `fundSale(saleId)` calldata, value, rec
 block hash, and the escrow's `SaleFunded` log all match the saved intent. The log uses its RPC
 `logIndex`; the receipt array position is not an event identity.
 
+Before looking up a candidate transaction, the reader compares the saved chain, deployment,
+protocol, and intended contract with the immutable API configuration. It then reads the RPC chain
+ID and the escrow `deploymentId()` getter. Approval must target the configured NFT contract; every
+other supported action must target the configured escrow. A mismatch returns verification
+unavailable without requesting the transaction or receipt, so evidence from another valid
+deployment cannot be attached to the saved operation.
+
 RPC or API failure marks current verification unavailable while keeping the last receipt and event
 evidence. A user-supplied match records `USER_SUPPLIED` and `INTENT_MATCH`; it proves the funding
 effect matches the intent, while it may not prove that it was the exact lost wallet response.
@@ -146,6 +153,14 @@ merges known volatile entries so their hashes remain visible in the current appl
 and the transaction timeline states that reload or tab close loses volatile-only evidence. This
 read fallback does not weaken the pre-wallet boundary: inability to durably save the initial intent
 still prevents the wallet request.
+
+A durable write failure during known-hash verification does not block the read-only RPC inspection.
+The latest `VERIFYING`, receipt, or error evidence is kept in the existing volatile overlay and the
+UI states that it is available only in the current tab. The last durable bytes remain unchanged, so
+a reload returns the previous durable evidence rather than claiming that the volatile result was
+saved. A later explicit recovery attempt may retry the durable compare-and-swap from the recorded
+base revision; a concurrent durable update still wins with `JOURNAL_REVISION_CONFLICT`. This retry
+path never opens a wallet request.
 
 ## Same-intent submission ownership
 

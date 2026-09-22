@@ -43,6 +43,13 @@ describe('transaction recovery converges across Anvil, API, SQLite, and Indexer'
   let anvil: ChildProcess;
   let api: ChildProcess;
   let manifest: DeploymentManifest;
+  const transactionVerificationContext = () => ({
+    chainId: Number(manifest.chainId),
+    deploymentId: manifest.deploymentId,
+    protocolVersion: manifest.protocolVersion,
+    nftAddress: manifest.nft.address,
+    escrowAddress: manifest.escrow.address,
+  });
 
   const runIndexer = () =>
     execFileSync(
@@ -194,7 +201,7 @@ describe('transaction recovery converges across Anvil, API, SQLite, and Indexer'
       },
     };
     const recoveryPorts = {
-      chain: createTransactionChainReader(publicClient),
+      chain: createTransactionChainReader(publicClient, transactionVerificationContext()),
       observation,
       journal,
     };

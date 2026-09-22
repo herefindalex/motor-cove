@@ -1,4 +1,4 @@
-import { decodeEventLog, decodeFunctionData, type PublicClient } from 'viem';
+import { decodeEventLog, decodeFunctionData, type Address, type PublicClient } from 'viem';
 import { motorCoveEscrowAbi } from '@motorcove/chain-artifacts';
 import type {
   TransactionChainReader,
@@ -22,6 +22,14 @@ type TransactionIntentEnvelope = {
   readonly input: `0x${string}`;
 };
 
+export interface TransactionVerificationContext {
+  readonly chainId: number;
+  readonly deploymentId: `0x${string}`;
+  readonly protocolVersion: string;
+  readonly nftAddress: Address;
+  readonly escrowAddress: Address;
+}
+
 function intentMismatchReason(
   entry: JournalEntry,
   transaction: TransactionIntentEnvelope,
@@ -42,10 +50,35 @@ function intentMismatchReason(
   return undefined;
 }
 
-export function createTransactionChainReader(client: PublicClient): TransactionChainReader {
+export function createTransactionChainReader(
+  client: PublicClient,
+  expected: TransactionVerificationContext,
+): TransactionChainReader {
   return {
     async inspectTransaction(entry, transactionHash) {
       try {
+        if (entry.chainId !== expected.chainId)
+          return unavailable(transactionHash, 'SAVED_CHAIN_ID_MISMATCH');
+        if (!equalHex(entry.deploymentId, expected.deploymentId))
+          return unavailable(transactionHash, 'SAVED_DEPLOYMENT_ID_MISMATCH');
+        if (entry.protocolVersion !== expected.protocolVersion)
+          return unavailable(transactionHash, 'SAVED_PROTOCOL_VERSION_MISMATCH');
+        const expectedTarget =
+          entry.action === 'APPROVE_TOKEN' ? expected.nftAddress : expected.escrowAddress;
+        if (!equalHex(entry.intendedContract, expectedTarget))
+          return unavailable(transactionHash, 'SAVED_CONTRACT_IDENTITY_MISMATCH');
+
+        const actualChainId = await client.getChainId();
+        if (actualChainId !== expected.chainId)
+          return unavailable(transactionHash, 'RPC_CHAIN_ID_MISMATCH');
+        const actualDeploymentId = await client.readContract({
+          address: expected.escrowAddress,
+          abi: motorCoveEscrowAbi,
+          functionName: 'deploymentId',
+        });
+        if (!equalHex(actualDeploymentId, expected.deploymentId))
+          return unavailable(transactionHash, 'RPC_DEPLOYMENT_ID_MISMATCH');
+
         if (entry.action === 'FUND_SALE' && !entry.saleId)
           return mismatch(transactionHash, 'FUNDING_SALE_ID_MISSING');
         let transaction;
@@ -197,4 +230,8 @@ export function createTransactionChainReader(client: PublicClient): TransactionC
 
 function mismatch(transactionHash: `0x${string}`, reason: string): InspectedTransaction {
   return { kind: 'INTENT_MISMATCH', transactionHash, reason };
+}
+
+function unavailable(transactionHash: `0x${string}`, reason: string): InspectedTransaction {
+  return { kind: 'UNAVAILABLE', transactionHash, reason };
 }

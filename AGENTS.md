@@ -58,6 +58,10 @@ fixture when introducing a new dependency rule.
   keep unrelated action intents independent and preserve the durable pre-wallet write.
 - Preserve historical receipt and event evidence when a transaction becomes noncanonical; derive
   current success from current transaction, receipt, and projection evidence together.
+- Bind candidate-hash inspection to the saved descriptor, configured contracts, actual RPC chain,
+  and on-chain deployment getter before requesting transaction evidence. A storage write failure
+  must not block known-hash read-only inspection or authorize a wallet request; keep volatile
+  evidence distinct from the last durable revision.
 - Temporary RPC transport failures keep the checkpoint, mark the read model stale, and retry with
   bounded backoff. Confirmed hash discontinuity or a provider-confirmed missing checkpoint block
   requires recovery.
@@ -72,6 +76,8 @@ fixture when introducing a new dependency rule.
   reinsert.
 - Migration, seed, bootstrap, restore, reset, rebuild, reindex, and reconciliation are distinct
   operations. Never rewrite an applied migration or clear `maintenance.json` by hand.
+- A maintenance completion command must acquire ownership and then reread the current marker before
+  selecting or mutating recovery state. Lock-free marker reads are diagnostic previews only.
 
 ## Provider changes
 

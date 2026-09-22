@@ -276,6 +276,53 @@ describe('projection maintenance isolation', () => {
     await locks.release();
   });
 
+  it('selects the recovery marker only after acquiring maintenance ownership', async () => {
+    const paths = await fixture();
+    const heldLocks = await acquireMaintenanceLocks(paths);
+    const oldMarker = {
+      operationId: 'old-restore',
+      operationType: 'RESTORE',
+      stage: 'FAILED',
+      environmentId: paths.environmentId,
+      targetDatabase: paths.databasePath,
+    };
+    writeFileSync(paths.maintenancePath, `${JSON.stringify(oldMarker)}\n`);
+
+    await expect(recoverEnvironment(paths, true)).rejects.toThrow('RESOURCE_BUSY');
+
+    const newMarker = {
+      operationId: 'new-rebuild',
+      operationType: 'REBUILD_PROJECTION',
+      stage: 'FAILED',
+      environmentId: paths.environmentId,
+      targetDatabase: paths.databasePath,
+    };
+    const newMarkerBytes = `${JSON.stringify(newMarker)}\n`;
+    writeFileSync(paths.maintenancePath, newMarkerBytes);
+    await heldLocks.release();
+
+    await expect(recoverEnvironment(paths, true)).resolves.toMatchObject({
+      changed: false,
+      status: 'ACTION_REQUIRED',
+      marker: { operationId: 'new-rebuild' },
+      action: 'RERUN_MATCHING_PROJECTION_OPERATION',
+    });
+    expect(readFileSync(paths.maintenancePath, 'utf8')).toBe(newMarkerBytes);
+  });
+
+  it('does not bypass ownership when no recovery marker exists', async () => {
+    const paths = await fixture();
+    const heldLocks = await acquireMaintenanceLocks(paths);
+    const recovery = recoverEnvironment(paths, true);
+
+    await expect(recovery).rejects.toThrow('RESOURCE_BUSY');
+    await heldLocks.release();
+    await expect(recoverEnvironment(paths, true)).resolves.toEqual({
+      changed: false,
+      status: 'NO_RECOVERY_REQUIRED',
+    });
+  });
+
   it('releases maintenance locks when marker JSON is invalid', async () => {
     const paths = await fixture();
     writeFileSync(paths.maintenancePath, '{');

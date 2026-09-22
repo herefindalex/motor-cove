@@ -363,6 +363,70 @@ test('surfaces network and rejection states, then recovers a lost wallet respons
       ).__motorCoveTestWallet.submissionCount(),
     ),
   ).toBe(0);
+
+  const durableSnapshot = await page.evaluate(() => {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith('motorcove:journal:v1:')) {
+        return { key, value: localStorage.getItem(key) };
+      }
+    }
+    throw new Error('Missing durable transaction journal');
+  });
+  let inspectionReadsAfterStorageFailure = 0;
+  page.on('request', (request) => {
+    if (!request.url().startsWith('http://127.0.0.1:19545')) return;
+    const payload: unknown = request.postDataJSON();
+    const requests: readonly unknown[] = Array.isArray(payload)
+      ? payload
+      : payload
+        ? [payload]
+        : [];
+    inspectionReadsAfterStorageFailure += requests.filter(
+      (candidate) =>
+        typeof candidate === 'object' &&
+        candidate !== null &&
+        'method' in candidate &&
+        candidate.method === 'eth_getTransactionByHash',
+    ).length;
+  });
+  await page.evaluate(() => {
+    const prototype = Object.getPrototypeOf(window.localStorage) as Storage;
+    const original = prototype.setItem;
+    Object.defineProperty(prototype, 'setItem', {
+      configurable: true,
+      value(this: Storage, key: string, value: string) {
+        if (key.startsWith('motorcove:journal:v1:')) {
+          throw new DOMException('Controlled quota failure', 'QuotaExceededError');
+        }
+        return original.call(this, key, value);
+      },
+    });
+  });
+
+  const reflectedRecovery = page
+    .getByRole('article')
+    .filter({ hasText: 'This funding payment is reflected in the marketplace projection.' });
+  await reflectedRecovery.getByRole('button', { name: 'Recheck evidence' }).click();
+  await expect(page.getByText('Latest verification is available only in this tab.')).toBeVisible();
+  await expect.poll(() => inspectionReadsAfterStorageFailure).toBeGreaterThan(0);
+  expect(
+    await page.evaluate(() =>
+      (
+        window as unknown as {
+          __motorCoveTestWallet: { submissionCount(): number };
+        }
+      ).__motorCoveTestWallet.submissionCount(),
+    ),
+  ).toBe(0);
+  expect(await page.evaluate((key) => localStorage.getItem(key), durableSnapshot.key)).toBe(
+    durableSnapshot.value,
+  );
+
+  await page.reload();
+  await expect(
+    page.getByRole('region', { name: 'Transaction timeline' }).getByText(lostHash, { exact: true }),
+  ).toBeVisible();
 });
 
 test('keeps pending and included evidence across reload while projection catches up', async ({

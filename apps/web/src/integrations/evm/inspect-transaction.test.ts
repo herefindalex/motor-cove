@@ -1,25 +1,37 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { PublicClient } from 'viem';
 import type { JournalEntry } from '../../capabilities/transactions/index.js';
-import { createTransactionChainReader } from './inspect-transaction.js';
+import {
+  createTransactionChainReader,
+  type TransactionVerificationContext,
+} from './inspect-transaction.js';
 
 const account = `0x${'1'.repeat(40)}` as const;
-const contract = `0x${'2'.repeat(40)}` as const;
+const nft = `0x${'2'.repeat(40)}` as const;
 const transactionHash = `0x${'3'.repeat(64)}` as const;
 const blockHash = `0x${'4'.repeat(64)}` as const;
+const deploymentId = `0x${'5'.repeat(64)}` as const;
+const escrow = `0x${'6'.repeat(40)}` as const;
+const verificationContext: TransactionVerificationContext = {
+  chainId: 31_337,
+  deploymentId,
+  protocolVersion: '1',
+  nftAddress: nft,
+  escrowAddress: escrow,
+};
 
 const entry = (action: string): JournalEntry => ({
   schemaVersion: 1,
   clientOperationId: `operation-${action}`,
   createdAt: '2026-09-21T00:00:00.000Z',
   updatedAt: '2026-09-21T00:00:00.000Z',
-  deploymentId: `0x${'5'.repeat(64)}`,
+  deploymentId,
   chainId: 31_337,
   account,
   protocolVersion: '1',
   action,
   saleId: '7',
-  intendedContract: contract,
+  intendedContract: action === 'APPROVE_TOKEN' ? nft : escrow,
   intendedCalldata: '0x1234',
   calldataSummary: action,
   valueWei: '0',
@@ -28,16 +40,25 @@ const entry = (action: string): JournalEntry => ({
   currentTxHash: transactionHash,
 });
 
-function client(receiptStatus: 'success' | 'reverted' = 'success'): PublicClient {
+function client(
+  journalEntry: JournalEntry,
+  options: {
+    receiptStatus?: 'success' | 'reverted';
+    chainId?: number;
+    onChainDeploymentId?: `0x${string}`;
+  } = {},
+): PublicClient {
   return {
+    getChainId: vi.fn(async () => options.chainId ?? 31_337),
+    readContract: vi.fn(async () => options.onChainDeploymentId ?? deploymentId),
     getTransaction: vi.fn(async () => ({
       from: account,
-      to: contract,
+      to: journalEntry.intendedContract,
       value: 0n,
       input: '0x1234',
     })),
     getTransactionReceipt: vi.fn(async () => ({
-      status: receiptStatus,
+      status: options.receiptStatus ?? 'success',
       transactionHash,
       blockNumber: 12n,
       blockHash,
@@ -56,9 +77,14 @@ describe('createTransactionChainReader', () => {
     'EXPIRE_SALE',
     'WITHDRAW_PAYMENT',
     'RECLAIM_TOKEN',
-  ])('observes an included receipt for %s using the saved transaction intent', async (action) => {
+  ])('observes an included receipt for %s using verified source identity', async (action) => {
+    const journalEntry = entry(action);
+
     await expect(
-      createTransactionChainReader(client()).inspectTransaction(entry(action), transactionHash),
+      createTransactionChainReader(client(journalEntry), verificationContext).inspectTransaction(
+        journalEntry,
+        transactionHash,
+      ),
     ).resolves.toEqual({
       kind: 'INCLUDED_SUCCESS',
       transactionHash,
@@ -67,17 +93,72 @@ describe('createTransactionChainReader', () => {
     });
   });
 
-  it('reports a non-funding revert without requiring a funding event', async () => {
+  it('observes a reverted non-funding receipt', async () => {
+    const journalEntry = entry('WITHDRAW_PAYMENT');
+
     await expect(
-      createTransactionChainReader(client('reverted')).inspectTransaction(
-        entry('WITHDRAW_PAYMENT'),
-        transactionHash,
-      ),
+      createTransactionChainReader(
+        client(journalEntry, { receiptStatus: 'reverted' }),
+        verificationContext,
+      ).inspectTransaction(journalEntry, transactionHash),
     ).resolves.toEqual({
       kind: 'INCLUDED_REVERTED',
       transactionHash,
       blockNumber: 12n,
       blockHash,
     });
+  });
+
+  it('refuses a candidate when the RPC reports a different chain', async () => {
+    const journalEntry = entry('APPROVE_TOKEN');
+    const publicClient = client(journalEntry, { chainId: 31_338 });
+
+    await expect(
+      createTransactionChainReader(publicClient, verificationContext).inspectTransaction(
+        journalEntry,
+        transactionHash,
+      ),
+    ).resolves.toEqual({
+      kind: 'UNAVAILABLE',
+      transactionHash,
+      reason: 'RPC_CHAIN_ID_MISMATCH',
+    });
+    expect(publicClient.getTransaction).not.toHaveBeenCalled();
+  });
+
+  it('refuses a candidate when the RPC reports a different deployment', async () => {
+    const journalEntry = entry('APPROVE_TOKEN');
+    const publicClient = client(journalEntry, {
+      onChainDeploymentId: `0x${'7'.repeat(64)}`,
+    });
+
+    await expect(
+      createTransactionChainReader(publicClient, verificationContext).inspectTransaction(
+        journalEntry,
+        transactionHash,
+      ),
+    ).resolves.toEqual({
+      kind: 'UNAVAILABLE',
+      transactionHash,
+      reason: 'RPC_DEPLOYMENT_ID_MISMATCH',
+    });
+    expect(publicClient.getTransaction).not.toHaveBeenCalled();
+  });
+
+  it('refuses an operation whose saved target is outside its deployment descriptor', async () => {
+    const journalEntry = { ...entry('APPROVE_TOKEN'), intendedContract: escrow };
+    const publicClient = client(journalEntry);
+
+    await expect(
+      createTransactionChainReader(publicClient, verificationContext).inspectTransaction(
+        journalEntry,
+        transactionHash,
+      ),
+    ).resolves.toEqual({
+      kind: 'UNAVAILABLE',
+      transactionHash,
+      reason: 'SAVED_CONTRACT_IDENTITY_MISMATCH',
+    });
+    expect(publicClient.getChainId).not.toHaveBeenCalled();
   });
 });

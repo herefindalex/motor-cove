@@ -75,6 +75,15 @@ function latestEntry(entry: JournalEntry, journal: TransactionJournal): JournalE
   );
 }
 
+function storageWriteUnavailable(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'QuotaExceededError' ||
+      error.name === 'SecurityError' ||
+      error.message.startsWith('JOURNAL_STORAGE_UNAVAILABLE'))
+  );
+}
+
 async function update(
   entry: JournalEntry,
   ports: RecoveryPorts,
@@ -89,11 +98,21 @@ async function update(
     return { entry: current, applied: false };
   const next = { ...current, ...values, updatedAt: new Date().toISOString() };
   try {
-    const stored = await ports.journal.save(next);
+    const retryDurableSave = ports.journal
+      .loadIssues(entry.deploymentId)
+      .some((issue) => issue.reason === 'STORAGE_UNAVAILABLE')
+      ? ports.journal.retryDurableSave
+      : undefined;
+    const stored = await (retryDurableSave
+      ? retryDurableSave.call(ports.journal, next)
+      : ports.journal.save(next));
     return { entry: stored, applied: true };
   } catch (error) {
     if (error instanceof Error && error.message === 'JOURNAL_REVISION_CONFLICT')
       return { entry: latestEntry(entry, ports.journal), applied: false };
+    if (ports.journal.saveVolatile && storageWriteUnavailable(error)) {
+      return { entry: ports.journal.saveVolatile(next), applied: true };
+    }
     throw error;
   }
 }

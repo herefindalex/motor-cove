@@ -267,4 +267,71 @@ describe('LocalStorageJournal', () => {
       lastErrorCategory: 'WALLET_REJECTED',
     });
   });
+
+  it('continues read-only verification in volatile state when durable writes fail', async () => {
+    const journal = new LocalStorageJournal();
+    const transactionHash = `0x${'4'.repeat(64)}` as const;
+    const submitted = await journal.save({
+      ...entry,
+      action: 'APPROVE_TOKEN',
+      tokenId: '1',
+      saleId: undefined,
+      status: 'SUBMITTED',
+      originalTxHash: transactionHash,
+      currentTxHash: transactionHash,
+    });
+    const durableBefore = localStorage.getItem(storageKey);
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError');
+    });
+    const inspectTransaction = vi.fn(async () => ({
+      kind: 'INCLUDED_SUCCESS' as const,
+      transactionHash,
+      blockNumber: 8n,
+      blockHash: `0x${'5'.repeat(64)}` as const,
+    }));
+    const ports = {
+      chain: { inspectTransaction },
+      observation: { observeFunding: vi.fn() },
+      journal,
+    };
+
+    await expect(resumeJournalEntry(submitted, ports)).resolves.toEqual({ kind: 'INCLUDED' });
+
+    expect(inspectTransaction).toHaveBeenCalledTimes(1);
+    expect(journal.load(deploymentId)[0]).toMatchObject({
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+      currentTxHash: transactionHash,
+    });
+    expect(journal.loadIssues(deploymentId)).toEqual([
+      expect.objectContaining({ reason: 'STORAGE_UNAVAILABLE' }),
+    ]);
+    expect(localStorage.getItem(storageKey)).toBe(durableBefore);
+
+    setItem.mockRestore();
+    await journal.save({
+      ...entry,
+      clientOperationId: 'unrelated-operation',
+      createdAt: '2026-09-21T00:00:03.000Z',
+      updatedAt: '2026-09-21T00:00:03.000Z',
+    });
+    expect(journal.loadIssues(deploymentId)).toEqual([
+      expect.objectContaining({ reason: 'STORAGE_UNAVAILABLE' }),
+    ]);
+
+    const volatile = journal
+      .load(deploymentId)
+      .find((candidate) => candidate.clientOperationId === submitted.clientOperationId)!;
+    await expect(resumeJournalEntry(volatile, ports)).resolves.toEqual({ kind: 'INCLUDED' });
+    expect(journal.loadIssues(deploymentId)).toEqual([]);
+    expect(
+      new LocalStorageJournal()
+        .load(deploymentId)
+        .find((candidate) => candidate.clientOperationId === submitted.clientOperationId),
+    ).toMatchObject({
+      status: 'INCLUDED_SUCCESS',
+      currentTxHash: transactionHash,
+    });
+  });
 });

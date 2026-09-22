@@ -431,4 +431,41 @@ describe('read-only transaction recovery', () => {
     });
     expect(fixture.readObservation).not.toHaveBeenCalled();
   });
+
+  it('does not treat an unrelated journal invariant error as unavailable storage', async () => {
+    const submitted = entry({
+      status: 'SUBMITTED',
+      originalTxHash: hash,
+      currentTxHash: hash,
+    });
+    const saveVolatile = vi.fn((candidate: JournalEntry) => candidate);
+    const inspectTransaction = vi.fn(
+      async (): Promise<InspectedTransaction> => ({
+        kind: 'PENDING',
+        transactionHash: hash,
+      }),
+    );
+    const journal: TransactionJournal = {
+      load: () => [submitted],
+      loadIssues: () => [
+        { deploymentId, reason: 'STORAGE_UNAVAILABLE', detail: 'earlier operation failed' },
+      ],
+      save: () => {
+        throw new Error('JOURNAL_INVARIANT_FAILURE');
+      },
+      saveVolatile,
+      subscribe: () => () => undefined,
+    };
+
+    await expect(
+      resumeJournalEntry(submitted, {
+        chain: { inspectTransaction },
+        observation: { observeFunding: vi.fn() },
+        journal,
+      }),
+    ).rejects.toThrow('JOURNAL_INVARIANT_FAILURE');
+
+    expect(inspectTransaction).not.toHaveBeenCalled();
+    expect(saveVolatile).not.toHaveBeenCalled();
+  });
 });

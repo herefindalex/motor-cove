@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePublicClient } from 'wagmi';
+import type { PublicConfig } from '@motorcove/api-contracts';
 import {
   isProjectionCurrentlyReflected,
   resumeJournalEntry,
@@ -10,19 +11,29 @@ import { motorCoveApi } from '../http/motorcove-api.js';
 import { createTransactionChainReader } from './inspect-transaction.js';
 
 export function TransactionObserver({
-  deploymentId,
+  config,
   journal,
 }: {
-  deploymentId: string;
+  config: PublicConfig;
   journal: TransactionJournal;
 }) {
+  const deploymentId = config.deploymentId;
   const client = usePublicClient();
   const [entries, setEntries] = useState<readonly JournalEntry[]>(() => journal.load(deploymentId));
   const [candidates, setCandidates] = useState<Record<string, string>>({});
   const inFlight = useRef(new Set<string>());
   const chain = useMemo(
-    () => (client ? createTransactionChainReader(client) : undefined),
-    [client],
+    () =>
+      client
+        ? createTransactionChainReader(client, {
+            chainId: Number(config.chainId),
+            deploymentId: config.deploymentId as `0x${string}`,
+            protocolVersion: config.protocolVersion,
+            nftAddress: config.nftAddress as `0x${string}`,
+            escrowAddress: config.escrowAddress as `0x${string}`,
+          })
+        : undefined,
+    [client, config],
   );
 
   useEffect(() => {
@@ -96,10 +107,19 @@ export function TransactionObserver({
     (entry) => !['REJECTED', 'FAILED_BEFORE_SUBMIT'].includes(entry.status),
   );
   if (recoverable.length === 0) return null;
+  const storageUnavailable = journal
+    .loadIssues(deploymentId)
+    .some((issue) => issue.reason === 'STORAGE_UNAVAILABLE');
 
   return (
     <section aria-label="Transaction recovery" className="transaction-recovery">
       <h2>Transaction verification</h2>
+      {storageUnavailable && (
+        <p>
+          Latest verification is available only in this tab. Persistent browser storage is
+          unavailable; reloading will restore the last durable transaction evidence.
+        </p>
+      )}
       {recoverable.map((entry) => {
         const hash = entry.currentTxHash ?? entry.originalTxHash;
         const candidate = candidates[entry.clientOperationId] ?? '';

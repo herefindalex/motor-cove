@@ -45,6 +45,13 @@ describe('transaction replacement and reorg recovery on Anvil', () => {
   const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
   let anvil: ChildProcess;
   let manifest: DeploymentManifest;
+  const transactionVerificationContext = () => ({
+    chainId: Number(manifest.chainId),
+    deploymentId: manifest.deploymentId,
+    protocolVersion: manifest.protocolVersion,
+    nftAddress: manifest.nft.address,
+    escrowAddress: manifest.escrow.address,
+  });
   let snapshot: string;
 
   const rpc = async <T>(method: string, params: unknown[] = []): Promise<T> => {
@@ -158,10 +165,10 @@ describe('transaction replacement and reorg recovery on Anvil', () => {
     const nonce = await publicClient.getTransactionCount({ address: buyer, blockTag: 'pending' });
     await rpc('evm_setAutomine', [false]);
     const originalHash = await sendFunding(nonce, parseGwei('2'));
-    const inspection = createTransactionChainReader(publicClient).inspectTransaction(
-      fundingEntry(originalHash),
-      originalHash,
-    );
+    const inspection = createTransactionChainReader(
+      publicClient,
+      transactionVerificationContext(),
+    ).inspectTransaction(fundingEntry(originalHash), originalHash);
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 300));
 
     let replacementHash: Hash;
@@ -237,15 +244,18 @@ describe('transaction replacement and reorg recovery on Anvil', () => {
     expect(await rpc<boolean>('evm_revert', [beforeFunding])).toBe(true);
     await rpc('evm_mine');
     expect(
-      await createTransactionChainReader(publicClient).inspectTransaction(saved, originalHash),
+      await createTransactionChainReader(
+        publicClient,
+        transactionVerificationContext(),
+      ).inspectTransaction(saved, originalHash),
     ).toEqual({ kind: 'NONCANONICAL', transactionHash: originalHash });
 
     const reIncludedHash = await sendFunding(nonce, parseGwei('2'));
     expect(reIncludedHash).toBe(originalHash);
-    const reIncluded = await createTransactionChainReader(publicClient).inspectTransaction(
-      { ...saved, status: 'ORPHANED' },
-      originalHash,
-    );
+    const reIncluded = await createTransactionChainReader(
+      publicClient,
+      transactionVerificationContext(),
+    ).inspectTransaction({ ...saved, status: 'ORPHANED' }, originalHash);
     expect(reIncluded).toMatchObject({
       kind: 'INCLUDED_SUCCESS',
       transactionHash: originalHash,

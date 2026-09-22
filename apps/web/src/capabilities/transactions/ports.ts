@@ -11,5 +11,6 @@ export interface TransactionJournal {
   loadIssues(deploymentId: string): readonly JournalLoadIssue[];
   save(entry: JournalEntry): JournalEntry | Promise<JournalEntry>;
   saveVolatile?(entry: JournalEntry): JournalEntry;
+  retryDurableSave?(entry: JournalEntry): JournalEntry | Promise<JournalEntry>;
   subscribe(listener: () => void): () => void;
 }

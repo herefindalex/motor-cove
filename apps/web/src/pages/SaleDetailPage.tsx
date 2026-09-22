@@ -124,9 +124,7 @@ export function SaleDetailPage() {
           />
           <SubmissionNotice result={submissionResult} error={submissionError} />
         </section>
-        {config.data?.deploymentId && (
-          <TransactionObserver deploymentId={config.data.deploymentId} journal={journal} />
-        )}
+        {config.data && <TransactionObserver config={config.data} journal={journal} />}
         {config.data?.deploymentId && (
           <TransactionTimeline
             deploymentId={config.data.deploymentId}
@@ -170,7 +168,7 @@ export function SaleDetailPage() {
           </span>
         }
       />
-      <TransactionObserver deploymentId={config.data.deploymentId} journal={journal} />
+      <TransactionObserver config={config.data} journal={journal} />
       <TransactionTimeline
         deploymentId={config.data.deploymentId}
         journal={journal}

@@ -17,6 +17,11 @@ import {
 
 const sqliteSidecars = ['-wal', '-shm'] as const;
 
+function readMaintenanceMarker(path: string): MaintenanceMarker | null {
+  if (!existsSync(path)) return null;
+  return JSON.parse(readFileSync(path, 'utf8')) as MaintenanceMarker;
+}
+
 function quarantineActiveRestoreSidecars(
   paths: EnvironmentPaths,
   quarantineDirectory: string,
@@ -45,22 +50,27 @@ function restoreQuarantinedFileSet(paths: EnvironmentPaths, quarantineDirectory:
 
 export async function recoverEnvironment(paths: EnvironmentPaths, complete = false) {
   verifyOwnedEnvironment(paths);
-  if (!existsSync(paths.maintenancePath)) return { changed: false, status: 'NO_RECOVERY_REQUIRED' };
-  const marker = JSON.parse(readFileSync(paths.maintenancePath, 'utf8')) as MaintenanceMarker;
-  if (!complete) return { changed: false, status: 'RECOVERY_REQUIRED', marker };
-  if (
-    marker.operationType === 'REBUILD_PROJECTION' ||
-    marker.operationType === 'REINDEX_PROJECTION'
-  ) {
-    return {
-      changed: false,
-      status: 'ACTION_REQUIRED',
-      marker,
-      action: 'RERUN_MATCHING_PROJECTION_OPERATION',
-    };
+  if (!complete) {
+    const marker = readMaintenanceMarker(paths.maintenancePath);
+    if (!marker) return { changed: false, status: 'NO_RECOVERY_REQUIRED' };
+    return { changed: false, status: 'RECOVERY_REQUIRED', marker };
   }
+
   const locks = await acquireMaintenanceLocks(paths);
   try {
+    const marker = readMaintenanceMarker(paths.maintenancePath);
+    if (!marker) return { changed: false, status: 'NO_RECOVERY_REQUIRED' };
+    if (
+      marker.operationType === 'REBUILD_PROJECTION' ||
+      marker.operationType === 'REINDEX_PROJECTION'
+    ) {
+      return {
+        changed: false,
+        status: 'ACTION_REQUIRED',
+        marker,
+        action: 'RERUN_MATCHING_PROJECTION_OPERATION',
+      };
+    }
     if (marker.operationType === 'MIGRATE') {
       const contract = loadSchemaContract();
       if (

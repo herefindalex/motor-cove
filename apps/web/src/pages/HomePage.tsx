@@ -120,7 +120,7 @@ export function HomePage() {
           />
           <SubmissionNotice result={submissionResult} error={submissionError} />
         </section>
-        {deploymentId && <TransactionObserver deploymentId={deploymentId} journal={journal} />}
+        {configQuery.data && <TransactionObserver config={configQuery.data} journal={journal} />}
         {deploymentId && <TransactionTimeline deploymentId={deploymentId} journal={journal} />}
         <section className="danger">
           <h2>Integration error</h2>
@@ -177,7 +177,7 @@ export function HomePage() {
         />
         <SubmissionNotice result={submissionResult} error={submissionError} />
       </section>
-      {deploymentId && <TransactionObserver deploymentId={deploymentId} journal={journal} />}
+      {configQuery.data && <TransactionObserver config={configQuery.data} journal={journal} />}
       {deploymentId && <TransactionTimeline deploymentId={deploymentId} journal={journal} />}
       <Marketplace
         sales={sales}
