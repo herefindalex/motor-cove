@@ -24,3 +24,15 @@ chain ID other than 31337, and a client that does not identify as Anvil. Reset c
 lock inodes and backups, and a real `flock` case proves bootstrap ownership prevents `anvil_reset`
 until the owner exits. These checks do not prove resistance to a malicious process impersonating Anvil
 on loopback.
+
+## Managed node ownership
+
+Every managed environment must have a `managed-node.json` binding created by bootstrap. The binding
+normalizes `localhost`, `127.0.0.1`, and `::1` for the same port to one node identity. Indexer startup
+and reset refuse to continue when the binding is missing, conflicts with another environment, or
+does not match the configured RPC endpoint.
+
+Reset verifies this ownership before calling `anvil_reset`. It preserves the binding while removing
+the generated database, deployment, bootstrap, seed, and report state. Start a separate local Anvil
+endpoint for each managed environment; changing only the hostname alias does not create a separate
+node.

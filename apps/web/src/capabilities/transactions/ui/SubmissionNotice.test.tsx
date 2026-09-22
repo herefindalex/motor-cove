@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { SubmissionNotice } from './SubmissionNotice.js';
 
 describe('SubmissionNotice', () => {
+  afterEach(cleanup);
+
   it('shows the known hash and non-durable recovery warning', () => {
     const hash = `0x${'4'.repeat(64)}` as const;
     render(
@@ -20,5 +22,14 @@ describe('SubmissionNotice', () => {
   it('shows a durable-intent failure caught before wallet submission', () => {
     render(<SubmissionNotice error="storage unavailable" />);
     expect(screen.getByText('storage unavailable')).toBeTruthy();
+  });
+
+  it('warns when a wallet rejection could only be retained in this tab', () => {
+    render(
+      <SubmissionNotice
+        result={{ kind: 'rejected', clientOperationId: 'operation-1', durable: false }}
+      />,
+    );
+    expect(screen.getByRole('alert').textContent).toContain('available only in this tab');
   });
 });

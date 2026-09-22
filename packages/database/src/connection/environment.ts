@@ -33,6 +33,7 @@ export function environmentPaths(workspaceRoot: string, environmentId: string): 
     deploymentPath: resolve(environmentDir, 'deployment.json'),
     bootstrapReceiptPath: resolve(environmentDir, 'bootstrap-receipt.json'),
     seedJournalPath: resolve(environmentDir, 'seed-journal.json'),
+    nodeBindingPath: resolve(environmentDir, 'managed-node.json'),
     reportsDir: resolve(environmentDir, 'reports'),
     backupsDir: resolve(managedRoot, 'backups', environmentId),
     serviceLockPath: resolve(locksDir, 'service.lock'),

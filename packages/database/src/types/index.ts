@@ -22,6 +22,7 @@ export interface EnvironmentPaths {
   readonly deploymentPath: string;
   readonly bootstrapReceiptPath: string;
   readonly seedJournalPath: string;
+  readonly nodeBindingPath: string;
   readonly reportsDir: string;
   readonly backupsDir: string;
   readonly serviceLockPath: string;

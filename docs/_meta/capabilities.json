@@ -75,7 +75,7 @@
         "apps/web/src/integrations/evm/inspect-transaction.ts",
         "apps/web/src/integrations/persistence/local-storage-journal.ts"
       ],
-      "scenarios": ["TX-001", "TX-002"],
+      "scenarios": ["TX-001", "TX-002", "TX-003"],
       "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E"],
       "limits": "Non-durable known-hash tracking survives client-side route changes only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
     },
@@ -147,7 +147,10 @@
         "apps/indexer/src/cli/bootstrap.ts",
         "apps/indexer/src/cli/chain-seed-journal.test.ts",
         "tests/integration/real-stack.test.ts",
-        "docs/adr/0004-chain-seed-ambiguity.md"
+        "docs/adr/0004-chain-seed-ambiguity.md",
+        "packages/database/src/maintenance/managed-node.ts",
+        "tests/integration/managed-node-reset.test.ts",
+        "docs/adr/0016-wallet-outcomes-and-managed-node-ownership.md"
       ],
       "scenarios": [
         "DB-01",
@@ -178,7 +181,8 @@
         "DB-26",
         "DB-27",
         "DB-28",
-        "DB-30"
+        "DB-30",
+        "DB-58"
       ],
       "verification": [
         "RUN-DB-MIGRATIONS",
@@ -186,7 +190,8 @@
         "RUN-DB-SEEDS",
         "RUN-DB-RECOVERY",
         "RUN-CHAIN-SEED-JOURNAL",
-        "RUN-INTEGRATION"
+        "RUN-INTEGRATION",
+        "RUN-MANAGED-NODE-OWNERSHIP"
       ],
       "limits": "A real process kill in the broadcast-to-hash persistence window and other listed database fault-injection cases remain incomplete."
     },
@@ -215,7 +220,8 @@
         "apps/web/src/capabilities/transactions/recovery.ts",
         "apps/api/src/modules/system",
         "packages/database/src/reader/sales-reader.ts",
-        "packages/database/src/maintenance"
+        "packages/database/src/maintenance",
+        "docs/adr/0016-wallet-outcomes-and-managed-node-ownership.md"
       ],
       "scenarios": [
         "TX-001",
@@ -226,13 +232,16 @@
         "DB-09",
         "DB-50",
         "DB-56",
-        "DB-57"
+        "DB-57",
+        "TX-003",
+        "DB-58"
       ],
       "verification": [
         "RUN-TRANSACTION-RECOVERY",
         "RUN-INDEXER-KILL",
         "RUN-INTEGRATION",
-        "RUN-DB-RECOVERY"
+        "RUN-DB-RECOVERY",
+        "RUN-MANAGED-NODE-OWNERSHIP"
       ],
       "limits": "Hardware power loss, cross-device journal recovery, and some filesystem fault cases remain unverified."
     },

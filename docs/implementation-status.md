@@ -13,6 +13,12 @@ the verification JSON are the machine-readable sources; this page is a human sum
 
 ## Current executed gates
 
+R11 hardening is implemented in the working source: wallet outcomes merge across journal revision
+races without replacing transaction evidence, and managed local environments bind to dedicated
+normalized Anvil endpoints before bootstrap, indexer startup, or reset. Focused unit and real Anvil
+integration evidence is recorded by the matching test lanes; the repository-wide gate evidence is
+authoritative only at the revision named in `docs/evidence/verification.json`.
+
 - `pnpm verify`: generation, database contract, formatting, docs, architecture, type checking,
   lint, 13 Foundry tests, 232 unit/component/database tests, 47 integration tests, and all
   7 workspace builds passed.

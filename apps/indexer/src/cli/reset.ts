@@ -2,6 +2,7 @@ import {
   acquireBootstrapOwnership,
   acquireMaintenanceLocks,
   resetEnvironment,
+  verifyManagedNodeOwnership,
   verifyOwnedEnvironment,
 } from '@motorcove/database/maintenance';
 import { paths } from '../runtime/config.js';
@@ -38,6 +39,8 @@ if (chainId !== '0x7a69')
   throw new Error(`RESET_CHAIN_REFUSED: expected Anvil chain 31337, got ${String(chainId)}`);
 if (typeof clientVersion !== 'string' || !clientVersion.toLowerCase().includes('anvil'))
   throw new Error(`RESET_CLIENT_REFUSED: expected Anvil, got ${String(clientVersion)}`);
+
+await verifyManagedNodeOwnership(config.environment, config.rpcUrl);
 
 const ownership = await acquireBootstrapOwnership(config.environment);
 try {

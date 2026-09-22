@@ -143,3 +143,14 @@ See the [scenario catalog](scenario-catalog.md), [database matrix](database-acce
 | Can interrupted restore attach a previous database generation's hot WAL?                    | Child-process `SIGKILL`, real better-sqlite3 WAL, staged backup, and marker-driven recovery                                       | `RUN-DB-RECOVERY`          | Ordinary process death; hardware power loss is not claimed                    |
 | Can reset race bootstrap before its first destructive side effect?                          | Full reset CLI body, real lifecycle `flock`, controlled loopback RPC, and post-release success                                    | `RUN-DB-BOUNDARIES`        | Controlled RPC; no user environment or public chain                           |
 | Can a deployment-keyed Web query accept another deployment's response?                      | HTTP adapter schema/provenance tests plus a real QueryClient rejection and replacement-key recovery                               | `RUN-WEB-COMPONENT`        | Controlled fetch responses; full browser service replacement remains separate |
+
+## R11 concurrency and node isolation regressions
+
+The transaction tests force hashless recovery to advance the durable journal revision while the
+wallet request remains open, then verify that rejection survives a new journal instance. Separate
+cases preserve a concurrently discovered candidate hash and expose volatile-only outcome storage.
+
+The database tests normalize loopback aliases, reject duplicate endpoint claims and endpoint
+changes, preserve the binding across reset, and fail closed when ownership is missing. A harness
+integration starts two real Anvil processes and proves that each environment can reset only its own
+node while the other chain remains unchanged.

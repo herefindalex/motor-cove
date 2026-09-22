@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   acquireBootstrapOwnership,
+  claimManagedNode,
   environmentPaths,
   initializeOwnedEnvironment,
 } from '@motorcove/database/maintenance';
@@ -127,6 +128,7 @@ describe('local reset CLI refusal matrix', () => {
       MOTORCOVE_ENV: 'reset-cli',
       MOTORCOVE_RPC_URL: `http://127.0.0.1:${address.port}`,
     };
+    await claimManagedNode(paths, environment.MOTORCOVE_RPC_URL);
     const before = readdirSync(paths.environmentDir).sort();
     try {
       const ownership = await acquireBootstrapOwnership(paths);

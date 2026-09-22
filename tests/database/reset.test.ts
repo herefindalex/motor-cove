@@ -30,6 +30,7 @@ describe('managed environment reset', () => {
       paths.seedJournalPath,
     ])
       writeFileSync(file, 'generated');
+    writeFileSync(paths.nodeBindingPath, '{"managed":"node"}\n');
     writeFileSync(join(paths.reportsDir, 'reconciliation.json'), '{}');
     mkdirSync(join(paths.backupsDir, 'snapshot'), { recursive: true });
     writeFileSync(join(paths.backupsDir, 'snapshot', 'motorcove.sqlite'), 'backup');
@@ -62,6 +63,7 @@ describe('managed environment reset', () => {
       expect(existsSync(file)).toBe(false);
 
     expect(existsSync(paths.ownerPath)).toBe(true);
+    expect(existsSync(paths.nodeBindingPath)).toBe(true);
     expect(existsSync(join(paths.backupsDir, 'snapshot', 'motorcove.sqlite'))).toBe(true);
     expect(statSync(paths.serviceLockPath).ino).toBe(serviceLockInode);
     expect(statSync(paths.writerLockPath).ino).toBe(writerLockInode);

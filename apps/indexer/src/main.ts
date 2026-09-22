@@ -1,5 +1,6 @@
 import { motorCoveEscrowAbi } from '@motorcove/chain-artifacts';
 import { openProjectionWriter } from '@motorcove/database/projection-writer';
+import { verifyManagedNodeOwnership } from '@motorcove/database/maintenance';
 import { createPublicClient, http, keccak256, type Address } from 'viem';
 import { ViemChainReader } from './adapters/evm/viem-chain-reader.js';
 import { SqliteProjectionStore } from './adapters/sqlite/sqlite-projection-store.js';
@@ -8,6 +9,7 @@ import { runIndexerLoop } from './application/run-indexer.js';
 import { loadConfig, logScopeHash } from './runtime/config.js';
 
 const config = loadConfig();
+await verifyManagedNodeOwnership(config.environment, config.rpcUrl);
 const client = createPublicClient({ transport: http(config.rpcUrl) });
 const chainId = await client.getChainId();
 if (String(chainId) !== config.manifest.chainId) {

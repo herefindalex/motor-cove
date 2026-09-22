@@ -87,6 +87,80 @@ async function persistReturnedHash(
   }
 }
 
+function sameWalletRequest(left: JournalEntry, right: JournalEntry): boolean {
+  return (
+    sameSubmissionIntent(left, right) &&
+    left.walletRequestStartedAt !== undefined &&
+    left.walletRequestStartedAt === right.walletRequestStartedAt
+  );
+}
+
+function hasTransactionEvidence(entry: JournalEntry): boolean {
+  return (
+    Boolean(
+      entry.currentTxHash ??
+      entry.originalTxHash ??
+      entry.receiptStatus ??
+      entry.receiptBlockHash ??
+      entry.association ??
+      entry.projectionTransactionHash,
+    ) || entry.eventLogIndex !== undefined
+  );
+}
+
+function mergeWalletOutcome(
+  current: JournalEntry,
+  outcome: 'REJECTED' | 'UNKNOWN',
+  outcomeAt: string,
+): JournalEntry {
+  const keepTransactionEvidence = hasTransactionEvidence(current);
+  return {
+    ...current,
+    updatedAt: outcomeAt,
+    walletRequestOutcome: outcome,
+    walletRequestOutcomeAt: outcomeAt,
+    ...(keepTransactionEvidence
+      ? {}
+      : {
+          status: outcome === 'REJECTED' ? ('REJECTED' as const) : ('UNKNOWN' as const),
+          lastErrorCategory: outcome === 'REJECTED' ? 'WALLET_REJECTED' : 'SUBMISSION_UNKNOWN',
+        }),
+  };
+}
+
+async function persistWalletOutcome(
+  journal: TransactionJournal,
+  awaitingWallet: JournalEntry,
+  outcome: 'REJECTED' | 'UNKNOWN',
+): Promise<boolean> {
+  const outcomeAt = new Date().toISOString();
+  let candidate = mergeWalletOutcome(awaitingWallet, outcome, outcomeAt);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await journal.save(candidate);
+      return true;
+    } catch (error) {
+      const current = journal
+        .load(awaitingWallet.deploymentId)
+        .find((entry) => entry.clientOperationId === awaitingWallet.clientOperationId);
+      if (!revisionConflict(error)) {
+        const volatile =
+          current && sameWalletRequest(current, awaitingWallet) ? current : candidate;
+        journal.saveVolatile?.(mergeWalletOutcome(volatile, outcome, outcomeAt));
+        return false;
+      }
+      if (!current || !sameWalletRequest(current, awaitingWallet)) return false;
+      candidate = mergeWalletOutcome(current, outcome, outcomeAt);
+    }
+  }
+  const current = journal
+    .load(awaitingWallet.deploymentId)
+    .find((entry) => entry.clientOperationId === awaitingWallet.clientOperationId);
+  if (current && sameWalletRequest(current, awaitingWallet))
+    journal.saveVolatile?.(mergeWalletOutcome(current, outcome, outcomeAt));
+  return false;
+}
+
 export async function submitOperation(
   context: SubmissionContext,
   action: SubmissionAction,
@@ -164,19 +238,14 @@ export async function submitOperation(
     hash = await action.submit();
   } catch (error) {
     const rejected = rejectedByUser(error);
-    try {
-      await journal.save({
-        ...awaitingWallet,
-        updatedAt: new Date().toISOString(),
-        status: rejected ? 'REJECTED' : 'UNKNOWN',
-        lastErrorCategory: rejected ? 'WALLET_REJECTED' : 'SUBMISSION_UNKNOWN',
-      });
-    } catch {
-      // Persistence loss must not trigger a second wallet call.
-    }
+    const durable = await persistWalletOutcome(
+      journal,
+      awaitingWallet,
+      rejected ? 'REJECTED' : 'UNKNOWN',
+    );
     return rejected
-      ? { kind: 'rejected', clientOperationId: base.clientOperationId }
-      : { kind: 'unknown', clientOperationId: base.clientOperationId };
+      ? { kind: 'rejected', clientOperationId: base.clientOperationId, durable }
+      : { kind: 'unknown', clientOperationId: base.clientOperationId, durable };
   }
 
   let submitted: JournalEntry = {

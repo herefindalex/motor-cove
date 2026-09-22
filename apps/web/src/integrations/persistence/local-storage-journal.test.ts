@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { JournalEntry } from '../../capabilities/transactions/index.js';
+import {
+  resumeJournalEntry,
+  submitOperation,
+  type JournalEntry,
+} from '../../capabilities/transactions/index.js';
 import { LocalStorageJournal } from './local-storage-journal.js';
 
 const deploymentId = `0x${'1'.repeat(64)}` as const;
@@ -165,6 +169,59 @@ describe('LocalStorageJournal', () => {
       revision: 3,
       status: 'SUBMITTED',
       currentTxHash: `0x${'4'.repeat(64)}`,
+    });
+  });
+
+  it('persists wallet rejection after recovery advances the durable revision', async () => {
+    const journal = new LocalStorageJournal();
+    const submit = vi.fn(async () => {
+      const awaiting = journal.load(deploymentId)[0];
+      if (!awaiting) throw new Error('test awaiting-wallet entry missing');
+      await resumeJournalEntry(awaiting, {
+        journal,
+        chain: {
+          inspectTransaction: async () => {
+            throw new Error('hashless recovery must not inspect the chain');
+          },
+        },
+        observation: {
+          observeFunding: async () => {
+            throw new Error('hashless recovery must not inspect projection state');
+          },
+        },
+      });
+      throw Object.assign(new Error('user denied'), { code: 4001 });
+    });
+
+    await expect(
+      submitOperation(
+        {
+          deploymentId,
+          chainId: 31_337,
+          account: entry.account as `0x${string}`,
+          protocolVersion: '1',
+          contextStillCurrent: () => true,
+        },
+        {
+          name: 'FUND_SALE',
+          saleId: 1n,
+          value: 10n,
+          contract: entry.intendedContract as `0x${string}`,
+          calldata: entry.intendedCalldata as `0x${string}`,
+          simulate: async () => undefined,
+          submit,
+          readNonce: async () => 1,
+        },
+        journal,
+      ),
+    ).resolves.toMatchObject({ kind: 'rejected', durable: true });
+    expect(submit).toHaveBeenCalledTimes(1);
+
+    const reloaded = new LocalStorageJournal().load(deploymentId)[0];
+    expect(reloaded).toMatchObject({
+      status: 'REJECTED',
+      walletRequestOutcome: 'REJECTED',
+      lastErrorCategory: 'WALLET_REJECTED',
     });
   });
 });

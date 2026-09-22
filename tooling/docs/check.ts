@@ -185,6 +185,7 @@ const requiredScenarios = [
   'SALE-005',
   'TX-001',
   'TX-002',
+  'TX-003',
   'IDX-001',
   'IDX-002',
   'IDX-003',
@@ -203,7 +204,7 @@ function validateCapabilities(file: string, scenarioText: string) {
     fail(`${file}: expected CAP-01 through CAP-18 in order`);
   const known = new Set([
     ...requiredScenarios,
-    ...Array.from({ length: 57 }, (_, i) => `DB-${String(i + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 58 }, (_, i) => `DB-${String(i + 1).padStart(2, '0')}`),
   ]);
   for (const item of data.capabilities) {
     for (const code of item.code)
@@ -334,7 +335,7 @@ if (fixtureIndex >= 0) {
     resolve(workspace, 'docs/testing/database-acceptance-matrix.md'),
     'utf8',
   );
-  for (let i = 1; i <= 57; i += 1) {
+  for (let i = 1; i <= 58; i += 1) {
     const id = `DB-${String(i).padStart(2, '0')}`;
     if (!dbMatrix.includes(`| ${id} |`)) fail(`database matrix missing ${id}`);
   }

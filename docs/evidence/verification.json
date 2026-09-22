@@ -1,10 +1,10 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "50184aced18b22c64ce4523ddfb416d1fad737d3",
+    "revision": "40b06fe32f1c6aea76ef8b0e81cdcd61946268a1",
     "dirty": true,
-    "capturedAt": "2026-09-22T07:05:09Z",
-    "sourceFingerprint": "sha256:39771112468f4f6fcca6c550ab7a390bad6a856d8560a595abd93ae646782cbe",
+    "capturedAt": "2026-09-22T08:13:28Z",
+    "sourceFingerprint": "sha256:69b9fac4bcffd9764559f995de79eadf61523894a80acb940b4fef4681a24e71",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
     "limits": "Captured committed R10 source 50184aced18b22c64ce4523ddfb416d1fad737d3 plus the generated evidence update. The required dirty-worktree fingerprint binds the evidence follow-up itself. Local and GitHub-hosted deterministic evidence does not establish hardware power loss, public-network, manual MetaMask, or cross-device behavior.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, and NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
@@ -29,7 +29,7 @@
       "status": "executed/pass",
       "result": "1 file, 13 tests passed: rollback marker evidence, bundle-bound migration resume, current-schema db_contract finalization, preserved 0000-to-0001 data, and verified predeployment migration backup.",
       "limitations": "The upgrade fixture uses controlled SQLite data and does not claim hardware power-loss behavior.",
-      "executedAt": "2026-09-22T06:46:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-DB-BOUNDARIES",
@@ -56,7 +56,7 @@
       "status": "executed/pass",
       "result": "5 database files and 29 tests passed, including full reset CLI lifecycle ownership: real bootstrap flock contention stopped before anvil_reset, left environment state unchanged, and reset completed after release",
       "limitations": "SQLITE_FULL uses SQLite max_page_count rather than exhausting the host filesystem. The reset refusal matrix does not prove resistance to a malicious loopback Anvil impersonator.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-DB-SEEDS",
@@ -67,7 +67,7 @@
       "status": "executed/pass",
       "result": "1 file, 5 tests passed: idempotence, incomplete-maintenance refusal before mutation, manual-edit conflict rollback, deployment isolation, and changed seed-version refusal",
       "limitations": "Chain transaction journaling is recorded separately in RUN-CHAIN-SEED-JOURNAL.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-DB-RECOVERY",
@@ -78,7 +78,7 @@
       "status": "executed/pass",
       "result": "1 file, 16 tests passed for backup, restore, marker recovery, deployed/predeployment identity, predeployment restore refusal, and SQLite file-generation handling.",
       "limitations": "Synthetic process interruption only; no hardware power-loss claim. Restore-behind-head catch-up is recorded in RUN-INTEGRATION.",
-      "executedAt": "2026-09-22T06:52:13Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-CONTRACTS",
@@ -89,7 +89,7 @@
       "status": "executed/pass",
       "result": "12 unit/fuzz tests and 1 stateful invariant passed (13 total); the invariant independently sums funded Sales and claimable Claims, compares them with totalLiability, checks balance coverage, and bounds successful transition counters",
       "limitations": "Local Foundry EVM only; no public network or external audit.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-E2E",
@@ -109,7 +109,7 @@
       "status": "executed/pass",
       "result": "6 Playwright scenarios passed against harness-owned Anvil, managed SQLite, API, Indexer, and Web processes.",
       "limitations": "Wallet fault injection uses a controlled EIP-1193 adapter. Manual MetaMask and cross-device journal behavior are not verified.",
-      "executedAt": "2026-09-22T06:45:20Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-INTEGRATION",
@@ -141,15 +141,16 @@
         "DB-45",
         "DB-46",
         "DB-49",
-        "DB-53"
+        "DB-53",
+        "DB-58"
       ],
       "level": "LOCAL-TEST",
       "command": "pnpm test:integration",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "11 files and 47 tests passed in the full integration gate for local Anvil, SQLite, Indexer, API, recovery, reconciliation, and transaction convergence",
+      "result": "12 files and 48 tests passed in the full integration gate, including two harness-owned Anvil nodes proving environment-scoped reset ownership without cross-node mutation.",
       "limitations": "Local deterministic Anvil and ordinary process termination only; public-network finality, unavailable archive history, hardware power loss, and full host-filesystem faults remain unverified.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-INDEXER-UNIT",
@@ -160,7 +161,7 @@
       "status": "executed/pass",
       "result": "The full 36-file, 232-test unit/component/database gate passed, including migration continuation, bounded HTTP body reads, reverted-receipt automatic observation, and existing recovery contracts.",
       "limitations": "Includes controlled wallet, journal, database, migration, seed, recovery, RPC, and documentation tests; manual provider behavior is separate.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-API-CONTRACT",
@@ -171,7 +172,7 @@
       "status": "executed/pass",
       "result": "2 files, 18 tests passed for public wire schemas, canonical uint256 sale IDs, stable 400/404/500 boundaries, safe block selectors, historical reconciliation scope, per-event canonical/source evidence, and stale/fresh/recovery observation semantics",
       "limitations": "Read-only local Fastify and SQLite contract; no authentication, pagination, or public endpoint load claim.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-ARCHITECTURE",
@@ -182,7 +183,7 @@
       "status": "executed/pass",
       "result": "Architecture graph valid for 151 source files; all 10 invalid dependency fixtures were rejected",
       "limitations": "Static source imports only; runtime process behavior is verified separately.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-GENERATE-CHECK",
@@ -193,7 +194,7 @@
       "status": "executed/pass",
       "result": "Generated ABI, manifest, OpenAPI, schema, and documentation outputs matched their providers; no generation drift",
       "limitations": "No released third-party consumer or prior protocol version exists.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-WORKSPACE-VERIFY",
@@ -206,15 +207,17 @@
         "DB-56",
         "DB-57",
         "ARCH-001",
-        "REL-001"
+        "REL-001",
+        "TX-003",
+        "DB-58"
       ],
       "level": "LOCAL-TEST",
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generation and database contracts, formatting, docs, architecture, type checking, lint, 13 Foundry tests, 36 files / 237 unit tests, 11 files / 47 integration tests, and all 7 workspace builds passed.",
+      "result": "Generation, database contracts, formatting, docs, architecture, type checking, lint, 13 Foundry tests, 37 files / 247 unit tests, 12 files / 48 integration tests, and all 7 workspace builds passed.",
       "limitations": "The gate does not establish manual MetaMask behavior, public-network safety, branch protection, hardware power-loss durability, or cross-device journal coordination.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-DOCS-CHECK",
@@ -223,9 +226,9 @@
       "command": "pnpm docs:check",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "18 capabilities, 48 commands, database acceptance IDs DB-01 through DB-57, workspace links, and 8 negative fixtures passed.",
+      "result": "18 capabilities, 48 commands, database acceptance IDs DB-01 through DB-58, workspace links, and 8 negative fixtures passed.",
       "limitations": "Mermaid visual rendering and independent contributor onboarding remain manual checks.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-WEB-COMPONENT",
@@ -236,7 +239,7 @@
       "status": "executed/pass",
       "result": "Included in pnpm test:unit: 36 files / 237 tests passed; focused API deadline and TransactionObserver run passed 2 files / 10 tests.",
       "limitations": "Controlled journal fixture only; injected provider behavior is covered separately by Playwright and still lacks manual MetaMask evidence.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-CHAIN-SEED-JOURNAL",
@@ -247,18 +250,18 @@
       "status": "executed/pass",
       "result": "1 file, 7 tests passed within the unit gate: success, verified reuse, submitted resume, ambiguous submit, stranded prepared, identity/intent mismatch, and changed receipt",
       "limitations": "Uses deterministic callbacks around durable journal writes; a real process kill during the broadcast-to-hash persistence window was not run.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-TRANSACTION-RECOVERY",
-      "scenarios": ["SALE-002", "TX-001", "TX-002", "ARCH-001"],
+      "scenarios": ["SALE-002", "TX-001", "TX-002", "ARCH-001", "TX-003"],
       "level": "LOCAL-TEST",
       "command": "pnpm vitest run apps/web/src/capabilities/transactions/recovery.test.ts apps/web/src/capabilities/transactions/submit-operation.test.ts apps/web/src/integrations/evm/inspect-transaction.test.ts apps/web/src/integrations/persistence/local-storage-journal.test.ts apps/web/src/capabilities/transactions/ui/TransactionTimeline.test.tsx apps/web/src/capabilities/transactions/ui/SubmissionNotice.test.tsx apps/web/src/pages/transaction-surfaces.test.tsx",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Included in pnpm test:unit: 36 files / 237 tests passed; focused API deadline and TransactionObserver run passed 2 files / 10 tests.",
+      "result": "Included in pnpm test:unit: 37 files / 247 tests passed; focused submit, notice, and durable browser-journal regressions passed, including observer revision race, candidate-hash preservation, and volatile-only outcome warnings.",
       "limitations": "Controlled wallet and storage ports; real local-chain convergence is recorded by RUN-INTEGRATION and real same-profile multi-tab locking by RUN-E2E.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-INDEXER-KILL",
@@ -269,14 +272,14 @@
       "status": "executed/pass",
       "result": "2 files, 4 tests passed with harness-owned child-process SIGKILL at BEFORE_BEGIN, BEFORE_COMMIT, AFTER_COMMIT, and after committed reindex rewind before rebuild; incomplete projection recovery remained blocked until exact resume",
       "limitations": "Uses real file SQLite WAL and independent recovery connections; ordinary process termination is not a hardware power-loss claim.",
-      "executedAt": "2026-09-22T06:56:28Z"
+      "executedAt": "2026-09-22T08:13:28Z"
     },
     {
       "id": "RUN-CHAIN-DATABASE-RECOVERY",
       "level": "LOCAL-TEST",
       "command": "pnpm vitest run tests/integration/transaction-chain-recovery.test.ts tests/integration/database-real-recovery.test.ts",
       "workingDirectory": "workspace root",
-      "executedAt": "2026-09-22T06:56:28Z",
+      "executedAt": "2026-09-22T08:13:28Z",
       "status": "executed/pass",
       "result": "2 files, 7 tests passed for repriced/cancelled/different-call replacement, receipt orphan/reinclusion, canonical reindex, restore-behind-head catch-up, and same-address deployment reset rejection",
       "limitations": "Local deterministic Anvil only; no public-network finality, archive-provider, or manual wallet claim.",
@@ -287,23 +290,33 @@
       "level": "DB-TEST",
       "command": "pnpm vitest run tests/integration/real-stack.test.ts tests/integration/transaction-convergence.test.ts tests/integration/database-real-recovery.test.ts --maxWorkers=3",
       "workingDirectory": "workspace root",
-      "executedAt": "2026-09-22T06:56:28Z",
+      "executedAt": "2026-09-22T08:13:28Z",
       "status": "executed/pass",
       "result": "3 real Anvil/SQLite integration files and 6 tests passed concurrently with isolated roots, environment IDs, databases, locks, ports, deployments, and signer nonce spaces",
       "limitations": "Parallel workers share the same host and repository dependencies; the evidence is local process isolation, not cross-host isolation.",
       "scenarios": ["DB-54"]
     },
     {
+      "id": "RUN-MANAGED-NODE-OWNERSHIP",
+      "scenarios": ["DB-58"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm vitest run tests/database/managed-node.test.ts tests/integration/managed-node-reset.test.ts",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "2 files / 6 tests passed for loopback alias normalization, duplicate and corrupt binding refusal, endpoint changes, missing ownership, preserved reset bindings, and isolated reset across two harness-owned Anvil nodes.",
+      "limitations": "Dedicated loopback endpoints only; unknown processes, port forwarding, and different ports that reach one external service are outside the binding model.",
+      "executedAt": "2026-09-22T08:13:28Z"
+    },
+    {
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35697345520)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (R11 source revision)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
-      "status": "executed/pass",
-      "result": "GitHub Actions run 35697345520 completed successfully for R10 source 50184aced18b22c64ce4523ddfb416d1fad737d3: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
-      "executedAt": "2026-09-22T07:05:09Z",
-      "limitations": "GitHub-hosted deterministic local stack only; branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35697345520"
+      "status": "not run",
+      "result": "R11 source CI has not run; local pnpm verify and pnpm test:e2e passed for the exact precommit source fingerprint.",
+      "executedAt": "2026-09-22T08:13:28Z",
+      "limitations": "Remote CI evidence will be recorded only after the R11 source commit is pushed and the matching GitHub Actions run succeeds."
     }
   ]
 }

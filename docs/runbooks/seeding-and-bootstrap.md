@@ -60,3 +60,14 @@ seeding is read-only when an incomplete marker exists. Lock lifecycle tests cove
 signal exit before release, repeated release, and composite cleanup. A real process-kill injection in
 the broadcast-to-hash persistence window remains unverified. See the
 [database matrix](../testing/database-acceptance-matrix.md).
+
+## Dedicated local node claim
+
+After bootstrap confirms the expected chain ID and before it submits deployment or seed
+transactions, it claims the configured loopback RPC endpoint for the managed environment. Claims
+are serialized by the workspace-wide `managed-nodes.lock`. A second environment using the same
+normalized endpoint is rejected before chain writes.
+
+Keep the generated `managed-node.json` with the environment lifecycle. A missing or edited binding
+is an ownership failure; recreate the environment deliberately instead of copying another
+environment's binding.

@@ -106,8 +106,105 @@ describe('submitOperation', () => {
         throw Object.assign(new Error('user denied'), { code: 4001 });
       },
     });
-    expect(await submitOperation(context, action, store.port)).toMatchObject({ kind: 'rejected' });
-    expect(store.entries[0]?.status).toBe('REJECTED');
+    expect(await submitOperation(context, action, store.port)).toMatchObject({
+      kind: 'rejected',
+      durable: true,
+    });
+    expect(store.entries[0]).toMatchObject({
+      status: 'REJECTED',
+      walletRequestOutcome: 'REJECTED',
+    });
+  });
+
+  it('merges a wallet rejection after hashless observation advances the revision', async () => {
+    const store = journal();
+    const originalSave = store.port.save.bind(store.port);
+    let outcomeWrites = 0;
+    store.port.save = async (entry) => {
+      if (entry.walletRequestOutcome === 'REJECTED' && outcomeWrites++ === 0) {
+        const current = store.entries[0];
+        if (!current) throw new Error('missing current entry');
+        store.entries[0] = {
+          ...current,
+          revision: (current.revision ?? 0) + 1,
+          status: 'UNKNOWN',
+          lastErrorCategory: 'HASH_REQUIRED_FROM_WALLET_ACTIVITY',
+        };
+        throw new Error('JOURNAL_REVISION_CONFLICT');
+      }
+      return originalSave(entry);
+    };
+    const { action, context } = fixture({
+      submit: async () => {
+        throw Object.assign(new Error('user denied'), { code: 4001 });
+      },
+    });
+
+    await expect(submitOperation(context, action, store.port)).resolves.toMatchObject({
+      kind: 'rejected',
+      durable: true,
+    });
+    expect(store.entries[0]).toMatchObject({
+      status: 'REJECTED',
+      walletRequestOutcome: 'REJECTED',
+      lastErrorCategory: 'WALLET_REJECTED',
+    });
+  });
+
+  it('records rejection outcome without erasing transaction evidence found concurrently', async () => {
+    const store = journal();
+    const originalSave = store.port.save.bind(store.port);
+    let outcomeWrites = 0;
+    store.port.save = async (entry) => {
+      if (entry.walletRequestOutcome === 'REJECTED' && outcomeWrites++ === 0) {
+        const current = store.entries[0];
+        if (!current) throw new Error('missing current entry');
+        store.entries[0] = {
+          ...current,
+          revision: (current.revision ?? 0) + 1,
+          status: 'SUBMITTED',
+          originalTxHash: hash,
+          currentTxHash: hash,
+          evidenceSource: 'USER_SUPPLIED',
+          association: 'INTENT_MATCH',
+        };
+        throw new Error('JOURNAL_REVISION_CONFLICT');
+      }
+      return originalSave(entry);
+    };
+    const { action, context } = fixture({
+      submit: async () => {
+        throw Object.assign(new Error('user denied'), { code: 4001 });
+      },
+    });
+
+    await expect(submitOperation(context, action, store.port)).resolves.toMatchObject({
+      kind: 'rejected',
+      durable: true,
+    });
+    expect(store.entries[0]).toMatchObject({
+      status: 'SUBMITTED',
+      currentTxHash: hash,
+      walletRequestOutcome: 'REJECTED',
+    });
+  });
+
+  it('marks wallet rejection non-durable when journal storage is unavailable', async () => {
+    const store = journal(3);
+    const { action, context } = fixture({
+      submit: async () => {
+        throw Object.assign(new Error('user denied'), { code: 4001 });
+      },
+    });
+
+    await expect(submitOperation(context, action, store.port)).resolves.toMatchObject({
+      kind: 'rejected',
+      durable: false,
+    });
+    expect(store.entries[0]).toMatchObject({
+      status: 'REJECTED',
+      walletRequestOutcome: 'REJECTED',
+    });
   });
 
   it('records response loss as unknown and never resubmits', async () => {
@@ -116,7 +213,10 @@ describe('submitOperation', () => {
       throw new Error('wallet response channel closed');
     });
     const { action, context } = fixture({ submit });
-    expect(await submitOperation(context, action, store.port)).toMatchObject({ kind: 'unknown' });
+    expect(await submitOperation(context, action, store.port)).toMatchObject({
+      kind: 'unknown',
+      durable: true,
+    });
     expect(submit).toHaveBeenCalledTimes(1);
     expect(store.entries[0]?.status).toBe('UNKNOWN');
   });

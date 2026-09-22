@@ -3,6 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import {
+  claimManagedNode,
   migrateEnvironment,
   registerDeployment,
   seedCatalog,
@@ -50,6 +51,7 @@ async function bootstrap(): Promise<void> {
   const publicClient = createPublicClient({ chain: localChain, transport: http(config.rpcUrl) });
   const chainId = await publicClient.getChainId();
   if (chainId !== 31337) throw new Error(`CHAIN_MISMATCH: expected 31337, got ${chainId}`);
+  await claimManagedNode(config.environment, config.rpcUrl);
   const accountResponse: unknown = await fetch(config.rpcUrl, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

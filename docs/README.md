@@ -104,6 +104,7 @@ identity are recorded in
 - [Database architecture](architecture/database.md) and
   [database ownership/dependencies](architecture/database-ownership-and-dependencies.md)
 - [Escrow protocol](protocol/escrow.md)
+- [Wallet outcome and managed node ownership decision](adr/0016-wallet-outcomes-and-managed-node-ownership.md)
 - [Indexing and recovery flow](flows/indexing-and-recovery.md)
 - [API](reference/api.md), [protocol artifacts](reference/protocol-artifacts.md), and
   [database schema](reference/database-schema.md)

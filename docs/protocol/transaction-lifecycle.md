@@ -122,3 +122,19 @@ unrelated operation write does not erase that durable fallback.
 
 Tabs in one browser profile serialize deployment journal writes with the Web Locks API. Closing the
 lock owner releases the lock for another tab. The journal does not coordinate different devices.
+
+## Concurrent wallet and observer evidence
+
+`AWAITING_WALLET` can be inspected before the wallet returns. The observer may therefore advance
+the durable revision to `UNKNOWN` while the request later returns an explicit rejection. Wallet
+request outcome is recorded independently from transaction status:
+
+- a rejection is merged only into the same immutable intent and wallet request instance;
+- revision conflicts reload the latest entry and retry the merge with a bounded compare-and-swap;
+- an already discovered transaction hash, receipt, or projection effect is never replaced by a
+  wallet rejection;
+- a persistence failure uses the existing volatile journal overlay and the notice states that the
+  outcome will not survive reload.
+
+This preserves both facts when they coexist: what the wallet call reported and what transaction
+evidence was found.

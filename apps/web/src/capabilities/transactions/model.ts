@@ -62,6 +62,8 @@ export const journalEntrySchema = z.object({
   projectionLogIndex: z.number().int().nonnegative().optional(),
   projectionDeploymentId: bytes32Schema.optional(),
   projectionBuildId: z.string().min(1).optional(),
+  walletRequestOutcome: z.enum(['REJECTED', 'UNKNOWN']).optional(),
+  walletRequestOutcomeAt: z.string().datetime().optional(),
   status: transactionObservationSchema,
   lastErrorCategory: z.string().min(1).optional(),
 });
@@ -88,6 +90,6 @@ export type SubmissionResult =
       hash: `0x${string}`;
       clientOperationId: string;
     }
-  | { kind: 'rejected'; clientOperationId: string }
+  | { kind: 'rejected'; clientOperationId: string; durable: boolean }
   | { kind: 'failed'; message: string; clientOperationId: string }
-  | { kind: 'unknown'; clientOperationId: string };
+  | { kind: 'unknown'; clientOperationId: string; durable: boolean };

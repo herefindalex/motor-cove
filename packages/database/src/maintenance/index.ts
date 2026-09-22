@@ -7,6 +7,11 @@ export { acquireBootstrapOwnership, acquireMaintenanceLocks } from '../connectio
 export { backupEnvironment, verifyBackup } from './backup.js';
 export { restoreEnvironment } from './restore.js';
 export { resetEnvironment } from './reset.js';
+export {
+  claimManagedNode,
+  verifyManagedNodeOwnership,
+  canonicalManagedNodeEndpoint,
+} from './managed-node.js';
 export { recoverEnvironment } from './recovery.js';
 export { registerDeployment, type DeploymentRegistration } from './deployment-registration.js';
 export { seedCatalog, catalogSeedDigest, type CatalogSeedSet } from './catalog-seed.js';
