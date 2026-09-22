@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "40b06fe32f1c6aea76ef8b0e81cdcd61946268a1",
+    "revision": "eb57d498b2d8567fa9b89a0f6fddccead72d1e86",
     "dirty": true,
-    "capturedAt": "2026-09-22T08:13:28Z",
-    "sourceFingerprint": "sha256:69b9fac4bcffd9764559f995de79eadf61523894a80acb940b4fef4681a24e71",
+    "capturedAt": "2026-09-22T08:23:02Z",
+    "sourceFingerprint": "sha256:a9a6bcf635d3efbc3da5126dd2eb8a7a134ff8fb6bbca7d3040fdfa1db89af30",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Captured committed R10 source 50184aced18b22c64ce4523ddfb416d1fad737d3 plus the generated evidence update. The required dirty-worktree fingerprint binds the evidence follow-up itself. Local and GitHub-hosted deterministic evidence does not establish hardware power loss, public-network, manual MetaMask, or cross-device behavior.",
+    "limits": "Captured committed R11 source eb57d498b2d8567fa9b89a0f6fddccead72d1e86 plus this generated evidence follow-up. The dirty-worktree fingerprint binds all tracked and untracked repository content except this verification file. Local and GitHub-hosted evidence does not establish public-network, manual MetaMask, cross-device, hardware power-loss, unknown-process, or port-forwarding behavior.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, and NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -311,12 +311,13 @@
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (R11 source revision)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35703964015)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
-      "status": "not run",
-      "result": "R11 source CI has not run; local pnpm verify and pnpm test:e2e passed for the exact precommit source fingerprint.",
-      "executedAt": "2026-09-22T08:13:28Z",
-      "limitations": "Remote CI evidence will be recorded only after the R11 source commit is pushed and the matching GitHub Actions run succeeds."
+      "status": "executed/pass",
+      "result": "GitHub Actions run 35703964015 completed successfully for R11 source eb57d498b2d8567fa9b89a0f6fddccead72d1e86: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
+      "executedAt": "2026-09-22T08:23:02Z",
+      "limitations": "GitHub-hosted deterministic local stack only; branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, cross-device coordination, unknown processes, and port-forwarding aliases remain outside this run.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35703964015"
     }
   ]
 }
