@@ -192,6 +192,18 @@ checkpoint identity and failure reason, close the writer, and set a nonzero exit
 | Can a legitimate reindex require more than 1,000 successful batches?                          | `reindex-catchup.test.ts` completes 1,001 one-block batches and rejects a successful iteration with no durable checkpoint progress.                                                        | Controlled application test; the production CLI uses the same helper.                                               |
 | Does a catch-up restart preserve accumulated progress?                                        | `reindex-replay.test.ts` and `projection-maintenance.test.ts` distinguish `PREPARING` from `CATCHING_UP`; a resumed catch-up rebuilds projections without a second source rewind.          | Real temporary SQLite marker tests plus application orchestration tests; hardware power loss remains outside scope. |
 
+## R16 migration backup and environment ownership regressions
+
+- Migration tests force a deployed old-schema database to fail backup because its deployment
+  sidecar is missing. Two matching invocations both fail before SQL, proving a failed marker does
+  not satisfy the backup phase.
+- A second fixture completes a verified pre-migration snapshot, injects a later SQL failure, and
+  proves the matching resume revalidates and reuses the single recorded backup. A tampered backup
+  manifest is rejected before the migration callback runs.
+- Fresh-environment tests distinguish empty directories from unowned databases and deployment,
+  bootstrap, seed, maintenance, and managed-node sidecars. Rejection preserves original bytes and
+  does not create `owner.json`; a genuinely empty environment initializes and reruns idempotently.
+
 ## R15 owned recovery and transaction-verification regressions
 
 | Question                                                                                       | Repository evidence                                                                                                                                                   | Boundary                                                                                                     |

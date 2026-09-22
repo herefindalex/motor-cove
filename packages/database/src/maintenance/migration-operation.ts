@@ -6,7 +6,7 @@ import { acquireMaintenanceLocks } from '../connection/flock.js';
 import { initializeOwnedEnvironment } from '../connection/environment.js';
 import { openMaintenanceDatabase } from '../connection/sqlite.js';
 import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
-import { backupEnvironment } from './backup.js';
+import { backupEnvironment, verifyBackup } from './backup.js';
 import { clearMaintenanceMarker, writeMaintenanceMarker } from './marker.js';
 import {
   assertKnownHistory,
@@ -20,6 +20,36 @@ import {
 
 export interface MigrationOperationOptions {
   readonly applyMigrations?: (database: ReturnType<typeof openMaintenanceDatabase>) => void;
+}
+
+type SourceVerification = ReturnType<typeof verifyKnownSourceDatabase>;
+
+function sourceDeploymentId(database: ReturnType<typeof openMaintenanceDatabase>): string | null {
+  const rows = database
+    .prepare('SELECT deployment_id AS deploymentId FROM deployments ORDER BY deployment_id')
+    .all() as Array<{ deploymentId: string }>;
+  if (rows.length === 0) return null;
+  if (rows.length !== 1 || !rows[0])
+    throw new Error('MIGRATION_BACKUP_INVALID: deployment identity');
+  return rows[0].deploymentId;
+}
+
+function verifyMigrationBackup(
+  paths: EnvironmentPaths,
+  backupId: string,
+  source: SourceVerification,
+  deploymentId: string | null,
+): void {
+  const backup = verifyBackup(paths, backupId);
+  const manifest = backup.manifest as Record<string, unknown>;
+  if (
+    manifest.schemaContractVersion !== source.contractVersion ||
+    manifest.migrationCount !== source.historyCount ||
+    manifest.migrationBundleDigest !== source.migrationBundleDigest ||
+    manifest.schemaFingerprint !== source.fingerprint ||
+    manifest.deploymentId !== deploymentId
+  )
+    throw new Error('MIGRATION_BACKUP_INVALID: source identity');
 }
 
 export async function migrateEnvironment(
@@ -50,6 +80,7 @@ export async function migrateEnvironment(
     expectedMigrationBundleDigest: contract.migrationBundleDigest,
     startedAt: new Date().toISOString(),
   };
+  let activeMarker = marker;
   let markerOwned = false;
   try {
     if (existingMarker) {
@@ -71,16 +102,31 @@ export async function migrateEnvironment(
       assertKnownHistory(database);
       const beforeCount = readNativeHistory(database).length;
       const pending = migrationBundle().length - beforeCount;
-      if (pending > 0 && beforeCount > 0) verifyKnownSourceDatabase(database);
-      if (!existingMarker && existed && beforeCount > 0 && pending > 0)
-        await backupEnvironment(paths, { locksAlreadyHeld: true, reason: 'pre-migration' });
-      writeMaintenanceMarker(paths.maintenancePath, { ...marker, stage: 'APPLYING' });
+      const source =
+        pending > 0 && beforeCount > 0 ? verifyKnownSourceDatabase(database) : undefined;
+      if (existed && source && pending > 0) {
+        const deploymentId = sourceDeploymentId(database);
+        if (activeMarker.backupId) {
+          verifyMigrationBackup(paths, activeMarker.backupId, source, deploymentId);
+        } else {
+          const backup = await backupEnvironment(paths, {
+            locksAlreadyHeld: true,
+            reason: 'pre-migration',
+          });
+          verifyMigrationBackup(paths, backup.backupId, source, deploymentId);
+          activeMarker = { ...activeMarker, stage: 'BACKED_UP', backupId: backup.backupId };
+          writeMaintenanceMarker(paths.maintenancePath, activeMarker);
+        }
+      }
+      activeMarker = { ...activeMarker, stage: 'APPLYING' };
+      writeMaintenanceMarker(paths.maintenancePath, activeMarker);
       database.pragma('journal_mode = WAL');
       if (pending > 0) {
         if (options.applyMigrations) options.applyMigrations(database);
         else drizzleMigrate(drizzle(database), { migrationsFolder });
       }
-      writeMaintenanceMarker(paths.maintenancePath, { ...marker, stage: 'FINALIZING' });
+      activeMarker = { ...activeMarker, stage: 'FINALIZING' };
+      writeMaintenanceMarker(paths.maintenancePath, activeMarker);
       const verification = finalizeDatabaseContract(database);
       clearMaintenanceMarker(paths.maintenancePath);
       return { operationId, changed: pending > 0, verification };
@@ -90,7 +136,7 @@ export async function migrateEnvironment(
   } catch (error) {
     if (markerOwned && existsSync(paths.maintenancePath))
       writeMaintenanceMarker(paths.maintenancePath, {
-        ...marker,
+        ...activeMarker,
         stage: 'FAILED',
         lastError: error instanceof Error ? error.message : String(error),
       });

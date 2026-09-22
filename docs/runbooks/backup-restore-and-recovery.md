@@ -62,6 +62,12 @@ bundle, and the live schema fingerprint against the database's own `db_contract`
 records the snapshot's actual migration count, prefix digest, schema fingerprint, and source contract
 version. It does not describe the snapshot as already being at a future target schema.
 
+For a pre-migration snapshot, successful publication is a durable migration phase. The migration
+marker stores the published backup ID, and every matching resume calls the normal backup verifier
+again before applying SQL. It also compares the verified snapshot evidence with the live source
+database and deployment identity. A failed backup leaves no proof, so the next matching run must
+retry backup creation. A failure after the proof is recorded reuses the same verified snapshot.
+
 Restore currently installs only a snapshot that matches the running code's target schema. A valid
 older snapshot fails with `BACKUP_REQUIRES_MIGRATION` before the active database is moved; upgrade it
 through the migration workflow instead of bypassing the guard. An interrupted projection rebuild or

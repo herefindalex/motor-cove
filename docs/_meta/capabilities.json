@@ -143,7 +143,7 @@
     {
       "id": "CAP-11",
       "name": "Database lifecycle",
-      "behavior": "Uses native Drizzle history, bundle-bound resumable migration markers, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, explicit deployed or predeployment backup identity, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership. Recovery completion acquires maintenance ownership and rereads the current operation marker before choosing or mutating recovery state.",
+      "behavior": "Uses native Drizzle history, bundle-bound resumable migration markers, verified pre-migration backup proof, fresh-only environment ownership, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, explicit deployed or predeployment backup identity, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership. Recovery completion acquires maintenance ownership and rereads the current operation marker before choosing or mutating recovery state.",
       "implementation": "partial",
       "code": [
         "packages/database",
@@ -194,7 +194,12 @@
         "DB-28",
         "DB-30",
         "DB-58",
-        "DB-62"
+        "DB-62",
+        "DB-63",
+        "DB-64",
+        "DB-65",
+        "DB-66",
+        "DB-67"
       ],
       "verification": [
         "RUN-DB-MIGRATIONS",
@@ -300,7 +305,7 @@
     {
       "id": "CAP-16",
       "name": "Roadmap and dependency management",
-      "behavior": "Maps P0\u2013P5, D0\u2013D5, DOC-P0\u2013P5, blockers, and provider-consumer exit gates without inventing delivery metrics.",
+      "behavior": "Maps P0–P5, D0–D5, DOC-P0–P5, blockers, and provider-consumer exit gates without inventing delivery metrics.",
       "implementation": "implemented",
       "code": ["docs/implementation-plan.md", "docs/collaboration/delivery-workflow.md"],
       "scenarios": ["SALE-002", "REL-001"],

@@ -13,12 +13,16 @@ the verification JSON are the machine-readable sources; this page is a human sum
 
 ## Current executed gates
 
-R15 hardening is implemented in the working source: maintenance completion selects the current marker only after acquiring ownership; transaction inspection binds saved and configured identity to the actual RPC chain and on-chain deployment; known-hash verification continues in volatile state when a durable browser write fails.
+R16 hardening is implemented in the working source: migration resume requires a published backup
+proof, revalidates it against the live source and deployment before SQL, and retries backup when no
+proof exists. Environment initialization creates ownership only for genuinely empty directories;
+existing databases and sidecars remain unowned and unchanged.
 
-- `pnpm verify`: generation, database contract, formatting, docs, architecture, type checking, lint, 13 Foundry tests, 44 files / 280 unit, component, and database tests, 14 files / 58 integration tests, and all 7 workspace builds passed.
+- `pnpm verify`: generation, database contract, formatting, docs, architecture, type checking, lint, 13 Foundry tests, 44 files / 291 unit, component, and database tests, 14 files / 58 integration tests, and all 7 workspace builds passed.
 - `pnpm test:e2e`: 6 local Playwright scenarios passed against harness-owned Anvil, managed SQLite, API, Indexer, and Web. The recovery scenario observed an actual transaction lookup, no added wallet submission, unchanged durable journal bytes, the tab-local warning, and reload fallback.
-- Focused R15 coverage passed 5 files / 60 maintenance, inspector, observer, journal, and recovery tests plus 2 real-chain integration files / 5 tests.
-- Documentation checks generated 18 capabilities and 48 commands and rejected all 8 negative fixtures. Architecture validation passed 159 source files and rejected all 10 dependency fixtures.
+- Focused R16 migration coverage passed 1 file / 24 tests, including repeated backup failure,
+  verified snapshot reuse, unowned databases and sidecars, and idempotent empty initialization.
+- Documentation checks generated 18 capabilities and 48 commands, validated database acceptance IDs through DB-67, and rejected all 8 negative fixtures. Architecture validation passed 159 source files and rejected all 10 dependency fixtures.
 
 Exact commands, timestamps, environment, source fingerprint, and limitations are recorded in the
 [verification records](evidence/verification.json), the

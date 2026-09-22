@@ -2,6 +2,7 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   writeFileSync,
@@ -47,7 +48,25 @@ function assertContained(realRoot: string, candidate: string): void {
     throw new Error('DB_NOT_OWNED: path escapes managed root');
 }
 
+function containsUnownedState(environmentDir: string): boolean {
+  if (!existsSync(environmentDir)) return false;
+  const root = lstatSync(environmentDir);
+  if (!root.isDirectory() || root.isSymbolicLink()) return true;
+  const pending = [environmentDir];
+  while (pending.length > 0) {
+    const directory = pending.pop();
+    if (!directory) break;
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isSymbolicLink() || !entry.isDirectory()) return true;
+      pending.push(resolve(directory, entry.name));
+    }
+  }
+  return false;
+}
+
 export function initializeOwnedEnvironment(paths: EnvironmentPaths): void {
+  if (!existsSync(paths.ownerPath) && containsUnownedState(paths.environmentDir))
+    throw new Error('DB_NOT_OWNED: existing environment state');
   mkdirSync(resolve(paths.managedRoot, 'environments'), { recursive: true });
   mkdirSync(resolve(paths.managedRoot, 'locks', paths.environmentId), { recursive: true });
   mkdirSync(paths.databaseDir, { recursive: true });

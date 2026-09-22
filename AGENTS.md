@@ -76,6 +76,10 @@ fixture when introducing a new dependency rule.
   reinsert.
 - Migration, seed, bootstrap, restore, reset, rebuild, reindex, and reconciliation are distinct
   operations. Never rewrite an applied migration or clear `maintenance.json` by hand.
+- Treat the verified pre-migration backup as a durable migration phase. A resume without recorded,
+  revalidated backup proof must retry backup creation before SQL; a valid recorded proof is reused.
+- Create `owner.json` only for a genuinely empty managed environment. Existing database files,
+  sidecars, symlinks, or unknown files without ownership are preserved and rejected, never adopted.
 - A maintenance completion command must acquire ownership and then reread the current marker before
   selecting or mutating recovery state. Lock-free marker reads are diagnostic previews only.
 

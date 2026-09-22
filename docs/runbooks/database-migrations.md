@@ -39,6 +39,18 @@ migration-bundle digest. Rerunning `db:migrate` continues only that exact bundle
 prefix is verified before pending migrations run. If SQL already reached the current schema,
 recovery finalizes and re-verifies `db_contract` before clearing the marker.
 
+An existing database with pending migrations must publish a verified pre-migration backup before
+any SQL is applied. The marker records the backup ID only after the snapshot has been published and
+verified. A matching rerun reopens that backup and compares its environment, deployment, native
+history, source bundle digest, and schema fingerprint with the live source database. If backup
+creation failed, the rerun retries backup creation; it cannot treat the failed marker as proof that
+a snapshot exists. If SQL failed after backup, the same verified snapshot is reused.
+
+Ownership initialization is limited to a genuinely empty environment directory. A database, WAL or
+SHM file, deployment/bootstrap/seed/maintenance/node sidecar, symlink, or any other existing file
+without `owner.json` is preserved and rejected as `DB_NOT_OWNED`. Adoption or import requires a
+separate explicit workflow; `db:migrate` never creates ownership metadata around existing state.
+
 ## Verification
 
 The real `0000` to `0001` fixture preserves an existing chain event while adding source-record
@@ -56,5 +68,10 @@ publishing current projection metadata.
   checked source and migration bundle. Current-schema recovery finalizes metadata. A changed bundle,
   unknown history, or schema drift remains blocked. A legacy marker without bundle identity reports
   `USE_ORIGINAL_RELEASE_MIGRATION_TOOL` for a behind schema. Do not delete the marker.
+- `MIGRATION_BACKUP_INVALID`: preserve the marker and backup. The recorded snapshot no longer
+  matches the source identity required by the migration; do not replace the proof or bypass the
+  check.
+- `DB_NOT_OWNED: existing environment state`: the environment contains state but no owner record.
+  Do not add `owner.json` by hand or rerun against that directory.
 
 The inspected `data/motorcove.sqlite` was not modified and is not automatically adopted.

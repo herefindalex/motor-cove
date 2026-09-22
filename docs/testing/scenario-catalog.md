@@ -36,7 +36,7 @@ behavior to current local evidence. A passing row describes the recorded run in
   recorded in the marker before active raw events or headers can be removed. The archive fixture
   proves displaced source evidence remains readable.
 
-Database acceptance IDs `DB-01` through `DB-62` are maintained in the
+Database acceptance IDs `DB-01` through `DB-67` are maintained in the
 [database acceptance matrix](database-acceptance-matrix.md). Documentation acceptance IDs
 `DOC-01` through `DOC-32` are maintained in the
 [documentation acceptance matrix](documentation-acceptance-matrix.md).

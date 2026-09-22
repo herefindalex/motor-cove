@@ -1,10 +1,20 @@
 import Database from 'better-sqlite3';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   environmentPaths,
+  initializeOwnedEnvironment,
   inspectEnvironment,
   migrateEnvironment,
   recoverEnvironment,
@@ -14,6 +24,7 @@ import {
   loadSchemaContract,
   migrationBundle,
   migrationBundleDigest,
+  readNativeHistory,
   verifyKnownSourceDatabase,
   verifyBackup,
 } from '@motorcove/database/maintenance';
@@ -22,6 +33,18 @@ const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
+
+function downgradeToFirstMigration(databasePath: string): void {
+  const db = new Database(databasePath);
+  db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
+  db.prepare(
+    'DELETE FROM __drizzle_migrations WHERE created_at=(SELECT MAX(created_at) FROM __drizzle_migrations)',
+  ).run();
+  db.prepare(
+    'UPDATE db_contract SET migration_bundle_digest=?,schema_fingerprint=? WHERE id=1',
+  ).run(migrationBundleDigest(migrationBundle().slice(0, 1)), schemaFingerprint(db));
+  db.close();
+}
 
 describe('native migration path', () => {
   it('DB-01/02 creates a fresh database and reruns as a no-op', async () => {
@@ -106,6 +129,192 @@ describe('native migration path', () => {
       ).count,
     ).toBe(2);
     upgraded.close();
+  });
+
+  it('DB-63 retries a failed pre-migration backup before applying any SQL', async () => {
+    const { root, paths } = await databaseFixture('backup-retry');
+    roots.push(root);
+    downgradeToFirstMigration(paths.databasePath);
+    unlinkSync(paths.deploymentPath);
+
+    await expect(migrateEnvironment(paths)).rejects.toThrow(
+      'BACKUP_INVALID: deployment sidecar required',
+    );
+    await expect(migrateEnvironment(paths)).rejects.toThrow(
+      'BACKUP_INVALID: deployment sidecar required',
+    );
+
+    expect(readdirSync(paths.backupsDir)).toEqual([]);
+    const marker = JSON.parse(readFileSync(paths.maintenancePath, 'utf8')) as {
+      stage: string;
+      backupId?: string;
+    };
+    expect(marker).toMatchObject({ stage: 'FAILED' });
+    expect(marker.backupId).toBeUndefined();
+    const db = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
+    expect(readNativeHistory(db)).toHaveLength(1);
+    expect(
+      db
+        .prepare(
+          "SELECT 1 FROM pragma_table_info('chain_events') WHERE name='source_record_digest'",
+        )
+        .get(),
+    ).toBeUndefined();
+    db.close();
+  });
+
+  it('DB-64 revalidates and reuses a completed backup when migration SQL resumes', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'motorcove-backup-proof-'));
+    roots.push(root);
+    const paths = environmentPaths(root, 'backup-proof');
+    await migrateEnvironment(paths);
+    downgradeToFirstMigration(paths.databasePath);
+
+    await expect(
+      migrateEnvironment(paths, {
+        applyMigrations: () => {
+          throw new Error('CONTROLLED_AFTER_BACKUP');
+        },
+      }),
+    ).rejects.toThrow('CONTROLLED_AFTER_BACKUP');
+
+    const failed = JSON.parse(readFileSync(paths.maintenancePath, 'utf8')) as {
+      stage: string;
+      backupId?: string;
+    };
+    expect(failed.stage).toBe('FAILED');
+    expect(failed.backupId).toBe(readdirSync(paths.backupsDir)[0]);
+    expect(readdirSync(paths.backupsDir)).toHaveLength(1);
+
+    await expect(migrateEnvironment(paths)).resolves.toMatchObject({ changed: true });
+    expect(readdirSync(paths.backupsDir)).toHaveLength(1);
+    expect(existsSync(paths.maintenancePath)).toBe(false);
+  });
+
+  it('DB-64 rejects a recorded backup whose verified source evidence changed', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'motorcove-backup-proof-tamper-'));
+    roots.push(root);
+    const paths = environmentPaths(root, 'backup-proof-tamper');
+    await migrateEnvironment(paths);
+    downgradeToFirstMigration(paths.databasePath);
+
+    await expect(
+      migrateEnvironment(paths, {
+        applyMigrations: () => {
+          throw new Error('CONTROLLED_AFTER_BACKUP');
+        },
+      }),
+    ).rejects.toThrow('CONTROLLED_AFTER_BACKUP');
+
+    const marker = JSON.parse(readFileSync(paths.maintenancePath, 'utf8')) as {
+      backupId: string;
+    };
+    const manifestPath = join(paths.backupsDir, marker.backupId, 'backup-manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
+    writeFileSync(
+      manifestPath,
+      `${JSON.stringify({ ...manifest, schemaFingerprint: 'tampered' }, null, 2)}\n`,
+    );
+    let applyCalls = 0;
+
+    await expect(
+      migrateEnvironment(paths, {
+        applyMigrations: () => {
+          applyCalls += 1;
+        },
+      }),
+    ).rejects.toThrow('BACKUP_INVALID: source schema evidence');
+    expect(applyCalls).toBe(0);
+    const source = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
+    expect(readNativeHistory(source)).toHaveLength(1);
+    source.close();
+  });
+
+  it('DB-64 rejects a recorded backup after the live source identity changes', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'motorcove-backup-source-change-'));
+    roots.push(root);
+    const paths = environmentPaths(root, 'backup-source-change');
+    await migrateEnvironment(paths);
+    downgradeToFirstMigration(paths.databasePath);
+
+    await expect(
+      migrateEnvironment(paths, {
+        applyMigrations: () => {
+          throw new Error('CONTROLLED_AFTER_BACKUP');
+        },
+      }),
+    ).rejects.toThrow('CONTROLLED_AFTER_BACKUP');
+
+    const source = new Database(paths.databasePath);
+    source.prepare("UPDATE db_contract SET contract_version='different-source' WHERE id=1").run();
+    source.close();
+    let applyCalls = 0;
+
+    await expect(
+      migrateEnvironment(paths, {
+        applyMigrations: () => {
+          applyCalls += 1;
+        },
+      }),
+    ).rejects.toThrow('MIGRATION_BACKUP_INVALID: source identity');
+    expect(applyCalls).toBe(0);
+    expect(readdirSync(paths.backupsDir)).toHaveLength(1);
+  });
+
+  it('DB-65 rejects unowned environment state before creating owner metadata', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'motorcove-unowned-state-'));
+    roots.push(root);
+    const paths = environmentPaths(root, 'unowned-state');
+    mkdirSync(paths.databaseDir, { recursive: true });
+    const original = Buffer.from('existing-unowned-database');
+    writeFileSync(paths.databasePath, original);
+
+    expect(() => initializeOwnedEnvironment(paths)).toThrow(
+      'DB_NOT_OWNED: existing environment state',
+    );
+    expect(readFileSync(paths.databasePath)).toEqual(original);
+    expect(existsSync(paths.ownerPath)).toBe(false);
+    await expect(migrateEnvironment(paths)).rejects.toThrow(
+      'DB_NOT_OWNED: existing environment state',
+    );
+    expect(readFileSync(paths.databasePath)).toEqual(original);
+    expect(existsSync(paths.ownerPath)).toBe(false);
+  });
+
+  it.each([
+    'deploymentPath',
+    'bootstrapReceiptPath',
+    'seedJournalPath',
+    'maintenancePath',
+    'nodeBindingPath',
+  ] as const)('DB-66 rejects an unowned %s sidecar without changing it', (pathKey) => {
+    const root = mkdtempSync(join(tmpdir(), 'motorcove-unowned-sidecar-'));
+    roots.push(root);
+    const paths = environmentPaths(root, `unowned-${pathKey.toLowerCase()}`);
+    mkdirSync(paths.environmentDir, { recursive: true });
+    const original = Buffer.from(`preserve-${pathKey}`);
+    writeFileSync(paths[pathKey], original);
+
+    expect(() => initializeOwnedEnvironment(paths)).toThrow(
+      'DB_NOT_OWNED: existing environment state',
+    );
+    expect(readFileSync(paths[pathKey])).toEqual(original);
+    expect(existsSync(paths.ownerPath)).toBe(false);
+  });
+
+  it('DB-67 initializes a genuinely empty environment and remains idempotent', () => {
+    const root = mkdtempSync(join(tmpdir(), 'motorcove-fresh-owner-'));
+    roots.push(root);
+    const paths = environmentPaths(root, 'fresh-owner');
+    mkdirSync(paths.databaseDir, { recursive: true });
+    mkdirSync(paths.reportsDir, { recursive: true });
+
+    initializeOwnedEnvironment(paths);
+    const owner = readFileSync(paths.ownerPath);
+    expect(existsSync(paths.databasePath)).toBe(false);
+    initializeOwnedEnvironment(paths);
+    expect(readFileSync(paths.ownerPath)).toEqual(owner);
+    expect(existsSync(paths.databasePath)).toBe(false);
   });
   it('backs up and upgrades a verified predeployment schema without inventing chain identity', async () => {
     const root = mkdtempSync(join(tmpdir(), 'motorcove-predeployment-migration-'));
