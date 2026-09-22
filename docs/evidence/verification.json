@@ -60,13 +60,7 @@
     },
     {
       "id": "RUN-DB-SEEDS",
-      "scenarios": [
-        "DB-23",
-        "DB-24",
-        "DB-25",
-        "DB-29",
-        "DB-51"
-      ],
+      "scenarios": ["DB-23", "DB-24", "DB-25", "DB-29", "DB-51"],
       "level": "DB-TEST",
       "command": "pnpm test:seeds",
       "workingDirectory": "workspace root",
@@ -77,11 +71,7 @@
     },
     {
       "id": "RUN-DB-RECOVERY",
-      "scenarios": [
-        "DB-47",
-        "DB-48",
-        "DB-50"
-      ],
+      "scenarios": ["DB-47", "DB-48", "DB-50"],
       "level": "DB-TEST",
       "command": "pnpm test:recovery",
       "workingDirectory": "workspace root",
@@ -92,13 +82,7 @@
     },
     {
       "id": "RUN-CONTRACTS",
-      "scenarios": [
-        "SALE-001",
-        "SALE-002",
-        "SALE-003",
-        "SALE-004",
-        "SALE-005"
-      ],
+      "scenarios": ["SALE-001", "SALE-002", "SALE-003", "SALE-004", "SALE-005"],
       "level": "LOCAL-TEST",
       "command": "forge test --root chain",
       "workingDirectory": "workspace root",
@@ -173,14 +157,7 @@
     },
     {
       "id": "RUN-INDEXER-UNIT",
-      "scenarios": [
-        "TX-001",
-        "TX-002",
-        "IDX-001",
-        "IDX-002",
-        "TX-004",
-        "DB-59"
-      ],
+      "scenarios": ["TX-001", "TX-002", "IDX-001", "IDX-002", "TX-004", "DB-59"],
       "level": "LOCAL-TEST",
       "command": "pnpm test:unit",
       "workingDirectory": "workspace root",
@@ -191,10 +168,7 @@
     },
     {
       "id": "RUN-API-CONTRACT",
-      "scenarios": [
-        "SALE-002",
-        "ARCH-001"
-      ],
+      "scenarios": ["SALE-002", "ARCH-001"],
       "level": "LOCAL-TEST",
       "command": "pnpm vitest run tests/integration/api-contract.test.ts tests/integration/api-reader-contract.test.ts",
       "workingDirectory": "workspace root",
@@ -205,9 +179,7 @@
     },
     {
       "id": "RUN-ARCHITECTURE",
-      "scenarios": [
-        "ARCH-001"
-      ],
+      "scenarios": ["ARCH-001"],
       "level": "LOCAL-TEST",
       "command": "pnpm check:architecture",
       "workingDirectory": "workspace root",
@@ -218,9 +190,7 @@
     },
     {
       "id": "RUN-GENERATE-CHECK",
-      "scenarios": [
-        "REL-001"
-      ],
+      "scenarios": ["REL-001"],
       "level": "LOCAL-TEST",
       "command": "pnpm generate:check",
       "workingDirectory": "workspace root",
@@ -260,12 +230,7 @@
     },
     {
       "id": "RUN-DOCS-CHECK",
-      "scenarios": [
-        "DOC-27",
-        "DOC-28",
-        "DOC-30",
-        "DOC-31"
-      ],
+      "scenarios": ["DOC-27", "DOC-28", "DOC-30", "DOC-31"],
       "level": "LOCAL-TEST",
       "command": "pnpm docs:check",
       "workingDirectory": "workspace root",
@@ -276,10 +241,7 @@
     },
     {
       "id": "RUN-WEB-COMPONENT",
-      "scenarios": [
-        "TX-001",
-        "TX-004"
-      ],
+      "scenarios": ["TX-001", "TX-004"],
       "level": "LOCAL-TEST",
       "command": "pnpm test:components",
       "workingDirectory": "workspace root",
@@ -290,12 +252,7 @@
     },
     {
       "id": "RUN-CHAIN-SEED-JOURNAL",
-      "scenarios": [
-        "DB-26",
-        "DB-27",
-        "DB-28",
-        "DB-59"
-      ],
+      "scenarios": ["DB-26", "DB-27", "DB-28", "DB-59"],
       "level": "LOCAL-TEST",
       "command": "pnpm vitest run apps/indexer/src/cli/chain-seed-journal.test.ts",
       "workingDirectory": "workspace root",
@@ -306,15 +263,7 @@
     },
     {
       "id": "RUN-TRANSACTION-RECOVERY",
-      "scenarios": [
-        "SALE-002",
-        "TX-001",
-        "TX-002",
-        "ARCH-001",
-        "TX-003",
-        "TX-004",
-        "TX-005"
-      ],
+      "scenarios": ["SALE-002", "TX-001", "TX-002", "ARCH-001", "TX-003", "TX-004", "TX-005"],
       "level": "LOCAL-TEST",
       "command": "pnpm vitest run apps/web/src/capabilities/transactions/recovery.test.ts apps/web/src/capabilities/transactions/submit-operation.test.ts apps/web/src/integrations/evm/inspect-transaction.test.ts apps/web/src/integrations/persistence/local-storage-journal.test.ts apps/web/src/capabilities/transactions/ui/TransactionTimeline.test.tsx apps/web/src/capabilities/transactions/ui/SubmissionNotice.test.tsx apps/web/src/pages/transaction-surfaces.test.tsx apps/web/src/pages/HomePage.inflight.test.tsx apps/web/src/features/marketplace/ui/Marketplace.test.tsx",
       "workingDirectory": "workspace root",
@@ -325,9 +274,7 @@
     },
     {
       "id": "RUN-INDEXER-KILL",
-      "scenarios": [
-        "IDX-002"
-      ],
+      "scenarios": ["IDX-002"],
       "level": "LOCAL-TEST",
       "command": "pnpm vitest run tests/integration/indexer-kill-recovery.test.ts tests/integration/projection-kill-recovery.test.ts",
       "workingDirectory": "workspace root",
@@ -345,14 +292,7 @@
       "status": "executed/pass",
       "result": "2 files, 7 tests passed for repriced/cancelled/different-call replacement, receipt orphan/reinclusion, canonical reindex, restore-behind-head catch-up, and same-address deployment reset rejection",
       "limitations": "Local deterministic Anvil only; no public-network finality, archive-provider, or manual wallet claim.",
-      "scenarios": [
-        "TX-001",
-        "TX-002",
-        "IDX-003",
-        "DB-40",
-        "DB-41",
-        "DB-49"
-      ]
+      "scenarios": ["TX-001", "TX-002", "IDX-003", "DB-40", "DB-41", "DB-49"]
     },
     {
       "id": "RUN-DB-PARALLEL",
@@ -363,15 +303,11 @@
       "status": "executed/pass",
       "result": "3 real Anvil/SQLite integration files and 6 tests passed concurrently with isolated roots, environment IDs, databases, locks, ports, deployments, and signer nonce spaces",
       "limitations": "Parallel workers share the same host and repository dependencies; the evidence is local process isolation, not cross-host isolation.",
-      "scenarios": [
-        "DB-54"
-      ]
+      "scenarios": ["DB-54"]
     },
     {
       "id": "RUN-MANAGED-NODE-OWNERSHIP",
-      "scenarios": [
-        "DB-58"
-      ],
+      "scenarios": ["DB-58"],
       "level": "LOCAL-TEST",
       "command": "pnpm vitest run tests/database/managed-node.test.ts tests/integration/managed-node-reset.test.ts",
       "workingDirectory": "workspace root",
@@ -382,10 +318,7 @@
     },
     {
       "id": "RUN-CI",
-      "scenarios": [
-        "REL-001",
-        "ARCH-001"
-      ],
+      "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
       "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35716902191)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
