@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "7d99610a09c6509052abe901a6152ef04e0c3813",
+    "revision": "ae029f3fd381e8ea1281ae249ec3ca464daf4e40",
     "dirty": true,
-    "capturedAt": "2026-09-22T06:02:50Z",
-    "sourceFingerprint": "sha256:cf253bcca7c666f33ebf24e6d916f082963c5b0c762fc5a7593ee45bbefd790b",
+    "capturedAt": "2026-09-22T06:15:42Z",
+    "sourceFingerprint": "sha256:afff63a2d33aed56272b43e04555dea750814a982b4780b03b28a5963ac446a5",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Captured committed R8 evidence revision 7d99610a09c6509052abe901a6152ef04e0c3813 plus the complete dirty R9 implementation, tests, public documentation, and generated capability map. Local verification used isolated temporary databases and harness-owned Anvil only. Remote R9 CI, manual MetaMask, public networks, hardware power loss, and cross-device browser coordination were not run.",
+    "limits": "Captured from committed R9 source ae029f3fd381e8ea1281ae249ec3ca464daf4e40 plus this generated evidence update. The required dirty-worktree fingerprint binds the evidence follow-up itself. Local and GitHub-hosted deterministic Anvil, SQLite, Fastify, Playwright, and Foundry evidence does not establish hardware power loss, public-network, manual MetaMask, or cross-device behavior.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, and NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -279,10 +279,10 @@
       "level": "REMOTE-CI",
       "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35688940388)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
-      "status": "not run",
-      "result": "R9 remote CI had not run before the source commit.",
-      "executedAt": "2026-09-22T06:02:50Z",
-      "limitations": "A successful prior-revision CI run is not reused as R9 evidence. Update this record only after the R9 source commit run completes.",
+      "status": "executed/pass",
+      "result": "GitHub Actions run 35693518040 completed successfully for ae029f3fd381e8ea1281ae249ec3ca464daf4e40: docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
+      "executedAt": "2026-09-22T06:14:34Z",
+      "limitations": "GitHub-hosted deterministic local stack only; branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
       "url": "https://github.com/herefindalex/motor-cove/actions/runs/35688940388"
     }
   ]
