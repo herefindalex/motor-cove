@@ -4,7 +4,7 @@ export {
   verifyOwnedEnvironment,
 } from '../connection/environment.js';
 export { acquireBootstrapOwnership, acquireMaintenanceLocks } from '../connection/flock.js';
-export { backupEnvironment, verifyBackup } from './backup.js';
+export { backupEnvironment, verifyBackup, verifyMaintenanceBackup } from './backup.js';
 export { restoreEnvironment } from './restore.js';
 export { resetEnvironment } from './reset.js';
 export {

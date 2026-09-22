@@ -78,6 +78,10 @@ fixture when introducing a new dependency rule.
   operations. Never rewrite an applied migration or clear `maintenance.json` by hand.
 - Treat the verified pre-migration backup as a durable migration phase. A resume without recorded,
   revalidated backup proof must retry backup creation before SQL; a valid recorded proof is reused.
+- Treat the published maintenance marker as the only committed operation state. Marker updates use
+  unique temporary files; unpublished orphan bytes never advance or block a matching resume.
+- A standard backup requires no maintenance marker. Internal migration and source refresh archives
+  bind the current operation and remain evidence-only; normal restore must not install them.
 - Create `owner.json` only for a genuinely empty managed environment. Existing database files,
   sidecars, symlinks, or unknown files without ownership are preserved and rejected, never adopted.
 - A maintenance completion command must acquire ownership and then reread the current marker before

@@ -75,3 +75,7 @@ convert narrower tests into full-item passes.
 | DB-65 | Existing unowned database is not adopted | Initializer and migrate reject before owner creation and preserve original database bytes | executed/pass: `test:migrations` |
 | DB-66 | Existing unowned sidecars are not adopted | Deployment, bootstrap receipt, seed journal, maintenance, and managed-node sidecars remain byte-identical without owner metadata | executed/pass: `test:migrations` |
 | DB-67 | Empty environment ownership remains idempotent | Empty directories receive one owner record without creating a database; rerun preserves owner bytes | executed/pass: `test:migrations` |
+
+| DB-68 | Orphan marker temporary file does not strand a matching resume | A real child flushes the former fixed-name temporary marker and is killed; the published `PREPARED` marker remains authoritative, the same operation runs once, and the orphan is removed | executed/pass: `test:db` |
+| DB-69 | Standard backup refuses an incomplete maintenance source | A failed reindex marker remains byte-identical and no backup bundle is published | executed/pass: `test:recovery` |
+| DB-70 | Maintenance archive retains source condition and cannot be restored normally | A source refresh archive records operation and projection evidence as `EVIDENCE_ONLY`; verification succeeds and restore refuses before quarantine | executed/pass: `test:recovery` |

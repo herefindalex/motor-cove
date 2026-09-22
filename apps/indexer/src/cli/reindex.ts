@@ -2,7 +2,7 @@ import { motorCoveEscrowAbi } from '@motorcove/chain-artifacts';
 import {
   backupEnvironment,
   runProjectionMaintenance,
-  verifyBackup,
+  verifyMaintenanceBackup,
 } from '@motorcove/database/maintenance';
 import { createPublicClient, http, keccak256, type Address } from 'viem';
 import { ViemChainReader } from '../adapters/evm/viem-chain-reader.js';
@@ -91,14 +91,24 @@ const operation = await runProjectionMaintenance(config.environment, {
     let verifiedBackupId: string | undefined;
     if (!resumesCatchup && store.requiresSourceRefresh()) {
       if (maintenance.marker.backupId) {
-        verifyBackup(config.environment, maintenance.marker.backupId);
+        verifyMaintenanceBackup(config.environment, maintenance.marker.backupId, {
+          operationId: maintenance.marker.operationId,
+          purpose: 'SOURCE_REFRESH_ARCHIVE',
+        });
         verifiedBackupId = maintenance.marker.backupId;
       } else {
         const backup = await backupEnvironment(config.environment, {
           locksAlreadyHeld: true,
           reason: `pre-reindex-source-refresh:${maintenance.marker.operationId}`,
+          maintenance: {
+            operationId: maintenance.marker.operationId,
+            purpose: 'SOURCE_REFRESH_ARCHIVE',
+          },
         });
-        verifyBackup(config.environment, backup.backupId);
+        verifyMaintenanceBackup(config.environment, backup.backupId, {
+          operationId: maintenance.marker.operationId,
+          purpose: 'SOURCE_REFRESH_ARCHIVE',
+        });
         maintenance.recordBackup(backup.backupId);
         verifiedBackupId = backup.backupId;
       }

@@ -9,8 +9,14 @@ pnpm db:backup --env docs-smoke
 ```
 
 The command uses the SQLite backup API, verifies integrity, foreign keys, schema contract, and native
-history, then publishes a bundle with checksum and metadata. It does not copy Anvil state, keys, or
-wallet journals.
+history, then publishes a format 3 bundle with checksum, source readiness, restore policy, and
+projection evidence. A standard backup requires the maintenance marker to be absent. It does not
+copy Anvil state, keys, or wallet journals.
+
+Migration safety and source refresh archive calls run inside the existing maintenance owner. They
+must bind the current operation ID and purpose. Their bundles are `EVIDENCE_ONLY`: they preserve the
+source checkpoint, build, scope, status, recovery reason, and marker identity for recovery or
+diagnosis, but the normal restore command will not install them.
 
 ## Restore explicitly
 
@@ -21,7 +27,7 @@ pnpm db:restore --env docs-smoke --backup <verified-backup-id> --yes
 Restore verifies before moving active files, quarantines the current main DB and WAL/SHM sidecars,
 installs the standalone snapshot, opens it with WAL policy, and verifies again. `--yes` confirms the
 destructive choice; it does not bypass ownership or checksum guards. DB restore never rolls back the
-chain.
+chain. Restore accepts only a `STANDARD` snapshot whose recorded source condition was `READY`.
 
 ## Recover an interrupted operation
 
@@ -33,6 +39,12 @@ pnpm ops:recover --env docs-smoke --complete
 The first command reports the marker. `--complete` reacquires locks and clears the marker only after
 an active, staged, or quarantined candidate becomes a verified DB. Never delete `maintenance.json`
 as a normal recovery method.
+
+Marker publication uses a fresh exclusive temporary filename for each update, then atomically
+renames it over `maintenance.json` and syncs the directory. The published marker is authoritative.
+If a process dies before rename, a matching resume ignores that unpublished file and removes orphan
+temporary files after its next successful publication. Operators must not promote or delete marker
+temporary files by hand.
 
 The reporting command may read a marker without ownership because it is only a preview. The
 `--complete` path acquires the environment maintenance locks first and then reads the marker again;
@@ -75,7 +87,7 @@ reindex remains `ACTION_REQUIRED` until the matching projection command complete
 
 ## Deployment and sidecar identity
 
-Backup format 2 records an explicit deployment state. `DEPLOYED` snapshots bind the database
+Backup format 3 records an explicit deployment state. `DEPLOYED` snapshots bind the database
 deployment ID and record presence and SHA-256 evidence for the deployment, bootstrap receipt, and
 seed journal sidecars. `PREDEPLOYMENT` snapshots are valid only when the database has zero deployment
 rows and all three sidecars are absent. This lets migration protect an initialized predeployment

@@ -1,10 +1,13 @@
+import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { setTimeout as wait } from 'node:timers/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import { environmentPaths } from '@motorcove/database/environment';
 import {
   acquireMaintenanceLocks,
+  loadSchemaContract,
   migrateEnvironment,
   recoverEnvironment,
   runProjectionMaintenance,
@@ -91,6 +94,66 @@ describe('projection maintenance isolation', () => {
 
     const locks = await acquireMaintenanceLocks(paths);
     await locks.release();
+  });
+
+  it('DB-68 resumes after a process dies with an unpublished marker temporary file', async () => {
+    const paths = await fixture();
+    const operationId = 'orphan-marker-temp';
+    const deploymentId = `0x${'c'.repeat(64)}`;
+    const prepared = {
+      operationId,
+      operationType: 'REBUILD_PROJECTION',
+      stage: 'PREPARED',
+      environmentId: paths.environmentId,
+      targetDatabase: paths.databasePath,
+      expectedSchemaContract: loadSchemaContract().contractVersion,
+      expectedDeploymentId: deploymentId,
+      startedAt: new Date(0).toISOString(),
+    };
+    writeFileSync(paths.maintenancePath, `${JSON.stringify(prepared)}\n`, { flush: true });
+
+    const temporaryPath = `${paths.maintenancePath}.${operationId}.tmp`;
+    const readyPath = resolve(paths.environmentDir, '.orphan-marker-ready');
+    const helper = resolve(import.meta.dirname, '../helpers/orphan-marker-temp-child.ts');
+    const child = spawn(
+      process.execPath,
+      [
+        '--import',
+        'tsx',
+        helper,
+        temporaryPath,
+        readyPath,
+        JSON.stringify({ ...prepared, stage: 'ACTIVE' }),
+      ],
+      { stdio: 'ignore' },
+    );
+    const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+      (resolveExit, reject) => {
+        child.once('error', reject);
+        child.once('exit', (code, signal) => resolveExit({ code, signal }));
+      },
+    );
+    try {
+      for (let attempt = 0; attempt < 100 && !existsSync(readyPath); attempt += 1) await wait(20);
+      expect(readFileSync(readyPath, 'utf8')).toBe('ready\n');
+    } finally {
+      child.kill('SIGKILL');
+    }
+    const exit = await exited;
+    expect(exit).toEqual({ code: null, signal: 'SIGKILL' });
+    expect(existsSync(temporaryPath)).toBe(true);
+
+    let calls = 0;
+    await expect(
+      runProjectionMaintenance(paths, {
+        operationType: 'REBUILD_PROJECTION',
+        expectedDeploymentId: deploymentId,
+        run: () => ++calls,
+      }),
+    ).resolves.toEqual({ operationId, result: 1 });
+    expect(calls).toBe(1);
+    expect(existsSync(paths.maintenancePath)).toBe(false);
+    expect(existsSync(temporaryPath)).toBe(false);
   });
 
   it('keeps an incomplete reindex blocked until the matching operation resumes', async () => {

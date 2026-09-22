@@ -43,9 +43,15 @@ or marked as Drizzle history. Managed environments live under `.motorcove/enviro
 ## Backup, restore, and chain state
 
 Backup uses the SQLite backup API, verifies the standalone snapshot, and writes a manifest with a
-checksum. Restore verifies first, quarantines the active main file and sidecars, installs the
-snapshot, and retains a crash marker until verification. Restoring a DB never rolls back Anvil or
-any blockchain.
+checksum, source readiness, restore policy, and database-derived projection evidence. Standard
+backup refuses an incomplete maintenance marker. Internal migration and source refresh archives bind
+the active operation and remain evidence-only. Restore verifies a standard, ready snapshot first,
+quarantines the active main file and sidecars, installs the snapshot, and retains a crash marker until
+verification. Restoring a DB never rolls back Anvil or any blockchain.
+
+Maintenance marker updates use a unique exclusive temporary file and atomic rename. The published
+marker is the committed state. A matching lock owner can resume past an unpublished orphan and cleans
+same-operation temporary files after publishing its next state.
 
 ## Current limits
 

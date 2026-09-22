@@ -143,7 +143,7 @@
     {
       "id": "CAP-11",
       "name": "Database lifecycle",
-      "behavior": "Uses native Drizzle history, bundle-bound resumable migration markers, verified pre-migration backup proof, fresh-only environment ownership, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, explicit deployed or predeployment backup identity, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership. Recovery completion acquires maintenance ownership and rereads the current operation marker before choosing or mutating recovery state.",
+      "behavior": "Uses native Drizzle history, bundle-bound resumable migration markers, verified pre-migration backup proof, fresh-only environment ownership, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, explicit deployed or predeployment backup identity, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership. Recovery completion acquires maintenance ownership and rereads the current operation marker before choosing or mutating recovery state. Marker updates use unique temporary files so unpublished crash residue cannot strand a matching resume. Backup records source readiness and projection evidence; maintenance archives are evidence-only and normal restore accepts only ready snapshots.",
       "implementation": "partial",
       "code": [
         "packages/database",
@@ -161,7 +161,8 @@
         "tests/integration/managed-node-reset.test.ts",
         "docs/adr/0016-wallet-outcomes-and-managed-node-ownership.md",
         "tests/integration/database-real-recovery.test.ts",
-        "docs/adr/0018-in-flight-intent-and-source-identity.md"
+        "docs/adr/0018-in-flight-intent-and-source-identity.md",
+        "docs/adr/0019-maintenance-marker-and-snapshot-readiness.md"
       ],
       "scenarios": [
         "DB-01",
@@ -199,7 +200,10 @@
         "DB-64",
         "DB-65",
         "DB-66",
-        "DB-67"
+        "DB-67",
+        "DB-68",
+        "DB-69",
+        "DB-70"
       ],
       "verification": [
         "RUN-DB-MIGRATIONS",
@@ -230,7 +234,7 @@
     {
       "id": "CAP-13",
       "name": "Failure diagnosis and recovery",
-      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, alternative-hash read-only recovery, per-event canonical source evidence, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands. Seed persistence and reconciliation head failures preserve explicit recoverable or unverifiable evidence. Reconciliation preserves NFT collection identity, and source maintenance archives contradictory evidence before reacquisition. Transaction recovery rejects saved, configured, RPC-chain, or on-chain deployment identity mismatch before transaction lookup and preserves tab-local verification evidence when durable storage writes fail.",
+      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, alternative-hash read-only recovery, per-event canonical source evidence, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands. Seed persistence and reconciliation head failures preserve explicit recoverable or unverifiable evidence. Reconciliation preserves NFT collection identity, and source maintenance archives contradictory evidence before reacquisition. Transaction recovery rejects saved, configured, RPC-chain, or on-chain deployment identity mismatch before transaction lookup and preserves tab-local verification evidence when durable storage writes fail. Published maintenance markers remain authoritative across temporary-file crashes, and restore refuses archives captured during unfinished maintenance.",
       "implementation": "partial",
       "code": [
         "apps/web/src/pages/InspectorPage.tsx",
@@ -243,7 +247,8 @@
         "apps/indexer/src/cli/reconcile.ts",
         "tests/integration/reconciliation-ownership-identity.test.ts",
         "tests/integration/database-real-recovery.test.ts",
-        "docs/adr/0018-in-flight-intent-and-source-identity.md"
+        "docs/adr/0018-in-flight-intent-and-source-identity.md",
+        "docs/adr/0019-maintenance-marker-and-snapshot-readiness.md"
       ],
       "scenarios": [
         "TX-001",
@@ -261,7 +266,10 @@
         "DB-60",
         "DB-61",
         "DB-62",
-        "TX-004"
+        "TX-004",
+        "DB-68",
+        "DB-69",
+        "DB-70"
       ],
       "verification": [
         "RUN-TRANSACTION-RECOVERY",

@@ -10,9 +10,10 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { resolve } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { acquireMaintenanceLocks } from '../connection/flock.js';
 import { verifyOwnedEnvironment } from '../connection/environment.js';
-import type { EnvironmentPaths } from '../types/index.js';
+import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
 import { verifyKnownSourceDatabase } from './migrations.js';
 
 const fileHash = (path: string) => createHash('sha256').update(readFileSync(path)).digest('hex');
@@ -26,6 +27,126 @@ const sidecars = [
 type BackupDeploymentIdentity =
   | { readonly state: 'PREDEPLOYMENT'; readonly deploymentId: null }
   | { readonly state: 'DEPLOYED'; readonly deploymentId: string };
+
+export type BackupMaintenancePurpose = 'MIGRATION_SAFETY' | 'SOURCE_REFRESH_ARCHIVE';
+
+export interface BackupEnvironmentOptions {
+  readonly locksAlreadyHeld?: boolean;
+  readonly reason?: string;
+  readonly maintenance?: {
+    readonly operationId: string;
+    readonly purpose: BackupMaintenancePurpose;
+  };
+}
+
+type BackupSourceCondition =
+  | { readonly state: 'READY' }
+  | {
+      readonly state: 'MAINTENANCE_INCOMPLETE';
+      readonly operationId: string;
+      readonly operationType: string;
+      readonly stage: string;
+      readonly purpose: BackupMaintenancePurpose;
+      readonly markerSha256: string;
+      readonly projectionPhase: 'PREPARING' | 'CATCHING_UP' | null;
+    };
+
+type ProjectionEvidence =
+  | { readonly state: 'NOT_INITIALIZED'; readonly deploymentId: string }
+  | {
+      readonly state: 'OBSERVED';
+      readonly deploymentId: string;
+      readonly checkpointBlock: string | null;
+      readonly checkpointHash: string | null;
+      readonly projectorVersion: string;
+      readonly projectionBuildId: string;
+      readonly logScopeHash: string;
+      readonly projectionStatus: string;
+      readonly recoveryReason: string | null;
+    };
+
+function readSourceCondition(
+  paths: EnvironmentPaths,
+  options: BackupEnvironmentOptions,
+): BackupSourceCondition {
+  if (!existsSync(paths.maintenancePath)) {
+    if (options.maintenance) throw new Error('BACKUP_MAINTENANCE_CONTEXT_MISMATCH');
+    return { state: 'READY' };
+  }
+  if (!options.maintenance) throw new Error('MAINTENANCE_INCOMPLETE');
+  const bytes = readFileSync(paths.maintenancePath, 'utf8');
+  let marker: MaintenanceMarker;
+  try {
+    marker = JSON.parse(bytes) as MaintenanceMarker;
+  } catch {
+    throw new Error('MAINTENANCE_INCOMPLETE');
+  }
+  const expectedType =
+    options.maintenance.purpose === 'MIGRATION_SAFETY' ? 'MIGRATE' : 'REINDEX_PROJECTION';
+  if (
+    marker.operationId !== options.maintenance.operationId ||
+    marker.operationType !== expectedType ||
+    marker.environmentId !== paths.environmentId ||
+    marker.targetDatabase !== paths.databasePath
+  )
+    throw new Error('BACKUP_MAINTENANCE_CONTEXT_MISMATCH');
+  return {
+    state: 'MAINTENANCE_INCOMPLETE',
+    operationId: marker.operationId,
+    operationType: marker.operationType,
+    stage: marker.stage,
+    purpose: options.maintenance.purpose,
+    markerSha256: createHash('sha256').update(bytes).digest('hex'),
+    projectionPhase: marker.projectionPhase ?? null,
+  };
+}
+
+function projectionEvidence(
+  db: Database.Database,
+  identity: BackupDeploymentIdentity,
+): ProjectionEvidence | null {
+  if (identity.state === 'PREDEPLOYMENT') return null;
+  const checkpoint = db
+    .prepare(
+      `SELECT last_scanned_block AS checkpointBlock,
+              last_scanned_hash AS checkpointHash,
+              projector_version AS projectorVersion,
+              projection_build_id AS projectionBuildId,
+              log_scope_hash AS logScopeHash
+       FROM indexer_checkpoint WHERE deployment_id=?`,
+    )
+    .get(identity.deploymentId) as
+    | {
+        checkpointBlock: number | null;
+        checkpointHash: string | null;
+        projectorVersion: string;
+        projectionBuildId: string;
+        logScopeHash: string;
+      }
+    | undefined;
+  const runtime = db
+    .prepare(
+      `SELECT projection_status AS projectionStatus,recovery_reason AS recoveryReason
+       FROM indexer_runtime_status WHERE deployment_id=?`,
+    )
+    .get(identity.deploymentId) as
+    | { projectionStatus: string; recoveryReason: string | null }
+    | undefined;
+  if (!checkpoint && !runtime)
+    return { state: 'NOT_INITIALIZED', deploymentId: identity.deploymentId };
+  if (!checkpoint || !runtime) throw new Error('BACKUP_INVALID: projection evidence');
+  return {
+    state: 'OBSERVED',
+    deploymentId: identity.deploymentId,
+    checkpointBlock: checkpoint.checkpointBlock?.toString() ?? null,
+    checkpointHash: checkpoint.checkpointHash,
+    projectorVersion: checkpoint.projectorVersion,
+    projectionBuildId: checkpoint.projectionBuildId,
+    logScopeHash: checkpoint.logScopeHash,
+    projectionStatus: runtime.projectionStatus,
+    recoveryReason: runtime.recoveryReason,
+  };
+}
 
 function databaseDeploymentIdentity(db: Database.Database): BackupDeploymentIdentity {
   const rows = db.prepare('SELECT deployment_id AS deploymentId FROM deployments').all() as Array<{
@@ -64,7 +185,7 @@ function deploymentSidecarId(path: string): string {
 
 export async function backupEnvironment(
   paths: EnvironmentPaths,
-  options: { locksAlreadyHeld?: boolean; reason?: string } = {},
+  options: BackupEnvironmentOptions = {},
 ) {
   verifyOwnedEnvironment(paths);
   if (!existsSync(paths.databasePath)) throw new Error('DB_NOT_INITIALIZED');
@@ -73,6 +194,7 @@ export async function backupEnvironment(
   const staging = resolve(paths.backupsDir, `.${backupId}.incomplete`);
   const destination = resolve(paths.backupsDir, backupId);
   try {
+    const sourceCondition = readSourceCondition(paths, options);
     mkdirSync(staging, { recursive: true });
     const source = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
     try {
@@ -98,6 +220,16 @@ export async function backupEnvironment(
     const snapshotDeployment = databaseDeploymentIdentityFromPath(
       resolve(staging, 'database.sqlite'),
     );
+    const snapshotDb = new Database(resolve(staging, 'database.sqlite'), {
+      readonly: true,
+      fileMustExist: true,
+    });
+    let snapshotProjection: ProjectionEvidence | null;
+    try {
+      snapshotProjection = projectionEvidence(snapshotDb, snapshotDeployment);
+    } finally {
+      snapshotDb.close();
+    }
     if (snapshotDeployment.state === 'DEPLOYED') {
       if (!existsSync(paths.deploymentPath))
         throw new Error('BACKUP_INVALID: deployment sidecar required');
@@ -112,7 +244,7 @@ export async function backupEnvironment(
     const sqliteEngine = engineDb.prepare('select sqlite_version() version').get();
     engineDb.close();
     const manifest = {
-      formatVersion: 2,
+      formatVersion: 3,
       backupId,
       environmentId: paths.environmentId,
       reason: options.reason ?? 'manual',
@@ -120,6 +252,9 @@ export async function backupEnvironment(
       databaseSha256: fileHash(resolve(staging, 'database.sqlite')),
       deploymentState: snapshotDeployment.state,
       deploymentId: snapshotDeployment.deploymentId,
+      restorePolicy: sourceCondition.state === 'READY' ? 'STANDARD' : 'EVIDENCE_ONLY',
+      sourceCondition,
+      projectionEvidence: snapshotProjection,
       sidecars: Object.fromEntries(
         sidecars.map(([name, file]) => {
           const path = resolve(staging, file);
@@ -173,15 +308,38 @@ export function verifyBackup(paths: EnvironmentPaths, backupId: string) {
   try {
     const verification = verifyKnownSourceDatabase(db);
     const snapshotDeployment = databaseDeploymentIdentity(db);
+    const snapshotProjection = projectionEvidence(db, snapshotDeployment);
     const deploymentState =
       manifest.deploymentState ??
       (typeof manifest.deploymentId === 'string' ? 'DEPLOYED' : undefined);
     if (
-      manifest.formatVersion !== 2 ||
+      manifest.formatVersion !== 3 ||
       deploymentState !== snapshotDeployment.state ||
       manifest.deploymentId !== snapshotDeployment.deploymentId
     )
       throw new Error('BACKUP_INVALID: deployment identity');
+    const sourceCondition = manifest.sourceCondition as Record<string, unknown> | undefined;
+    const sourceReady = sourceCondition?.state === 'READY' && manifest.restorePolicy === 'STANDARD';
+    const maintenanceEvidence =
+      sourceCondition?.state === 'MAINTENANCE_INCOMPLETE' &&
+      manifest.restorePolicy === 'EVIDENCE_ONLY' &&
+      typeof sourceCondition.operationId === 'string' &&
+      typeof sourceCondition.operationType === 'string' &&
+      typeof sourceCondition.stage === 'string' &&
+      typeof sourceCondition.markerSha256 === 'string' &&
+      /^[0-9a-f]{64}$/.test(sourceCondition.markerSha256) &&
+      (sourceCondition.purpose === 'MIGRATION_SAFETY' ||
+        sourceCondition.purpose === 'SOURCE_REFRESH_ARCHIVE') &&
+      (sourceCondition.projectionPhase === null ||
+        sourceCondition.projectionPhase === 'PREPARING' ||
+        sourceCondition.projectionPhase === 'CATCHING_UP') &&
+      ((sourceCondition.purpose === 'MIGRATION_SAFETY' &&
+        sourceCondition.operationType === 'MIGRATE') ||
+        (sourceCondition.purpose === 'SOURCE_REFRESH_ARCHIVE' &&
+          sourceCondition.operationType === 'REINDEX_PROJECTION'));
+    if (!sourceReady && !maintenanceEvidence) throw new Error('BACKUP_INVALID: source condition');
+    if (!isDeepStrictEqual(manifest.projectionEvidence, snapshotProjection))
+      throw new Error('BACKUP_INVALID: projection evidence');
     if (typeof manifest.sidecars !== 'object' || manifest.sidecars === null)
       throw new Error('BACKUP_INVALID: sidecar evidence');
     const evidence = manifest.sidecars as Record<
@@ -231,6 +389,26 @@ export function verifyBackup(paths: EnvironmentPaths, backupId: string) {
       deploymentState:
         manifest.deploymentState ??
         (typeof manifest.deploymentId === 'string' ? 'DEPLOYED' : undefined),
+      restorePolicy: manifest.restorePolicy as 'STANDARD' | 'EVIDENCE_ONLY',
+      sourceCondition: manifest.sourceCondition as BackupSourceCondition,
+      projectionEvidence: manifest.projectionEvidence as ProjectionEvidence | null,
     },
   };
+}
+
+export function verifyMaintenanceBackup(
+  paths: EnvironmentPaths,
+  backupId: string,
+  maintenance: { readonly operationId: string; readonly purpose: BackupMaintenancePurpose },
+) {
+  const backup = verifyBackup(paths, backupId);
+  const condition = backup.manifest.sourceCondition;
+  if (
+    backup.manifest.restorePolicy !== 'EVIDENCE_ONLY' ||
+    condition.state !== 'MAINTENANCE_INCOMPLETE' ||
+    condition.operationId !== maintenance.operationId ||
+    condition.purpose !== maintenance.purpose
+  )
+    throw new Error('BACKUP_MAINTENANCE_CONTEXT_MISMATCH');
+  return backup;
 }

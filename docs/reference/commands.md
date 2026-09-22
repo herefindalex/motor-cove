@@ -38,8 +38,8 @@ in `_meta/commands.json` owns the table.
 | `pnpm db:plan --env <id>` | implemented | read-only migration plan | safe environment slug |
 | `pnpm db:migrate --env <id>` | implemented | maintenance write; creates owned environment when absent | API and Indexer stopped |
 | `pnpm db:verify --env <id>` | implemented | coordinated read-only verification | owned initialized environment |
-| `pnpm db:backup --env <id>` | implemented | writes verified snapshot bundle | API and Indexer stopped |
-| `pnpm db:restore --env <id> --backup <id> --yes` | implemented | destructive maintenance with quarantine | verified backup and stopped services |
+| `pnpm db:backup --env <id>` | implemented | writes a verified standard snapshot with ready-source and projection evidence | API and Indexer stopped; no incomplete maintenance marker |
+| `pnpm db:restore --env <id> --backup <id> --yes` | implemented | destructive maintenance with quarantine; accepts standard ready-source snapshots only | verified STANDARD backup, matching deployment, and stopped services |
 | `pnpm seed:catalog --env <id> --set motorcove-local-catalog` | implemented | maintenance write; no chain transaction | registered deployment manifest |
 | `pnpm seed:dev` | implemented | runs the local bootstrap profile | MOTORCOVE_ENV set; loopback Anvil; owned environment |
 | `pnpm seed:demo` | implemented | runs the local demo bootstrap profile | MOTORCOVE_ENV set; loopback Anvil; owned environment |
@@ -49,7 +49,7 @@ in `_meta/commands.json` owns the table.
 | `pnpm test:migrations` | implemented | runs native migration history and drift tests in temporary SQLite environments | native SQLite driver installed |
 | `pnpm test:db` | implemented | runs database ownership, locking, constraints, and reset-boundary tests | native SQLite driver installed |
 | `pnpm test:seeds` | implemented | runs catalog seed identity and idempotency tests | native SQLite driver installed |
-| `pnpm test:recovery` | implemented | runs backup, restore, and maintenance marker recovery tests | native SQLite driver installed |
+| `pnpm test:recovery` | implemented | runs backup readiness, restore refusal, and maintenance marker recovery tests | native SQLite driver installed |
 | `pnpm docs:generate` | implemented | updates generated Markdown regions | metadata valid |
 | `pnpm docs:generate:check` | implemented | read-only generated Markdown drift check | metadata valid |
 | `pnpm docs:check` | implemented | read-only docs consistency checks | dependencies installed |

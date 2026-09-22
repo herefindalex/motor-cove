@@ -261,16 +261,16 @@
       "name": "db:backup",
       "command": "pnpm db:backup --env <id>",
       "status": "implemented",
-      "effect": "writes verified snapshot bundle",
-      "prerequisite": "API and Indexer stopped",
+      "effect": "writes a verified standard snapshot with ready-source and projection evidence",
+      "prerequisite": "API and Indexer stopped; no incomplete maintenance marker",
       "runbook": "../runbooks/backup-restore-and-recovery.md"
     },
     {
       "name": "db:restore",
       "command": "pnpm db:restore --env <id> --backup <id> --yes",
       "status": "implemented",
-      "effect": "destructive maintenance with quarantine",
-      "prerequisite": "verified backup and stopped services",
+      "effect": "destructive maintenance with quarantine; accepts standard ready-source snapshots only",
+      "prerequisite": "verified STANDARD backup, matching deployment, and stopped services",
       "runbook": "../runbooks/backup-restore-and-recovery.md"
     },
     {
@@ -349,7 +349,7 @@
       "name": "test:recovery",
       "command": "pnpm test:recovery",
       "status": "implemented",
-      "effect": "runs backup, restore, and maintenance marker recovery tests",
+      "effect": "runs backup readiness, restore refusal, and maintenance marker recovery tests",
       "prerequisite": "native SQLite driver installed",
       "runbook": "../runbooks/backup-restore-and-recovery.md"
     },

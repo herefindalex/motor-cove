@@ -22,6 +22,8 @@ import {
   migrateEnvironment,
   recoverEnvironment,
   restoreEnvironment,
+  runProjectionMaintenance,
+  verifyBackup,
 } from '@motorcove/database/maintenance';
 import { environmentPaths } from '@motorcove/database/environment';
 import { databaseFixture, hashes } from '../helpers/database.js';
@@ -98,6 +100,121 @@ describe('backup, restore, recovery', () => {
     const active = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
     expect(active.pragma('integrity_check', { simple: true })).toBe('ok');
     active.close();
+  });
+
+  it('DB-69 refuses a standard backup while an incomplete maintenance marker exists', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    await expect(
+      runProjectionMaintenance(paths, {
+        operationType: 'REINDEX_PROJECTION',
+        expectedDeploymentId: hashes.deployment,
+        recovery: {
+          reindexFromBlock: '1',
+          targetBlock: '1',
+          targetHash: hashes.block,
+        },
+        run: () => {
+          throw new Error('controlled incomplete reindex');
+        },
+      }),
+    ).rejects.toThrow('controlled incomplete reindex');
+    const markerBefore = readFileSync(paths.maintenancePath, 'utf8');
+    const backupsBefore = readdirSync(paths.backupsDir).sort();
+
+    await expect(backupEnvironment(paths)).rejects.toThrow('MAINTENANCE_INCOMPLETE');
+
+    expect(readFileSync(paths.maintenancePath, 'utf8')).toBe(markerBefore);
+    expect(readdirSync(paths.backupsDir).sort()).toEqual(backupsBefore);
+  });
+
+  it('DB-70 preserves maintenance source evidence and refuses normal restore of that archive', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const options = {
+      operationType: 'REINDEX_PROJECTION' as const,
+      expectedDeploymentId: hashes.deployment,
+      recovery: {
+        reindexFromBlock: '1',
+        targetBlock: '1',
+        targetHash: hashes.block,
+      },
+    };
+    let backupId: string | undefined;
+    await expect(
+      runProjectionMaintenance(paths, {
+        ...options,
+        run: async (_database, maintenance) => {
+          const backup = await backupEnvironment(paths, {
+            locksAlreadyHeld: true,
+            reason: 'test-incomplete-reindex-evidence',
+            maintenance: {
+              operationId: maintenance.marker.operationId,
+              purpose: 'SOURCE_REFRESH_ARCHIVE',
+            },
+          });
+          backupId = backup.backupId;
+          throw new Error('controlled failure after evidence snapshot');
+        },
+      }),
+    ).rejects.toThrow('controlled failure after evidence snapshot');
+    expect(backupId).toBeDefined();
+    const verified = verifyBackup(paths, backupId!);
+    expect(verified.manifest).toMatchObject({
+      formatVersion: 3,
+      restorePolicy: 'EVIDENCE_ONLY',
+      sourceCondition: {
+        state: 'MAINTENANCE_INCOMPLETE',
+        operationType: 'REINDEX_PROJECTION',
+        stage: 'ACTIVE',
+        purpose: 'SOURCE_REFRESH_ARCHIVE',
+      },
+      projectionEvidence: {
+        state: 'OBSERVED',
+        deploymentId: hashes.deployment,
+        checkpointBlock: '1',
+        projectionStatus: 'CURRENT',
+      },
+    });
+    const manifestPath = resolve(verified.directory, 'backup-manifest.json');
+    const manifestBytes = readFileSync(manifestPath, 'utf8');
+    const tampered = JSON.parse(manifestBytes) as {
+      projectionEvidence: { checkpointBlock: string };
+    };
+    tampered.projectionEvidence.checkpointBlock = '999';
+    writeFileSync(manifestPath, `${JSON.stringify(tampered, null, 2)}\n`);
+    expect(() => verifyBackup(paths, backupId!)).toThrow('BACKUP_INVALID: projection evidence');
+    writeFileSync(manifestPath, manifestBytes, { flush: true });
+
+    await runProjectionMaintenance(paths, { ...options, run: () => undefined });
+    const beforeEntries = readdirSync(paths.environmentDir).sort();
+    await expect(restoreEnvironment(paths, backupId!, true)).rejects.toThrow(
+      'BACKUP_NOT_RESTORABLE: incomplete maintenance evidence',
+    );
+    expect(
+      readdirSync(paths.environmentDir).filter((entry) => entry.startsWith('.quarantine-')),
+    ).toHaveLength(0);
+    expect(readdirSync(paths.environmentDir).sort()).toEqual(
+      [...beforeEntries, 'maintenance.json'].sort(),
+    );
+  });
+
+  it('keeps a deployed database without Indexer rows eligible for a standard backup', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const database = new Database(paths.databasePath);
+    database.prepare('DELETE FROM indexer_runtime_status').run();
+    database.prepare('DELETE FROM indexer_checkpoint').run();
+    database.close();
+
+    const backup = await backupEnvironment(paths);
+
+    expect(backup.manifest).toMatchObject({
+      restorePolicy: 'STANDARD',
+      sourceCondition: { state: 'READY' },
+      projectionEvidence: { state: 'NOT_INITIALIZED', deploymentId: hashes.deployment },
+    });
+    expect(() => verifyBackup(paths, backup.backupId)).not.toThrow();
   });
   it.each(['MIGRATE', 'RESTORE', 'REINDEX_PROJECTION'] as const)(
     'preserves an existing %s marker byte-for-byte when restore is rejected',

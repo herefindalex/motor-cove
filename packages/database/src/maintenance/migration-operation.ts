@@ -6,7 +6,7 @@ import { acquireMaintenanceLocks } from '../connection/flock.js';
 import { initializeOwnedEnvironment } from '../connection/environment.js';
 import { openMaintenanceDatabase } from '../connection/sqlite.js';
 import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
-import { backupEnvironment, verifyBackup } from './backup.js';
+import { backupEnvironment, verifyMaintenanceBackup } from './backup.js';
 import { clearMaintenanceMarker, writeMaintenanceMarker } from './marker.js';
 import {
   assertKnownHistory,
@@ -39,8 +39,12 @@ function verifyMigrationBackup(
   backupId: string,
   source: SourceVerification,
   deploymentId: string | null,
+  operationId: string,
 ): void {
-  const backup = verifyBackup(paths, backupId);
+  const backup = verifyMaintenanceBackup(paths, backupId, {
+    operationId,
+    purpose: 'MIGRATION_SAFETY',
+  });
   const manifest = backup.manifest as Record<string, unknown>;
   if (
     manifest.schemaContractVersion !== source.contractVersion ||
@@ -107,13 +111,29 @@ export async function migrateEnvironment(
       if (existed && source && pending > 0) {
         const deploymentId = sourceDeploymentId(database);
         if (activeMarker.backupId) {
-          verifyMigrationBackup(paths, activeMarker.backupId, source, deploymentId);
+          verifyMigrationBackup(
+            paths,
+            activeMarker.backupId,
+            source,
+            deploymentId,
+            activeMarker.operationId,
+          );
         } else {
           const backup = await backupEnvironment(paths, {
             locksAlreadyHeld: true,
             reason: 'pre-migration',
+            maintenance: {
+              operationId: activeMarker.operationId,
+              purpose: 'MIGRATION_SAFETY',
+            },
           });
-          verifyMigrationBackup(paths, backup.backupId, source, deploymentId);
+          verifyMigrationBackup(
+            paths,
+            backup.backupId,
+            source,
+            deploymentId,
+            activeMarker.operationId,
+          );
           activeMarker = { ...activeMarker, stage: 'BACKED_UP', backupId: backup.backupId };
           writeMaintenanceMarker(paths.maintenancePath, activeMarker);
         }
