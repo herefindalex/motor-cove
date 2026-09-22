@@ -1,10 +1,10 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "26a8cb41f4dab9bb595eec4c1a1cb7fec17f2a15",
+    "revision": "742c5d99a27c5c7b4483965dc65e2b9480ce78f5",
     "dirty": true,
-    "capturedAt": "2026-09-22T15:40:55Z",
-    "sourceFingerprint": "sha256:3db98d9a7e69e72f7a5195a77c6648128f2affaeae34327c335634550beb6a97",
+    "capturedAt": "2026-09-22T15:51:08Z",
+    "sourceFingerprint": "sha256:b565597f7ccdef53171bf0b7dec9a73a4a3b2a546e112e8de70e4cbf52a495a7",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
     "limits": "R17 verification used harness-owned temporary SQLite environments, a real child SIGKILL for orphan marker state, loopback Anvil, synthetic accounts, local Chromium, and GitHub-hosted CI. It does not claim hardware power-loss durability, public-network behavior, manual MetaMask, or cross-device coordination.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
@@ -356,21 +356,21 @@
       "command": "pnpm exec vitest run tests/database/projection-maintenance.test.ts tests/recovery/backup-restore.test.ts tests/migrations/migrations.test.ts; pnpm exec vitest run tests/integration/indexer-store.test.ts tests/integration/database-real-recovery.test.ts",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "R17 focused suites passed 3 files / 54 tests; source-refresh and real database recovery integration passed 2 files / 20 tests.",
+      "result": "R17 focused suites passed 3 files / 54 tests; source-refresh and real database recovery integration passed 2 files / 20 tests. The marker process-death file passed three consecutive focused reruns and the complete CI smoke profile.",
       "limitations": "Marker crash regression uses a real child and SIGKILL around an exact persisted pre-rename fixture. Backup and projection failure callbacks are controlled; public RPC and hardware power loss were not used.",
-      "executedAt": "2026-09-22T15:40:55Z"
+      "executedAt": "2026-09-22T15:51:08Z"
     },
     {
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001", "DB-68", "DB-69", "DB-70"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35748419858)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35749566724)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/pass",
-      "result": "GitHub Actions run 35748419858 completed successfully for R17 source 26a8cb41f4dab9bb595eec4c1a1cb7fec17f2a15: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
-      "executedAt": "2026-09-22T15:39:57Z",
+      "result": "GitHub Actions run 35749566724 completed successfully for R17 source 742c5d99a27c5c7b4483965dc65e2b9480ce78f5: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed. The child-process fixture retained an active event-loop handle until the harness delivered SIGKILL.",
+      "executedAt": "2026-09-22T15:50:47Z",
       "limitations": "GitHub-hosted deterministic local stack only; branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35748419858"
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35749566724"
     }
   ]
 }
