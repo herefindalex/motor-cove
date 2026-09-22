@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "b6c03d4f42b305ea5c20a9f75a69d17b6e839f54",
+    "revision": "fc63c0ca73bf8794c247f81038e61beef5b5aca5",
     "dirty": true,
-    "capturedAt": "2026-09-22T12:35:27Z",
-    "sourceFingerprint": "sha256:a975191d9b442bad72ec6d4c5c64e34a6a6c85f851de0c07318a7d552f740b51",
+    "capturedAt": "2026-09-22T13:50:24Z",
+    "sourceFingerprint": "sha256:2b14001afb6acccbe871d18d3bdbf95715c1d4859b6389e932bdd49f0eecaf5d",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Local deterministic evidence only. R14 binds logs to observed block hashes and resumes long reindex catch-up from durable progress. Public-network finality, unavailable archive history, hardware power loss, manual MetaMask, and cross-device coordination remain unverified.",
+    "limits": "R15 verification used a harness-owned loopback Anvil, synthetic accounts, temporary managed SQLite, controlled browser storage faults, and GitHub-hosted CI. Manual MetaMask, public networks, cross-device journal coordination, hardware power loss, and external security review remain unverified.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, and NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -101,15 +101,17 @@
         "SALE-005",
         "TX-001",
         "TX-002",
+        "TX-003",
+        "TX-004",
         "IDX-001"
       ],
       "level": "LOCAL-TEST",
       "command": "pnpm test:e2e",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "6 Playwright scenarios passed against harness-owned Anvil, managed SQLite, API, Indexer, and Web processes.",
-      "limitations": "Wallet fault injection uses a controlled EIP-1193 adapter. Manual MetaMask and cross-device journal behavior are not verified.",
-      "executedAt": "2026-09-22T12:35:27Z"
+      "result": "6 Playwright scenarios passed against harness-owned Anvil, managed SQLite, API, Indexer, and Web. Storage-write fault injection observed a real transaction lookup, zero added wallet submissions, unchanged durable journal bytes, the tab-local warning, and reload fallback.",
+      "limitations": "Wallet and storage fault injection use controlled browser adapters. Manual MetaMask, cross-device journals, and real device storage failure remain unverified.",
+      "executedAt": "2026-09-22T13:50:24Z"
     },
     {
       "id": "RUN-INTEGRATION",
@@ -151,9 +153,9 @@
       "command": "pnpm test:integration",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "14 files and 58 tests passed, including exact block-hash source acquisition, same-height branch replacement recovery, and durable reindex behavior on harness-owned Anvil and SQLite.",
+      "result": "14 files and 58 tests passed, including real-chain transaction recovery with RPC chain and on-chain deployment identity checks plus the existing source, reindex, and reconciliation cases.",
       "limitations": "Local deterministic Anvil and ordinary process termination only; public-network finality, unavailable archive history, hardware power loss, and full host-filesystem faults remain unverified.",
-      "executedAt": "2026-09-22T12:35:27Z"
+      "executedAt": "2026-09-22T13:50:24Z"
     },
     {
       "id": "RUN-INDEXER-UNIT",
@@ -195,7 +197,7 @@
       "status": "executed/pass",
       "result": "Architecture graph valid for 159 source files; all 10 negative dependency fixtures rejected.",
       "limitations": "Static source imports only; runtime process behavior is verified separately.",
-      "executedAt": "2026-09-22T12:35:27Z"
+      "executedAt": "2026-09-22T13:50:24Z"
     },
     {
       "id": "RUN-GENERATE-CHECK",
@@ -233,9 +235,9 @@
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generation, database contracts, formatting, docs, architecture, type checking, lint, 13 Foundry tests, 44 files / 271 unit tests, 14 files / 58 integration tests, and all 7 workspace builds passed.",
+      "result": "Generation, database contracts, formatting, docs, architecture, type checking, lint, 13 Foundry tests, 44 files / 280 unit, component, and database tests, 14 files / 58 integration tests, and all 7 workspace builds passed.",
       "limitations": "The gate does not establish manual MetaMask behavior, public-network safety, branch protection, hardware power-loss durability, or cross-device journal coordination.",
-      "executedAt": "2026-09-22T12:35:27Z"
+      "executedAt": "2026-09-22T13:50:24Z"
     },
     {
       "id": "RUN-DOCS-CHECK",
@@ -246,7 +248,7 @@
       "status": "executed/pass",
       "result": "18 capabilities, 48 commands, database acceptance IDs DB-01 through DB-62, documentation acceptance IDs DOC-01 through DOC-32, workspace links, and 8 negative fixtures passed.",
       "limitations": "Mermaid visual rendering and independent contributor onboarding remain manual checks.",
-      "executedAt": "2026-09-22T12:35:27Z"
+      "executedAt": "2026-09-22T13:50:24Z"
     },
     {
       "id": "RUN-WEB-COMPONENT",
@@ -274,12 +276,12 @@
       "id": "RUN-TRANSACTION-RECOVERY",
       "scenarios": ["SALE-002", "TX-001", "TX-002", "ARCH-001", "TX-003", "TX-004", "TX-005"],
       "level": "LOCAL-TEST",
-      "command": "pnpm vitest run apps/web/src/capabilities/transactions/recovery.test.ts apps/web/src/capabilities/transactions/submit-operation.test.ts apps/web/src/integrations/evm/inspect-transaction.test.ts apps/web/src/integrations/persistence/local-storage-journal.test.ts apps/web/src/capabilities/transactions/ui/TransactionTimeline.test.tsx apps/web/src/capabilities/transactions/ui/SubmissionNotice.test.tsx apps/web/src/pages/transaction-surfaces.test.tsx apps/web/src/pages/HomePage.inflight.test.tsx apps/web/src/features/marketplace/ui/Marketplace.test.tsx",
+      "command": "pnpm exec vitest run tests/database/projection-maintenance.test.ts apps/web/src/integrations/evm/inspect-transaction.test.ts apps/web/src/integrations/evm/TransactionObserver.test.tsx apps/web/src/integrations/persistence/local-storage-journal.test.ts apps/web/src/capabilities/transactions/recovery.test.ts; pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "9 files / 73 tests passed, including duplicate same-intent suppression before the second simulation, independent intent progress, and pending marketplace UI state.",
-      "limitations": "Controlled wallet and storage ports; real local-chain convergence is recorded by RUN-INTEGRATION and real same-profile multi-tab locking by RUN-E2E.",
-      "executedAt": "2026-09-22T10:35:33Z"
+      "result": "R15 focused suites plus the final full unit gate passed. Coverage includes lock-owned marker selection, saved/configured/RPC/on-chain deployment identity, continued known-hash inspection after durable write failure, per-operation storage issues, and invariant errors that remain fail-closed.",
+      "limitations": "Controlled storage and Viem seams are complemented by harness-owned Anvil and browser evidence; public RPC and cross-device behavior remain unverified.",
+      "executedAt": "2026-09-22T13:50:24Z"
     },
     {
       "id": "RUN-INDEXER-KILL",
@@ -329,13 +331,13 @@
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35716902191)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35735482853)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/pass",
-      "result": "GitHub Actions run 35727650197 completed successfully for R14 source b6c03d4f42b305ea5c20a9f75a69d17b6e839f54: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
-      "executedAt": "2026-09-22T12:35:27Z",
-      "limitations": "GitHub-hosted deterministic local stack only; branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, cross-device coordination, unknown processes, and port-forwarding aliases remain outside this run.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35727650197"
+      "result": "GitHub Actions run 35735482853 completed successfully for R15 source fc63c0ca73bf8794c247f81038e61beef5b5aca5: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
+      "executedAt": "2026-09-22T13:50:24Z",
+      "limitations": "GitHub-hosted deterministic local stack only; branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35735482853"
     }
   ]
 }
