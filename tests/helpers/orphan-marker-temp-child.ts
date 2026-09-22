@@ -7,4 +7,6 @@ if (!temporaryPath || !readyPath || !markerJson)
 writeFileSync(temporaryPath, `${markerJson}\n`, { flag: 'wx', flush: true });
 writeFileSync(readyPath, 'ready\n', { flag: 'wx', flush: true });
 
-await new Promise<never>(() => undefined);
+await new Promise<never>(() => {
+  setInterval(() => undefined, 60_000);
+});
