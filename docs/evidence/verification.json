@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "sourceContext": {
     "revision": "71d129df5e626e50479d7eb42185f347f44b2142",
-    "dirty": false,
+    "dirty": true,
     "capturedAt": "2026-09-22T10:43:20Z",
     "sourceFingerprint": "sha256:4d52d86ba49f9de5cdd820dbba15d711f4caf65cb6e1031453f1a74291b91a20",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
