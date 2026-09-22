@@ -1,7 +1,8 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   createPublicClient,
@@ -184,6 +185,64 @@ describe('real database recovery against a local chain', () => {
     expect(reader.getSale('1').data?.status).toBe('FUNDED');
     expect(reader.systemStatus().provenance.indexedBlockNumber).toBe(fundedCheckpoint);
     await reader.close();
+  }, 60_000);
+
+  it('DB-62 archives mismatched source evidence before reacquiring it from chain', async () => {
+    const invalidDigest = `0x${'9'.repeat(64)}`;
+    const database = new Database(paths.databasePath);
+    const sourceIdentity = database
+      .prepare(
+        `SELECT block_hash AS blockHash,log_index AS logIndex
+         FROM chain_events WHERE deployment_id=? ORDER BY block_number,transaction_index,log_index LIMIT 1`,
+      )
+      .get(manifest.deploymentId) as { blockHash: string; logIndex: number } | undefined;
+    if (!sourceIdentity) throw new Error('Expected source evidence after bootstrap');
+    const catalogBefore = database.prepare('SELECT COUNT(*) AS count FROM catalog_vehicles').get();
+    database
+      .prepare(
+        `UPDATE chain_events SET source_record_digest=?
+         WHERE deployment_id=? AND block_hash=? AND log_index=?`,
+      )
+      .run(invalidDigest, manifest.deploymentId, sourceIdentity.blockHash, sourceIdentity.logIndex);
+    database.close();
+    const backupsBefore = new Set(readdirSync(paths.backupsDir));
+
+    runReindex(BigInt(manifest.scanStartBlock));
+
+    const backupId = readdirSync(paths.backupsDir).find((entry) => !backupsBefore.has(entry));
+    expect(backupId).toBeDefined();
+    const backupPath = join(paths.backupsDir, backupId ?? 'missing');
+    const backupManifest = JSON.parse(
+      readFileSync(join(backupPath, 'backup-manifest.json'), 'utf8'),
+    ) as { reason: string };
+    expect(backupManifest.reason).toMatch(/^pre-reindex-source-refresh:/);
+    const archived = new Database(join(backupPath, 'database.sqlite'), {
+      readonly: true,
+      fileMustExist: true,
+    });
+    expect(
+      archived
+        .prepare(
+          `SELECT source_record_digest AS sourceRecordDigest
+           FROM chain_events WHERE deployment_id=? AND block_hash=? AND log_index=?`,
+        )
+        .get(manifest.deploymentId, sourceIdentity.blockHash, sourceIdentity.logIndex),
+    ).toEqual({ sourceRecordDigest: invalidDigest });
+    archived.close();
+
+    const refreshed = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
+    expect(
+      refreshed
+        .prepare(
+          `SELECT COUNT(*) AS count FROM chain_events
+           WHERE deployment_id=? AND source_record_digest=?`,
+        )
+        .get(manifest.deploymentId, invalidDigest),
+    ).toEqual({ count: 0 });
+    expect(refreshed.prepare('SELECT COUNT(*) AS count FROM catalog_vehicles').get()).toEqual(
+      catalogBefore,
+    );
+    refreshed.close();
   }, 60_000);
 
   it('DB-41 rejects a new deployment at reused deterministic addresses after Anvil reset', async () => {

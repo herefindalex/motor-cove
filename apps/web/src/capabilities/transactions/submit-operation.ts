@@ -161,7 +161,7 @@ async function persistWalletOutcome(
   return false;
 }
 
-export async function submitOperation(
+async function submitOwnedOperation(
   context: SubmissionContext,
   action: SubmissionAction,
   journal: TransactionJournal,
@@ -279,4 +279,36 @@ export async function submitOperation(
     // Optional enrichment cannot erase the already durable hash.
   }
   return { kind: 'submitted', hash, clientOperationId: submitted.clientOperationId };
+}
+
+const inFlightSubmissionIntents = new Set<string>();
+
+function submissionIntentKey(context: SubmissionContext, action: SubmissionAction): string {
+  return JSON.stringify([
+    context.deploymentId.toLowerCase(),
+    context.chainId,
+    context.account.toLowerCase(),
+    context.protocolVersion,
+    action.name,
+    action.saleId?.toString() ?? null,
+    action.tokenId?.toString() ?? null,
+    action.contract.toLowerCase(),
+    action.calldata.toLowerCase(),
+    action.value.toString(),
+  ]);
+}
+
+export async function submitOperation(
+  context: SubmissionContext,
+  action: SubmissionAction,
+  journal: TransactionJournal,
+): Promise<SubmissionResult> {
+  const intentKey = submissionIntentKey(context, action);
+  if (inFlightSubmissionIntents.has(intentKey)) throw new Error('OPERATION_ALREADY_IN_FLIGHT');
+  inFlightSubmissionIntents.add(intentKey);
+  try {
+    return await submitOwnedOperation(context, action, journal);
+  } finally {
+    inFlightSubmissionIntents.delete(intentKey);
+  }
 }

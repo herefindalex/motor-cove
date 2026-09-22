@@ -368,9 +368,13 @@ describe('real Anvil → indexer → SQLite flow', () => {
     expect(beforeRebuild.getSale('1').data?.status).toBe('COMPLETED');
     await beforeRebuild.close();
 
+    const unexpectedCollection = `0x${'d'.repeat(40)}`;
     execFileSync(
       'sqlite3',
-      [managedPaths.databasePath, "DELETE FROM token_ownership WHERE token_id='1';"],
+      [
+        managedPaths.databasePath,
+        `INSERT INTO token_ownership(deployment_id,collection_address,token_id,owner,last_transfer_block_hash,last_transfer_log_index,updated_block) SELECT deployment_id,'${unexpectedCollection}',token_id,owner,last_transfer_block_hash,last_transfer_log_index,updated_block FROM token_ownership WHERE deployment_id='${manifest.deploymentId}' AND collection_address='${manifest.nft.address.toLowerCase()}' AND token_id='1';`,
+      ],
       { cwd: root },
     );
     expect(() =>
@@ -380,7 +384,7 @@ describe('real Anvil → indexer → SQLite flow', () => {
         stdio: 'pipe',
       }),
     ).toThrow();
-    const tokenDifferences = JSON.parse(
+    const extraCollectionDifferences = JSON.parse(
       execFileSync(
         'sqlite3',
         [
@@ -390,12 +394,62 @@ describe('real Anvil → indexer → SQLite flow', () => {
         { cwd: root, encoding: 'utf8' },
       ).trim(),
     ) as Array<Record<string, unknown>>;
-    expect(tokenDifferences).toContainEqual({
+    expect(extraCollectionDifferences).toContainEqual({
+      collectionAddress: unexpectedCollection,
+      tokenId: '1',
+      field: 'currentOwner',
+      difference: 'UNEXPECTED_COLLECTION',
+      projected: manifest.demoAccounts?.buyer.toLowerCase(),
+      chain: null,
+    });
+    execFileSync(
+      'sqlite3',
+      [
+        managedPaths.databasePath,
+        `DELETE FROM token_ownership WHERE deployment_id='${manifest.deploymentId}' AND collection_address='${manifest.nft.address.toLowerCase()}' AND token_id='1';`,
+      ],
+      { cwd: root },
+    );
+    expect(() =>
+      execFileSync('corepack', ['pnpm', 'ops:reconcile'], {
+        cwd: root,
+        env: environment,
+        stdio: 'pipe',
+      }),
+    ).toThrow();
+    const wrongCollectionOnlyDifferences = JSON.parse(
+      execFileSync(
+        'sqlite3',
+        [
+          managedPaths.databasePath,
+          'SELECT differences_json FROM reconciliation_runs ORDER BY created_at DESC LIMIT 1;',
+        ],
+        { cwd: root, encoding: 'utf8' },
+      ).trim(),
+    ) as Array<Record<string, unknown>>;
+    expect(wrongCollectionOnlyDifferences).toContainEqual({
+      collectionAddress: manifest.nft.address.toLowerCase(),
       tokenId: '1',
       field: 'currentOwner',
       projected: null,
       chain: manifest.demoAccounts?.buyer.toLowerCase(),
     });
+    expect(wrongCollectionOnlyDifferences).toContainEqual({
+      collectionAddress: unexpectedCollection,
+      tokenId: '1',
+      field: 'currentOwner',
+      difference: 'UNEXPECTED_COLLECTION',
+      projected: manifest.demoAccounts?.buyer.toLowerCase(),
+      chain: null,
+    });
+    execFileSync(
+      'sqlite3',
+      [
+        managedPaths.databasePath,
+        `DELETE FROM token_ownership WHERE deployment_id='${manifest.deploymentId}' AND collection_address='${unexpectedCollection}';`,
+      ],
+      { cwd: root },
+    );
     execFileSync('corepack', ['pnpm', 'ops:rebuild'], {
       cwd: root,
       env: environment,

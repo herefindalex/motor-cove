@@ -71,7 +71,6 @@ class ProjectionCommitIntegrityError extends Error {
 
 export class SqliteProjectionStore implements ProjectionUnitOfWork {
   private readonly sourceScopeChanged: boolean;
-  private readonly sourceRefreshRequired: boolean;
 
   static forMaintenance(
     db: Database.Database,
@@ -105,13 +104,6 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
       .get(this.deploymentId) as { projectorVersion: string; logScopeHash: string } | undefined;
     if (!checkpoint) throw new Error('DEPLOYMENT_NOT_REGISTERED');
     this.sourceScopeChanged = checkpoint.logScopeHash !== this.logScopeHash;
-    const staleSource = this.db
-      .prepare(
-        `SELECT COUNT(*) AS count FROM chain_events
-         WHERE deployment_id=? AND (source_record_digest IS NULL OR decoder_version<>?)`,
-      )
-      .get(this.deploymentId, DECODER_VERSION) as { count: number };
-    this.sourceRefreshRequired = this.sourceScopeChanged || staleSource.count > 0;
     const projectorMatches =
       checkpoint.projectorVersion === PROJECTOR_VERSION ||
       Boolean(maintenance?.supportedProjectorVersions?.includes(checkpoint.projectorVersion));
@@ -430,14 +422,14 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
   }
 
   requiresSourceRefresh(): boolean {
-    return this.sourceRefreshRequired;
+    return this.sourceScopeChanged || this.hasSourceContentMismatch();
   }
 
   prepareForReindex(
     blockNumber: bigint,
     sourceArchive?: { readonly verifiedBackupId: string },
   ): void {
-    if (!this.sourceRefreshRequired) {
+    if (!this.requiresSourceRefresh()) {
       this.rewindFrom(blockNumber);
       return;
     }
@@ -463,6 +455,83 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
         )
         .run(this.deploymentId);
     })();
+  }
+
+  private hasSourceContentMismatch(): boolean {
+    const rows = this.db
+      .prepare(
+        `SELECT block_number AS blockNumber,block_hash AS blockHash,tx_hash AS transactionHash,
+                transaction_index AS transactionIndex,log_index AS logIndex,
+                contract_address AS contractAddress,topics_json AS topics,data,
+                raw_envelope_digest AS rawEnvelopeDigest,decoded_json AS decodedJson,
+                decoder_version AS decoderVersion,source_record_digest AS sourceRecordDigest
+         FROM chain_events WHERE deployment_id=?
+         ORDER BY block_hash,transaction_index,log_index`,
+      )
+      .all(this.deploymentId) as Array<{
+      blockNumber: number;
+      blockHash: `0x${string}`;
+      transactionHash: `0x${string}`;
+      transactionIndex: number;
+      logIndex: number;
+      contractAddress: `0x${string}`;
+      topics: string;
+      data: `0x${string}`;
+      rawEnvelopeDigest: string;
+      decodedJson: string;
+      decoderVersion: string;
+      sourceRecordDigest: string | null;
+    }>;
+    const eventsByBlock = new Map<string, OrderedEvent[]>();
+    for (const row of rows) {
+      let ordered: OrderedEvent;
+      try {
+        ordered = {
+          blockNumber: BigInt(row.blockNumber),
+          blockHash: row.blockHash,
+          transactionHash: row.transactionHash,
+          transactionIndex: row.transactionIndex,
+          logIndex: row.logIndex,
+          contractAddress: row.contractAddress,
+          topics: JSON.parse(row.topics) as readonly `0x${string}`[],
+          data: row.data,
+          event: JSON.parse(row.decodedJson) as NormalizedEvent,
+        };
+      } catch {
+        return true;
+      }
+      if (
+        row.decoderVersion !== DECODER_VERSION ||
+        row.rawEnvelopeDigest !== digest(eventEnvelope(ordered)) ||
+        row.sourceRecordDigest !== sourceRecordDigest(ordered)
+      )
+        return true;
+      const blockEvents = eventsByBlock.get(row.blockHash) ?? [];
+      blockEvents.push(ordered);
+      eventsByBlock.set(row.blockHash, blockEvents);
+    }
+
+    const blocks = this.db
+      .prepare(
+        `SELECT block_hash AS blockHash,observed_log_count AS observedLogCount,
+                observed_log_digest AS observedLogDigest
+         FROM indexed_blocks WHERE deployment_id=? AND scan_complete=1`,
+      )
+      .all(this.deploymentId) as Array<{
+      blockHash: string;
+      observedLogCount: number;
+      observedLogDigest: string;
+    }>;
+    for (const block of blocks) {
+      const events = eventsByBlock.get(block.blockHash) ?? [];
+      if (events.length > block.observedLogCount) return true;
+      if (
+        events.length === block.observedLogCount &&
+        digest(events.map(eventEnvelope)) !== block.observedLogDigest
+      )
+        return true;
+    }
+    return false;
   }
 
   private verifyRebuildSource(): void {

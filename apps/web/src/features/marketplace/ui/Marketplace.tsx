@@ -25,6 +25,7 @@ export function Marketplace({
   vehicles,
   account,
   actions,
+  pendingActionKeys,
   provenance,
   currentTimestamp,
 }: {
@@ -32,6 +33,7 @@ export function Marketplace({
   vehicles: readonly Vehicle[];
   account: string | undefined;
   actions: MarketActions | undefined;
+  pendingActionKeys?: ReadonlySet<string> | undefined;
   provenance: ReactNode;
   currentTimestamp: number | undefined;
 }) {
@@ -51,6 +53,8 @@ export function Marketplace({
         <div className="cards">
           {sales.map((sale) => {
             const vehicle = byToken.get(sale.tokenId);
+            const pending = (action: string) =>
+              pendingActionKeys?.has(`${action}:${sale.saleId}`) ?? false;
             const expired =
               sale.expiresAt && currentTimestamp !== undefined
                 ? currentTimestamp >= Number(sale.expiresAt)
@@ -94,38 +98,64 @@ export function Marketplace({
                   )}
                   <div className="actions">
                     {sale.status === 'LISTED' && !same(account, sale.seller) && (
-                      <button disabled={!actions} onClick={() => void actions?.fund(sale)}>
-                        Fund exactly
+                      <button
+                        disabled={!actions || pending('FUND_SALE')}
+                        aria-busy={pending('FUND_SALE')}
+                        onClick={() => void actions?.fund(sale)}
+                      >
+                        {pending('FUND_SALE') ? 'Funding…' : 'Fund exactly'}
                       </button>
                     )}
                     {sale.status === 'LISTED' && same(account, sale.seller) && (
-                      <button disabled={!actions} onClick={() => void actions?.cancel(sale)}>
-                        Cancel listing
+                      <button
+                        disabled={!actions || pending('CANCEL_SALE')}
+                        aria-busy={pending('CANCEL_SALE')}
+                        onClick={() => void actions?.cancel(sale)}
+                      >
+                        {pending('CANCEL_SALE') ? 'Cancelling…' : 'Cancel listing'}
                       </button>
                     )}
                     {sale.status === 'FUNDED' && same(account, sale.buyer) && !expired && (
-                      <button disabled={!actions} onClick={() => void actions?.complete(sale)}>
-                        Complete sale
+                      <button
+                        disabled={!actions || pending('COMPLETE_SALE')}
+                        aria-busy={pending('COMPLETE_SALE')}
+                        onClick={() => void actions?.complete(sale)}
+                      >
+                        {pending('COMPLETE_SALE') ? 'Completing…' : 'Complete sale'}
                       </button>
                     )}
                     {sale.status === 'FUNDED' && expired && (
-                      <button disabled={!actions} onClick={() => void actions?.expire(sale)}>
-                        Execute expiry
+                      <button
+                        disabled={!actions || pending('EXPIRE_SALE')}
+                        aria-busy={pending('EXPIRE_SALE')}
+                        onClick={() => void actions?.expire(sale)}
+                      >
+                        {pending('EXPIRE_SALE') ? 'Expiring…' : 'Execute expiry'}
                       </button>
                     )}
                     {sale.claim?.status === 'CLAIMABLE' &&
                       same(account, sale.claim.beneficiary) && (
-                        <button disabled={!actions} onClick={() => void actions?.withdraw(sale)}>
-                          {sale.claim.kind === 'BUYER_REFUND'
-                            ? 'Withdraw refund'
-                            : 'Withdraw proceeds'}
+                        <button
+                          disabled={!actions || pending('WITHDRAW_PAYMENT')}
+                          aria-busy={pending('WITHDRAW_PAYMENT')}
+                          onClick={() => void actions?.withdraw(sale)}
+                        >
+                          {pending('WITHDRAW_PAYMENT')
+                            ? 'Withdrawing…'
+                            : sale.claim.kind === 'BUYER_REFUND'
+                              ? 'Withdraw refund'
+                              : 'Withdraw proceeds'}
                         </button>
                       )}
                     {(sale.status === 'CANCELLED' || sale.status === 'EXPIRED') &&
                       !sale.tokenReclaimed &&
                       same(account, sale.seller) && (
-                        <button disabled={!actions} onClick={() => void actions?.reclaim(sale)}>
-                          Reclaim NFT
+                        <button
+                          disabled={!actions || pending('RECLAIM_TOKEN')}
+                          aria-busy={pending('RECLAIM_TOKEN')}
+                          onClick={() => void actions?.reclaim(sale)}
+                        >
+                          {pending('RECLAIM_TOKEN') ? 'Reclaiming…' : 'Reclaim NFT'}
                         </button>
                       )}
                   </div>

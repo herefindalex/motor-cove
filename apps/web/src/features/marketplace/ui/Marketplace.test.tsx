@@ -75,4 +75,35 @@ describe('Marketplace exact price presentation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Fund exactly' }));
     expect(fund).toHaveBeenCalledWith(selected);
   });
+
+  it('shows and disables the pending action for one sale intent', () => {
+    const selected = sale('7');
+    const actions = {
+      fund: vi.fn(),
+      complete: vi.fn(),
+      cancel: vi.fn(),
+      expire: vi.fn(),
+      withdraw: vi.fn(),
+      reclaim: vi.fn(),
+    } satisfies MarketActions;
+    render(
+      <MemoryRouter>
+        <Marketplace
+          sales={[selected]}
+          vehicles={[]}
+          account={buyer}
+          actions={actions}
+          pendingActionKeys={new Set(['FUND_SALE:7'])}
+          provenance={null}
+          currentTimestamp={undefined}
+        />
+      </MemoryRouter>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Funding…' });
+    expect(button.hasAttribute('disabled')).toBe(true);
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    fireEvent.click(button);
+    expect(actions.fund).not.toHaveBeenCalled();
+  });
 });

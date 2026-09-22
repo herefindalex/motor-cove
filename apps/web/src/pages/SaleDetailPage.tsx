@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { WalletPanel } from '../capabilities/wallet/index.js';
@@ -41,26 +41,55 @@ export function SaleDetailPage() {
   const currentTimestamp = useChainTime(config.data?.deploymentId);
   const [submissionResult, setSubmissionResult] = useState<SubmissionResult>();
   const [submissionError, setSubmissionError] = useState<string>();
+  const account = wallet.state.kind === 'connected' ? wallet.state.account : undefined;
+  const submissionContextKey = JSON.stringify([
+    deploymentId ?? null,
+    config.data?.chainId ?? null,
+    config.data?.protocolVersion ?? null,
+    config.data?.nftAddress?.toLowerCase() ?? null,
+    config.data?.escrowAddress?.toLowerCase() ?? null,
+    account?.toLowerCase() ?? null,
+  ]);
+  const pendingActionPrefix = `${submissionContextKey}\0`;
+  const pendingIntentKeys = useRef(new Set<string>());
+  const [pendingIntents, setPendingIntents] = useState<ReadonlySet<string>>(new Set());
+  const pendingActions = new Set(
+    [...pendingIntents]
+      .filter((key) => key.startsWith(pendingActionPrefix))
+      .map((key) => key.slice(pendingActionPrefix.length)),
+  );
 
-  const submit = async (operation: () => Promise<SubmissionResult>) => {
+  const submit = async (actionKey: string, operation: () => Promise<SubmissionResult>) => {
+    const intentKey = `${pendingActionPrefix}${actionKey}`;
+    if (pendingIntentKeys.current.has(intentKey)) return;
+    pendingIntentKeys.current.add(intentKey);
+    setPendingIntents(new Set(pendingIntentKeys.current));
     setSubmissionError(undefined);
     try {
       setSubmissionResult(await operation());
     } catch (error) {
       setSubmissionResult(undefined);
       setSubmissionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      pendingIntentKeys.current.delete(intentKey);
+      setPendingIntents(new Set(pendingIntentKeys.current));
     }
   };
 
   const actions: MarketActions | undefined = gateway
     ? {
         fund: async (item) =>
-          submit(() => gateway.fundSale(BigInt(item.saleId), BigInt(item.priceWei))),
-        complete: async (item) => submit(() => gateway.completeSale(BigInt(item.saleId))),
-        cancel: async (item) => submit(() => gateway.cancelSale(BigInt(item.saleId))),
-        expire: async (item) => submit(() => gateway.expireSale(BigInt(item.saleId))),
+          submit(`FUND_SALE:${item.saleId}`, () =>
+            gateway.fundSale(BigInt(item.saleId), BigInt(item.priceWei)),
+          ),
+        complete: async (item) =>
+          submit(`COMPLETE_SALE:${item.saleId}`, () => gateway.completeSale(BigInt(item.saleId))),
+        cancel: async (item) =>
+          submit(`CANCEL_SALE:${item.saleId}`, () => gateway.cancelSale(BigInt(item.saleId))),
+        expire: async (item) =>
+          submit(`EXPIRE_SALE:${item.saleId}`, () => gateway.expireSale(BigInt(item.saleId))),
         withdraw: async (item) =>
-          submit(() =>
+          submit(`WITHDRAW_PAYMENT:${item.saleId}`, () =>
             gateway.withdrawPayment(
               BigInt(item.saleId),
               (wallet.state.kind === 'connected'
@@ -69,7 +98,7 @@ export function SaleDetailPage() {
             ),
           ),
         reclaim: async (item) =>
-          submit(() =>
+          submit(`RECLAIM_TOKEN:${item.saleId}`, () =>
             gateway.reclaimToken(
               BigInt(item.saleId),
               (wallet.state.kind === 'connected'
@@ -132,6 +161,7 @@ export function SaleDetailPage() {
         vehicles={vehicles.data.data}
         account={wallet.state.kind === 'connected' ? wallet.state.account : undefined}
         actions={actions}
+        pendingActionKeys={pendingActions}
         currentTimestamp={currentTimestamp}
         provenance={
           <span className="provenance">

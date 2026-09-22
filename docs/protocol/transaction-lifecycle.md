@@ -146,3 +146,15 @@ merges known volatile entries so their hashes remain visible in the current appl
 and the transaction timeline states that reload or tab close loses volatile-only evidence. This
 read fallback does not weaken the pre-wallet boundary: inability to durably save the initial intent
 still prevents the wallet request.
+
+## Same-intent submission ownership
+
+The application acquires synchronous ownership for the complete immutable intent before simulation,
+journal persistence, or any other awaited step. The key binds deployment, chain, account, protocol,
+action, sale/token identity, contract, calldata, and value. A second activation of the same intent
+while the first is pending returns `OPERATION_ALREADY_IN_FLIGHT` before it can create another journal
+entry or wallet request. A different intent remains independent.
+
+The marketplace mirrors this capability rule with a per-action pending key. The matching control is
+disabled and exposes `aria-busy` until the operation settles; ownership is released on both success
+and failure. This UI state improves feedback but does not replace the capability-level invariant.

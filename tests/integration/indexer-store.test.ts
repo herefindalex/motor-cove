@@ -386,6 +386,108 @@ describe('Indexer store', () => {
     await writer.close();
   });
 
+  it('classifies non-null source content mismatches for archived reacquisition', async () => {
+    const paths = await fixture();
+    const first = header(1);
+    const source = event(first, 0, {
+      kind: 'SaleCreated',
+      saleId: '1',
+      tokenId: '1',
+      seller,
+      priceWei: '100',
+    });
+    const writer = await openProjectionWriter(paths);
+    const initial = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
+    await initial.commit([first], [source], first);
+    writer.database
+      .prepare('UPDATE chain_events SET source_record_digest=? WHERE deployment_id=?')
+      .run(hex('9', 32), deploymentId);
+
+    const maintenance = SqliteProjectionStore.forMaintenance(
+      writer.database,
+      deploymentId,
+      nft,
+      scopeHash,
+    );
+    expect(maintenance.requiresSourceRefresh()).toBe(true);
+    expect(() => maintenance.prepareForReindex(1n)).toThrow('SOURCE_REFRESH_ARCHIVE_REQUIRED');
+    maintenance.prepareForReindex(1n, { verifiedBackupId: 'verified-content-refresh' });
+    expect(maintenance.rebuildFromJournal()).toMatchObject({ events: 0 });
+    await maintenance.commit([first], [source], first);
+    expect(maintenance.requiresSourceRefresh()).toBe(false);
+    const refreshed = writer.database
+      .prepare(
+        'SELECT source_record_digest AS sourceRecordDigest FROM chain_events WHERE deployment_id=?',
+      )
+      .get(deploymentId) as { sourceRecordDigest: string } | undefined;
+    expect(refreshed?.sourceRecordDigest).toMatch(/^0x[0-9a-f]{64}$/);
+    await writer.close();
+  });
+
+  it('classifies same-count header digest mismatches for archived reacquisition', async () => {
+    const paths = await fixture();
+    const first = header(1);
+    const source = event(first, 0, {
+      kind: 'SaleCreated',
+      saleId: '1',
+      tokenId: '1',
+      seller,
+      priceWei: '100',
+    });
+    const writer = await openProjectionWriter(paths);
+    const initial = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
+    await initial.commit([first], [source], first);
+    writer.database
+      .prepare('UPDATE indexed_blocks SET observed_log_digest=? WHERE deployment_id=?')
+      .run(hex('9', 32), deploymentId);
+
+    const maintenance = SqliteProjectionStore.forMaintenance(
+      writer.database,
+      deploymentId,
+      nft,
+      scopeHash,
+    );
+    expect(maintenance.requiresSourceRefresh()).toBe(true);
+    expect(() => maintenance.prepareForReindex(1n)).toThrow('SOURCE_REFRESH_ARCHIVE_REQUIRED');
+    await writer.close();
+  });
+
+  it('keeps a pure missing source row on the narrow rewind and reinsert path', async () => {
+    const paths = await fixture();
+    const first = header(1);
+    const source = event(first, 0, {
+      kind: 'SaleCreated',
+      saleId: '1',
+      tokenId: '1',
+      seller,
+      priceWei: '100',
+    });
+    const writer = await openProjectionWriter(paths);
+    const initial = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
+    await initial.commit([first], [source], first);
+    writer.database
+      .prepare('DELETE FROM chain_events WHERE deployment_id=? AND block_hash=?')
+      .run(deploymentId, first.hash);
+
+    const maintenance = SqliteProjectionStore.forMaintenance(
+      writer.database,
+      deploymentId,
+      nft,
+      scopeHash,
+    );
+    expect(maintenance.requiresSourceRefresh()).toBe(false);
+    maintenance.prepareForReindex(1n);
+    expect(maintenance.rebuildFromJournal()).toMatchObject({ events: 0 });
+    await maintenance.commit([first], [source], first);
+    expect(maintenance.requiresSourceRefresh()).toBe(false);
+    expect(
+      writer.database
+        .prepare('SELECT COUNT(*) AS count FROM chain_events WHERE deployment_id=?')
+        .get(deploymentId),
+    ).toEqual({ count: 1 });
+    await writer.close();
+  });
+
   it('allows maintenance rebuild from an explicitly supported prior projector version', async () => {
     const paths = await fixture();
     const writer = await openProjectionWriter(paths);

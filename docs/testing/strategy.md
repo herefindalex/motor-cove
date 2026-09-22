@@ -170,3 +170,16 @@ request.
 Reconciliation tests use a real in-memory SQLite report table and a controlled chain client whose
 first head read fails. The run must insert one new `UNVERIFIABLE / HEAD_UNKNOWN` report, retain the
 checkpoint identity and failure reason, close the writer, and set a nonzero exit status.
+
+## R13 intent ownership, NFT identity, and source refresh regressions
+
+- Transaction capability tests hold simulation pending and submit one immutable intent twice. The
+  second attempt must fail before another simulation, journal entry, or wallet request. React DOM
+  tests verify the matching Sale action becomes busy and disabled, then releases on settlement.
+- Reconciliation tests use the real CLI body and SQLite composite ownership key. Wrong collection
+  rows are mismatches whether they replace or accompany the manifest collection row; another
+  deployment does not contaminate the result. The real Anvil stack repeats the wrong-collection
+  cases against anchored `ownerOf`.
+- Indexer store tests distinguish contradictory non-null source evidence from a pure missing row.
+  The real recovery lane corrupts one source digest, runs reindex, verifies the pre-refresh backup
+  retains that digest, confirms active source was reacquired, and confirms catalog rows survived.

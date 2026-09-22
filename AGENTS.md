@@ -54,6 +54,8 @@ fixture when introducing a new dependency rule.
 - A successful receipt does not prove projection convergence. A stale projection is not a reason to
   resubmit a transaction.
 - Browser recovery is read-only. It must not reach a wallet-write port.
+- Acquire same-intent submission ownership synchronously before simulation or persistence awaits;
+  keep unrelated action intents independent and preserve the durable pre-wallet write.
 - Preserve historical receipt and event evidence when a transaction becomes noncanonical; derive
   current success from current transaction, receipt, and projection evidence together.
 - Temporary RPC transport failures keep the checkpoint, mark the read model stale, and retry with
@@ -61,6 +63,9 @@ fixture when introducing a new dependency rule.
   requires recovery.
 - Rebuild uses verified local raw evidence. Reindex revalidates canonical chain evidence. Both use
   the exclusive maintenance gate and durable operation marker and preserve catalog authority.
+- Reconciliation keeps `(deployment, collection, token)` ownership identity. Source content
+  mismatches require a verified archive before reacquisition; a pure missing row may use rewind and
+  reinsert.
 - Migration, seed, bootstrap, restore, reset, rebuild, reindex, and reconciliation are distinct
   operations. Never rewrite an applied migration or clear `maintenance.json` by hand.
 

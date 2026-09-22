@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Marketplace, MyAssets, type MarketActions } from '../features/marketplace/index.js';
 import { WalletPanel } from '../capabilities/wallet/index.js';
@@ -50,26 +50,59 @@ export function HomePage() {
   const [submissionResult, setSubmissionResult] = useState<SubmissionResult>();
   const [submissionError, setSubmissionError] = useState<string>();
   const account = wallet.state.kind === 'connected' ? wallet.state.account : undefined;
-  const submit = async (operation: () => Promise<SubmissionResult>) => {
+  const submissionContextKey = JSON.stringify([
+    deploymentId ?? null,
+    configQuery.data?.chainId ?? null,
+    configQuery.data?.protocolVersion ?? null,
+    configQuery.data?.nftAddress?.toLowerCase() ?? null,
+    configQuery.data?.escrowAddress?.toLowerCase() ?? null,
+    account?.toLowerCase() ?? null,
+  ]);
+  const pendingActionPrefix = `${submissionContextKey}\0`;
+  const pendingIntentKeys = useRef(new Set<string>());
+  const [pendingIntents, setPendingIntents] = useState<ReadonlySet<string>>(new Set());
+  const pendingActions = new Set(
+    [...pendingIntents]
+      .filter((key) => key.startsWith(pendingActionPrefix))
+      .map((key) => key.slice(pendingActionPrefix.length)),
+  );
+  const submit = async (actionKey: string, operation: () => Promise<SubmissionResult>) => {
+    const intentKey = `${pendingActionPrefix}${actionKey}`;
+    if (pendingIntentKeys.current.has(intentKey)) return;
+    pendingIntentKeys.current.add(intentKey);
+    setPendingIntents(new Set(pendingIntentKeys.current));
     setSubmissionError(undefined);
     try {
       setSubmissionResult(await operation());
     } catch (error) {
       setSubmissionResult(undefined);
       setSubmissionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      pendingIntentKeys.current.delete(intentKey);
+      setPendingIntents(new Set(pendingIntentKeys.current));
     }
   };
   const actions: MarketActions | undefined =
     gateway && account
       ? {
           fund: async (sale) =>
-            submit(() => gateway.fundSale(BigInt(sale.saleId), BigInt(sale.priceWei))),
-          complete: async (sale) => submit(() => gateway.completeSale(BigInt(sale.saleId))),
-          cancel: async (sale) => submit(() => gateway.cancelSale(BigInt(sale.saleId))),
-          expire: async (sale) => submit(() => gateway.expireSale(BigInt(sale.saleId))),
+            submit(`FUND_SALE:${sale.saleId}`, () =>
+              gateway.fundSale(BigInt(sale.saleId), BigInt(sale.priceWei)),
+            ),
+          complete: async (sale) =>
+            submit(`COMPLETE_SALE:${sale.saleId}`, () => gateway.completeSale(BigInt(sale.saleId))),
+          cancel: async (sale) =>
+            submit(`CANCEL_SALE:${sale.saleId}`, () => gateway.cancelSale(BigInt(sale.saleId))),
+          expire: async (sale) =>
+            submit(`EXPIRE_SALE:${sale.saleId}`, () => gateway.expireSale(BigInt(sale.saleId))),
           withdraw: async (sale) =>
-            submit(() => gateway.withdrawPayment(BigInt(sale.saleId), account)),
-          reclaim: async (sale) => submit(() => gateway.reclaimToken(BigInt(sale.saleId), account)),
+            submit(`WITHDRAW_PAYMENT:${sale.saleId}`, () =>
+              gateway.withdrawPayment(BigInt(sale.saleId), account),
+            ),
+          reclaim: async (sale) =>
+            submit(`RECLAIM_TOKEN:${sale.saleId}`, () =>
+              gateway.reclaimToken(BigInt(sale.saleId), account),
+            ),
         }
       : undefined;
   if (configQuery.isError || salesQuery.isError || vehiclesQuery.isError || systemQuery.isError)
@@ -151,6 +184,7 @@ export function HomePage() {
         vehicles={vehicles}
         account={account}
         actions={actions}
+        pendingActionKeys={pendingActions}
         currentTimestamp={chainTime}
         provenance={
           <span className={projectionHealth.healthy ? 'provenance' : 'notice'}>
@@ -162,10 +196,14 @@ export function HomePage() {
         assets={assets}
         enabled={Boolean(gateway)}
         onApprove={async (tokenId) => {
-          if (gateway) await submit(() => gateway.approveToken(BigInt(tokenId)));
+          if (gateway)
+            await submit(`APPROVE_TOKEN:${tokenId}`, () => gateway.approveToken(BigInt(tokenId)));
         }}
         onCreate={async (tokenId, priceEth) => {
-          if (gateway) await submit(() => gateway.createSale(BigInt(tokenId), parseEth(priceEth)));
+          if (gateway)
+            await submit(`CREATE_SALE:${tokenId}`, () =>
+              gateway.createSale(BigInt(tokenId), parseEth(priceEth)),
+            );
         }}
       />
     </>

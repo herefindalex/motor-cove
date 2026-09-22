@@ -84,6 +84,52 @@ describe('submitOperation', () => {
     expect(submit).not.toHaveBeenCalled();
   });
 
+  it('rejects a duplicate immutable intent before a second simulation or wallet request', async () => {
+    const store = journal();
+    let releaseSimulation!: () => void;
+    const simulation = new Promise<void>((resolve) => {
+      releaseSimulation = resolve;
+    });
+    const simulate = vi.fn(async () => simulation);
+    const current = fixture({ simulate });
+
+    const first = submitOperation(current.context, current.action, store.port);
+    await vi.waitFor(() => expect(simulate).toHaveBeenCalledOnce());
+    await expect(submitOperation(current.context, current.action, store.port)).rejects.toThrow(
+      'OPERATION_ALREADY_IN_FLIGHT',
+    );
+    expect(simulate).toHaveBeenCalledOnce();
+    expect(current.submit).not.toHaveBeenCalled();
+    expect(store.entries).toHaveLength(1);
+
+    releaseSimulation();
+    await expect(first).resolves.toMatchObject({ kind: 'submitted', hash });
+    expect(current.submit).toHaveBeenCalledOnce();
+    expect(store.entries).toHaveLength(1);
+  });
+
+  it('keeps a different immutable intent independent while the first is pending', async () => {
+    const store = journal();
+    let releaseSimulation!: () => void;
+    const simulation = new Promise<void>((resolve) => {
+      releaseSimulation = resolve;
+    });
+    const firstIntent = fixture({ simulate: vi.fn(async () => simulation) });
+    const secondIntent = fixture({ saleId: 8n, calldata: '0xabcd' });
+
+    const first = submitOperation(firstIntent.context, firstIntent.action, store.port);
+    await vi.waitFor(() => expect(firstIntent.action.simulate).toHaveBeenCalledOnce());
+    await expect(
+      submitOperation(secondIntent.context, secondIntent.action, store.port),
+    ).resolves.toMatchObject({ kind: 'submitted', hash });
+    expect(secondIntent.submit).toHaveBeenCalledOnce();
+
+    releaseSimulation();
+    await expect(first).resolves.toMatchObject({ kind: 'submitted', hash });
+    expect(firstIntent.submit).toHaveBeenCalledOnce();
+    expect(store.entries).toHaveLength(2);
+  });
+
   it('records a failed precondition without calling the wallet', async () => {
     const store = journal();
     const { action, context, submit } = fixture({

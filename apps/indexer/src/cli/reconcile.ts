@@ -165,9 +165,13 @@ try {
     }
     const owners = db
       .prepare(
-        'SELECT token_id AS tokenId, owner FROM token_ownership WHERE deployment_id=? ORDER BY CAST(token_id AS INTEGER)',
+        'SELECT collection_address AS collectionAddress,token_id AS tokenId,owner FROM token_ownership WHERE deployment_id=? ORDER BY collection_address,CAST(token_id AS INTEGER)',
       )
-      .all(config.manifest.deploymentId) as Array<{ tokenId: string; owner: string }>;
+      .all(config.manifest.deploymentId) as Array<{
+      collectionAddress: string;
+      tokenId: string;
+      owner: string;
+    }>;
     const nextTokenId = await client.readContract({
       address: config.manifest.nft.address as Address,
       abi: vehicleNftAbi,
@@ -178,7 +182,23 @@ try {
     if (mintedTokenCount > BigInt(Number.MAX_SAFE_INTEGER))
       throw new Error('RECONCILIATION_SCOPE_TOO_LARGE');
     lastTokenId = mintedTokenCount === 0n ? null : String(mintedTokenCount);
-    const projectedOwners = new Map(owners.map((row) => [row.tokenId, row.owner]));
+    const collectionAddress = config.manifest.nft.address.toLowerCase();
+    const projectedOwners = new Map<string, string>();
+    for (const row of owners) {
+      const projectedCollectionAddress = row.collectionAddress.toLowerCase();
+      if (projectedCollectionAddress !== collectionAddress) {
+        differences.push({
+          collectionAddress: projectedCollectionAddress,
+          tokenId: row.tokenId,
+          field: 'currentOwner',
+          difference: 'UNEXPECTED_COLLECTION',
+          projected: row.owner,
+          chain: null,
+        });
+        continue;
+      }
+      projectedOwners.set(row.tokenId, row.owner);
+    }
     for (let tokenId = 1n; tokenId < nextTokenId; tokenId += 1n) {
       const owner = await client.readContract({
         address: config.manifest.nft.address as Address,
@@ -191,6 +211,7 @@ try {
       const projectedOwner = projectedOwners.get(canonicalTokenId);
       if (owner.toLowerCase() !== projectedOwner)
         differences.push({
+          collectionAddress,
           tokenId: canonicalTokenId,
           field: 'currentOwner',
           projected: projectedOwner ?? null,
@@ -200,8 +221,10 @@ try {
     }
     for (const [tokenId, projectedOwner] of projectedOwners) {
       differences.push({
+        collectionAddress,
         tokenId,
         field: 'currentOwner',
+        difference: 'EXTRA_PROJECTED_ROW',
         projected: projectedOwner,
         chain: null,
       });

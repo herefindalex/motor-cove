@@ -75,3 +75,10 @@ or marker persistence fails, the active source journal remains unchanged.
 The backup preserves the prior SQLite source rows, including displaced or orphan evidence. Reindex
 still refetches only the canonical range needed by the active build; the backup is diagnostic and
 recovery evidence, not a promise that an RPC can reproduce historical orphan logs.
+
+Source refresh classification is evaluated immediately before reindex preparation. A non-null event
+row requires refresh when its raw envelope, decoded payload, decoder version, source-record digest,
+or the completed block's same-count digest is inconsistent. Reindex must begin at the deployment
+scan-start block, record and verify the backup, then reacquire canonical source. A pure missing event
+row follows ordinary rewind and reinsert instead of being mislabeled as contradictory content.
+`EVENT_IDENTITY_CONTENT_MISMATCH` remains a hard failure during normal ingestion.

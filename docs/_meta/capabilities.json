@@ -68,14 +68,16 @@
     {
       "id": "CAP-06",
       "name": "Transaction lifecycle",
-      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, serializes same-profile browser writes, and preserves tab-local evidence when durable storage reads are unavailable.",
+      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, serializes same-profile browser writes, and preserves tab-local evidence when durable storage reads are unavailable. Synchronously serializes one in-flight immutable intent before any await and exposes matching per-action pending state.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/capabilities/transactions",
         "apps/web/src/integrations/evm/inspect-transaction.ts",
-        "apps/web/src/integrations/persistence/local-storage-journal.ts"
+        "apps/web/src/integrations/persistence/local-storage-journal.ts",
+        "apps/web/src/pages/HomePage.inflight.test.tsx",
+        "docs/adr/0018-in-flight-intent-and-source-identity.md"
       ],
-      "scenarios": ["TX-001", "TX-002", "TX-003", "TX-004"],
+      "scenarios": ["TX-001", "TX-002", "TX-003", "TX-004", "TX-005"],
       "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E"],
       "limits": "Non-durable known-hash tracking survives client-side route changes and storage read denial only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
     },
@@ -120,14 +122,16 @@
     {
       "id": "CAP-10",
       "name": "Event-driven backend",
-      "behavior": "Reads bounded eligible log ranges, orders events, applies pure projectors, advances a checkpoint, verifies bound raw and decoded source evidence before rebuild, and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse and verify their captured target, source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex.",
+      "behavior": "Reads bounded eligible log ranges, orders events, applies pure projectors, advances a checkpoint, verifies bound raw and decoded source evidence before rebuild, and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse and verify their captured target, source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert.",
       "implementation": "implemented",
       "code": [
         "apps/indexer/src/application/ingest-range.ts",
         "apps/indexer/src/domain/projectors",
-        "apps/indexer/src/adapters/sqlite/sqlite-projection-store.ts"
+        "apps/indexer/src/adapters/sqlite/sqlite-projection-store.ts",
+        "tests/integration/database-real-recovery.test.ts",
+        "docs/adr/0018-in-flight-intent-and-source-identity.md"
       ],
-      "scenarios": ["IDX-001", "IDX-002", "IDX-003", "IDX-004", "DB-56"],
+      "scenarios": ["IDX-001", "IDX-002", "IDX-003", "IDX-004", "DB-56", "DB-62"],
       "verification": ["RUN-INDEXER-UNIT", "RUN-INDEXER-KILL", "RUN-INTEGRATION"],
       "limits": "Automatic recovery across arbitrary canonical branch changes remains outside scope; incomplete rebuild source requires explicit reindex."
     },
@@ -150,7 +154,9 @@
         "docs/adr/0004-chain-seed-ambiguity.md",
         "packages/database/src/maintenance/managed-node.ts",
         "tests/integration/managed-node-reset.test.ts",
-        "docs/adr/0016-wallet-outcomes-and-managed-node-ownership.md"
+        "docs/adr/0016-wallet-outcomes-and-managed-node-ownership.md",
+        "tests/integration/database-real-recovery.test.ts",
+        "docs/adr/0018-in-flight-intent-and-source-identity.md"
       ],
       "scenarios": [
         "DB-01",
@@ -182,7 +188,8 @@
         "DB-27",
         "DB-28",
         "DB-30",
-        "DB-58"
+        "DB-58",
+        "DB-62"
       ],
       "verification": [
         "RUN-DB-MIGRATIONS",
@@ -213,7 +220,7 @@
     {
       "id": "CAP-13",
       "name": "Failure diagnosis and recovery",
-      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, alternative-hash read-only recovery, per-event canonical source evidence, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands. Seed persistence and reconciliation head failures preserve explicit recoverable or unverifiable evidence.",
+      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, alternative-hash read-only recovery, per-event canonical source evidence, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands. Seed persistence and reconciliation head failures preserve explicit recoverable or unverifiable evidence. Reconciliation preserves NFT collection identity, and source maintenance archives contradictory evidence before reacquisition.",
       "implementation": "partial",
       "code": [
         "apps/web/src/pages/InspectorPage.tsx",
@@ -223,7 +230,10 @@
         "packages/database/src/maintenance",
         "docs/adr/0016-wallet-outcomes-and-managed-node-ownership.md",
         "docs/adr/0017-recoverable-evidence-and-unavailable-observations.md",
-        "apps/indexer/src/cli/reconcile.ts"
+        "apps/indexer/src/cli/reconcile.ts",
+        "tests/integration/reconciliation-ownership-identity.test.ts",
+        "tests/integration/database-real-recovery.test.ts",
+        "docs/adr/0018-in-flight-intent-and-source-identity.md"
       ],
       "scenarios": [
         "TX-001",
@@ -238,7 +248,9 @@
         "TX-003",
         "DB-58",
         "DB-59",
-        "DB-60"
+        "DB-60",
+        "DB-61",
+        "DB-62"
       ],
       "verification": [
         "RUN-TRANSACTION-RECOVERY",
@@ -281,7 +293,7 @@
     {
       "id": "CAP-16",
       "name": "Roadmap and dependency management",
-      "behavior": "Maps P0–P5, D0–D5, DOC-P0–P5, blockers, and provider-consumer exit gates without inventing delivery metrics.",
+      "behavior": "Maps P0\u2013P5, D0\u2013D5, DOC-P0\u2013P5, blockers, and provider-consumer exit gates without inventing delivery metrics.",
       "implementation": "implemented",
       "code": ["docs/implementation-plan.md", "docs/collaboration/delivery-workflow.md"],
       "scenarios": ["SALE-002", "REL-001"],

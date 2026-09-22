@@ -24,7 +24,10 @@ match. A projection at H can validly be `MATCH` and `PROJECTION_LAGGING` while h
 The current implementation reads anchored `saleCount` and checks every Sale ID, reads every claim
 getter in that canonical range, and independently enumerates every projected claim row. Missing,
 changed, extra, or orphan claims therefore produce `MISMATCH`. It then reads anchored `nextTokenId`
-and checks every minted token owner. Unavailable historical reads still produce `UNVERIFIABLE`.
+and checks every minted token owner using the full `(deployment, collection, token)` identity. Only
+the manifest NFT collection can satisfy `ownerOf`; another collection is reported as
+`UNEXPECTED_COLLECTION`, even when the expected row also exists. Rows from another deployment do
+not enter the comparison. Unavailable historical reads still produce `UNVERIFIABLE`.
 
 The stored report owns its historical `logScopeHash`. In `GET /v1/system/reconciliation`, that value
 is returned in `data.logScopeHash`; the response envelope's `provenance.logScopeHash` describes the
