@@ -206,9 +206,7 @@
     },
     {
       "id": "RUN-ARCHITECTURE",
-      "scenarios": [
-        "ARCH-001"
-      ],
+      "scenarios": ["ARCH-001"],
       "level": "LOCAL-TEST",
       "command": "pnpm check:architecture",
       "workingDirectory": "workspace root",
@@ -219,9 +217,7 @@
     },
     {
       "id": "RUN-GENERATE-CHECK",
-      "scenarios": [
-        "REL-001"
-      ],
+      "scenarios": ["REL-001"],
       "level": "LOCAL-TEST",
       "command": "pnpm generate:check",
       "workingDirectory": "workspace root",
@@ -270,12 +266,7 @@
     },
     {
       "id": "RUN-DOCS-CHECK",
-      "scenarios": [
-        "DOC-27",
-        "DOC-28",
-        "DOC-30",
-        "DOC-31"
-      ],
+      "scenarios": ["DOC-27", "DOC-28", "DOC-30", "DOC-31"],
       "level": "LOCAL-TEST",
       "command": "pnpm docs:check",
       "workingDirectory": "workspace root",
@@ -286,10 +277,7 @@
     },
     {
       "id": "RUN-WEB-COMPONENT",
-      "scenarios": [
-        "TX-001",
-        "TX-004"
-      ],
+      "scenarios": ["TX-001", "TX-004"],
       "level": "LOCAL-TEST",
       "command": "pnpm test:components",
       "workingDirectory": "workspace root",
@@ -386,9 +374,7 @@
     },
     {
       "id": "RUN-R18-FOCUSED",
-      "scenarios": [
-        "TX-006"
-      ],
+      "scenarios": ["TX-006"],
       "level": "LOCAL-TEST",
       "command": "pnpm exec vitest run apps/web/src/integrations/persistence/browser-observation-coordinator.test.ts apps/web/src/integrations/evm/TransactionObserver.coordination.test.tsx apps/web/src/integrations/evm/TransactionObserver.test.tsx apps/web/src/capabilities/transactions/recovery.test.ts; pnpm test:e2e",
       "workingDirectory": "workspace root",
@@ -398,13 +384,9 @@
       "executedAt": "2026-09-22T16:44:21Z"
     },
 
-{
+    {
       "id": "RUN-CI",
-      "scenarios": [
-        "REL-001",
-        "ARCH-001",
-        "TX-006"
-      ],
+      "scenarios": ["REL-001", "ARCH-001", "TX-006"],
       "level": "REMOTE-CI",
       "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35755484686)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
