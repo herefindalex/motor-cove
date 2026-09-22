@@ -29,9 +29,6 @@ export async function createApp(
     }
   });
   app.get('/v1/config', async () => config);
-  await app.register(salesRoutes(reader, config.deploymentId));
-  await app.register(vehicleRoutes(reader));
-  await app.register(systemRoutes(reader));
   app.setErrorHandler((error, request, reply) => {
     request.log.error({ err: error, requestId: request.id }, 'request failed');
     const message = error instanceof Error ? error.message : String(error);
@@ -44,5 +41,9 @@ export async function createApp(
       },
     });
   });
+  await app.register(salesRoutes(reader, config.deploymentId));
+  await app.register(vehicleRoutes(reader));
+  await app.register(systemRoutes(reader));
+
   return app;
 }

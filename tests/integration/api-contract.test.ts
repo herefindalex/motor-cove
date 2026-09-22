@@ -1,6 +1,6 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import type { ReadModelReader } from '../../packages/database/src/reader/index.js';
-import { publicConfigSchema } from '../../packages/api-contracts/src/index.js';
+import { publicConfigSchema, uint256Max } from '../../packages/api-contracts/src/index.js';
 import { createOpenApiDocument } from '../../packages/api-contracts/src/openapi.js';
 import { createApp } from '../../apps/api/src/app/create-app.js';
 
@@ -32,6 +32,23 @@ const sale = {
 const snapshot = <T>(data: T) => ({ data, provenance });
 
 const reader: ReadModelReader = {
+  deploymentDescriptor: () => ({
+    deploymentId,
+    chainId: '31337',
+    nftAddress: `0x${'4'.repeat(40)}`,
+    escrowAddress: `0x${'5'.repeat(40)}`,
+    protocolVersion: '0.1.0',
+    abiBundleHash: `0x${'6'.repeat(64)}`,
+    scanStartBlock: 1,
+    nftDeploymentBlock: 1,
+    nftDeploymentHash: blockHash,
+    nftRuntimeCodeHash: `0x${'7'.repeat(64)}`,
+    escrowDeploymentBlock: 2,
+    escrowDeploymentHash: blockHash,
+    escrowRuntimeCodeHash: `0x${'8'.repeat(64)}`,
+    manifestHash: `0x${'9'.repeat(64)}`,
+    manifestJson: '{}',
+  }),
   listSales: () => snapshot([sale]),
   getSale: (saleId) => snapshot(saleId === '1' ? sale : null),
   observeFunding: (saleId, selector) =>
@@ -39,6 +56,8 @@ const reader: ReadModelReader = {
       sale: saleId === '1' ? { ...sale, status: 'FUNDED' as const, buyer: seller } : null,
       freshness: {
         projectionStatus: 'CURRENT',
+        observationFreshness: 'FRESH',
+        observationAgeSeconds: '1',
         lastObservedHead: '7',
         lagBlocks: '0',
         lastObservedAt: '2026-09-21T00:00:00.000Z',
@@ -83,6 +102,8 @@ const reader: ReadModelReader = {
   systemStatus: () =>
     snapshot({
       projectionStatus: 'CURRENT',
+      observationFreshness: 'FRESH',
+      observationAgeSeconds: '1',
       lastObservedHead: '7',
       lagBlocks: '0',
       lastObservedAt: '2026-09-21T00:00:00.000Z',
@@ -131,6 +152,33 @@ describe('API wire contracts', () => {
     const missing = await app.inject({ method: 'GET', url: '/v1/sales/999' });
     expect(missing.statusCode).toBe(404);
     expect(missing.json()).toMatchObject({ error: { code: 'SALE_NOT_FOUND' } });
+
+    const maximumMissing = await app.inject({
+      method: 'GET',
+      url: `/v1/sales/${uint256Max}`,
+    });
+    expect(maximumMissing.statusCode).toBe(404);
+
+    const overflow = await app.inject({
+      method: 'GET',
+      url: `/v1/sales/${uint256Max + 1n}`,
+    });
+    expect(overflow.statusCode).toBe(400);
+    expect(overflow.json()).toMatchObject({ error: { code: 'INVALID_SALE_ID' } });
+  });
+
+  it('keeps internal reader failures as 500 errors', async () => {
+    const failingReader: ReadModelReader = {
+      ...reader,
+      getSale: vi.fn(() => {
+        throw new Error('DATABASE_INTEGRITY_FAILURE');
+      }),
+    };
+    const failingApp = await createApp(failingReader, config);
+    const response = await failingApp.inject({ method: 'GET', url: '/v1/sales/1' });
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toMatchObject({ error: { code: 'INTERNAL_ERROR' } });
+    await failingApp.close();
   });
 
   it('validates and returns a selector-scoped funding observation', async () => {
@@ -159,6 +207,23 @@ describe('API wire contracts', () => {
     });
     expect(partial.statusCode).toBe(400);
     expect(partial.json()).toMatchObject({ error: { code: 'INVALID_OBSERVATION_SELECTOR' } });
+
+    query.set('observeBlockNumber', String(Number.MAX_SAFE_INTEGER + 1));
+    const unsafeBlock = await app.inject({ method: 'GET', url: `/v1/sales/1?${query}` });
+    expect(unsafeBlock.statusCode).toBe(400);
+    expect(unsafeBlock.json()).toMatchObject({
+      error: { code: 'INVALID_OBSERVATION_SELECTOR' },
+    });
+    query.set('observeBlockNumber', 'not-a-number');
+    const malformedBlock = await app.inject({
+      method: 'GET',
+      url: `/v1/sales/1?${query}`,
+    });
+    expect(malformedBlock.statusCode).toBe(400);
+    expect(malformedBlock.json()).toMatchObject({
+      error: { code: 'INVALID_OBSERVATION_SELECTOR' },
+    });
+    query.set('observeBlockNumber', '7');
 
     query.set('deploymentId', `0x${'9'.repeat(64)}`);
     const wrongDeployment = await app.inject({ method: 'GET', url: `/v1/sales/1?${query}` });

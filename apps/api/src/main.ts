@@ -22,5 +22,10 @@ const manifest = deploymentManifestSchema.parse(
     ),
   ),
 );
-const reader = await createReadOnlyReader(environment, manifest.deploymentId);
+const heartbeatStaleAfterMs = process.env.MOTORCOVE_WORKER_HEARTBEAT_STALE_AFTER_MS;
+const reader = await createReadOnlyReader(environment, manifest.deploymentId, {
+  ...(heartbeatStaleAfterMs === undefined
+    ? {}
+    : { heartbeatStaleAfterMs: Number(heartbeatStaleAfterMs) }),
+});
 await startApi(reader, manifest, { host, port });

@@ -25,3 +25,7 @@ The current implementation reads anchored `saleCount` and checks every Sale ID, 
 getter in that canonical range, and independently enumerates every projected claim row. Missing,
 changed, extra, or orphan claims therefore produce `MISMATCH`. It then reads anchored `nextTokenId`
 and checks every minted token owner. Unavailable historical reads still produce `UNVERIFIABLE`.
+
+The stored report owns its historical `logScopeHash`. In `GET /v1/system/reconciliation`, that value
+is returned in `data.logScopeHash`; the response envelope's `provenance.logScopeHash` describes the
+current read snapshot. A scope transition may make them different without rewriting the report.

@@ -1,4 +1,4 @@
-import { fundingObservationQuerySchema } from '@motorcove/api-contracts';
+import { fundingObservationQuerySchema, uint256DecimalString } from '@motorcove/api-contracts';
 import type { FastifyPluginAsync } from 'fastify';
 import { getSaleDetail } from './get-sale-detail.js';
 import { listSales } from './list-sales.js';
@@ -20,11 +20,11 @@ export const salesRoutes =
     app.get<{ Params: { saleId: string }; Querystring: SaleObservationQuery }>(
       '/v1/sales/:saleId',
       async (request, reply) => {
-        if (!/^(0|[1-9]\d*)$/.test(request.params.saleId))
+        if (!uint256DecimalString.safeParse(request.params.saleId).success)
           return reply.code(400).send({
             error: {
               code: 'INVALID_SALE_ID',
-              message: 'Sale ID must be an unsigned decimal integer',
+              message: 'Sale ID must be a uint256 decimal integer',
               requestId: request.id,
             },
           });

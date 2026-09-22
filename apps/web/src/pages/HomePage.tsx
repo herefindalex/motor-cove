@@ -15,6 +15,7 @@ import {
 } from '../capabilities/transactions/index.js';
 import { parseEth } from '../features/trading/index.js';
 import { useChainTime } from '../integrations/evm/use-chain-time.js';
+import { presentProjectionHealth } from '../features/diagnostics/index.js';
 
 export function HomePage() {
   const configQuery = useQuery({ queryKey: ['config'], queryFn: motorCoveApi.config });
@@ -102,13 +103,15 @@ export function HomePage() {
     latestIncludedBlock !== null &&
     indexedBlock !== undefined &&
     latestIncludedBlock > BigInt(indexedBlock);
-  const projectionStatus = receiptAheadOfProjection
-    ? 'STALE'
-    : (systemQuery.data?.data.projectionStatus ?? 'SYNCING');
   const receiptLag =
     receiptAheadOfProjection && indexedBlock !== undefined
       ? String(latestIncludedBlock - BigInt(indexedBlock))
       : null;
+  const projectionHealth = presentProjectionHealth(
+    systemQuery.data?.data,
+    indexedBlock,
+    receiptLag,
+  );
   const activeTokens = new Set(
     sales
       .filter((sale) => !sale.tokenReclaimed && sale.status !== 'COMPLETED')
@@ -146,17 +149,9 @@ export function HomePage() {
         actions={actions}
         currentTimestamp={chainTime}
         provenance={
-          projectionStatus === 'CURRENT' ? (
-            <span className="provenance">
-              Indexed block {salesQuery.data?.provenance.indexedBlockNumber ?? '…'}
-            </span>
-          ) : (
-            <span className="notice">
-              Projection {projectionStatus} · indexed{' '}
-              {salesQuery.data?.provenance.indexedBlockNumber ?? '…'} · lag{' '}
-              {receiptLag ?? systemQuery.data?.data.lagBlocks ?? 'unknown'}
-            </span>
-          )
+          <span className={projectionHealth.healthy ? 'provenance' : 'notice'}>
+            {projectionHealth.text}
+          </span>
         }
       />
       <MyAssets

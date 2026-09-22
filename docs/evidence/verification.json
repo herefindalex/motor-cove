@@ -1,18 +1,27 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "24c1c3e61262fa9dff2d6876105d903f32cac396",
+    "revision": "fa1f14e2c4336bedf2dbd4639944fe1223824dc4",
     "dirty": true,
-    "capturedAt": "2026-09-22T00:29:23.531Z",
-    "sourceFingerprint": "sha256:495bf6406ce05420a36e615d72993cba3fc15864e9fc2aac80c342638204d01f",
+    "capturedAt": "2026-09-22T01:22:21.115Z",
+    "sourceFingerprint": "sha256:1b9e0ac2b63cf48a2c3861a252187066040a1d3fe05c07ffffd5ac6dc4854b09",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Captured from the uncommitted R4 working tree identified by this source fingerprint. Local loopback Anvil, SQLite, Foundry, Vitest, and Playwright were exercised. No public network, real user wallet, user database, commit, push, or current-revision remote CI was used.",
+    "limits": "Captured from the uncommitted R5 working tree. Local deterministic Anvil, SQLite, Fastify, JSDOM, and Playwright evidence does not establish public-network behavior, hardware power-loss durability, broad wallet-provider compatibility, or an external security audit.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, and NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
     {
       "id": "RUN-DB-MIGRATIONS",
-      "scenarios": ["DB-01", "DB-02", "DB-04", "DB-05", "DB-06", "DB-07", "DB-08", "DB-09"],
+      "scenarios": [
+        "DB-01",
+        "DB-02",
+        "DB-04",
+        "DB-05",
+        "DB-06",
+        "DB-07",
+        "DB-08",
+        "DB-09"
+      ],
       "level": "DB-TEST",
       "command": "pnpm test:migrations",
       "workingDirectory": "workspace root",
@@ -50,7 +59,12 @@
     },
     {
       "id": "RUN-DB-SEEDS",
-      "scenarios": ["DB-23", "DB-24", "DB-25", "DB-29"],
+      "scenarios": [
+        "DB-23",
+        "DB-24",
+        "DB-25",
+        "DB-29"
+      ],
       "level": "DB-TEST",
       "command": "pnpm test:seeds",
       "workingDirectory": "workspace root",
@@ -61,7 +75,11 @@
     },
     {
       "id": "RUN-DB-RECOVERY",
-      "scenarios": ["DB-47", "DB-48", "DB-50"],
+      "scenarios": [
+        "DB-47",
+        "DB-48",
+        "DB-50"
+      ],
       "level": "DB-TEST",
       "command": "pnpm test:recovery",
       "workingDirectory": "workspace root",
@@ -72,7 +90,13 @@
     },
     {
       "id": "RUN-CONTRACTS",
-      "scenarios": ["SALE-001", "SALE-002", "SALE-003", "SALE-004", "SALE-005"],
+      "scenarios": [
+        "SALE-001",
+        "SALE-002",
+        "SALE-003",
+        "SALE-004",
+        "SALE-005"
+      ],
       "level": "LOCAL-TEST",
       "command": "forge test --root chain",
       "workingDirectory": "workspace root",
@@ -97,9 +121,9 @@
       "command": "pnpm test:e2e",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "6 Playwright scenarios passed, including four real local marketplace recovery flows and two real Chromium multi-tab journal cases; graceful harness teardown completed",
+      "result": "6 Playwright scenarios passed, including local marketplace and wallet recovery, real Chromium multi-tab journal coordination, and a fresh no-journal context that reports a stopped Indexer observation as stale while the API remains available",
       "limitations": "Wallet fault injection uses a controlled EIP-1193 adapter. Manual MetaMask and cross-device journal behavior are not verified.",
-      "executedAt": "2026-09-22T00:29:23.531Z"
+      "executedAt": "2026-09-22T01:22:21.115Z"
     },
     {
       "id": "RUN-INTEGRATION",
@@ -137,79 +161,106 @@
       "command": "pnpm test:integration",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "10 files, 39 tests passed across real SQLite, API, local Anvil, bootstrap process ownership, replay/reindex, orphan-claim reconciliation, projector rollback, replacement/reorg, process-kill recovery, restore catch-up, and transaction convergence",
+      "result": "11 files, 46 tests passed across real SQLite, Fastify reader contracts, local Anvil, bootstrap process ownership, replay/reindex, orphan-claim reconciliation, projector rollback, replacement/reorg, process-kill recovery, restore catch-up, transaction convergence, historical report scope, and heartbeat freshness",
       "limitations": "Local deterministic Anvil and ordinary process termination only; public-network finality, unavailable archive history, hardware power loss, and full host-filesystem faults remain unverified.",
-      "executedAt": "2026-09-22T00:26:37.341Z"
+      "executedAt": "2026-09-22T01:22:21.115Z"
     },
     {
       "id": "RUN-INDEXER-UNIT",
-      "scenarios": ["TX-001", "TX-002", "IDX-001", "IDX-002"],
+      "scenarios": [
+        "TX-001",
+        "TX-002",
+        "IDX-001",
+        "IDX-002"
+      ],
       "level": "LOCAL-TEST",
       "command": "pnpm test:unit",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "30 files, 188 unit, component, migration, database, seed, recovery, API deployment startup, projector prerequisite, transport, receipt-observation, journal-locking, and graceful polling tests passed",
+      "result": "32 files, 203 unit, component, migration, database, seed, recovery, API, exact-amount, observation-freshness, projector, transport, receipt-observation, journal-locking, and graceful polling tests passed",
       "limitations": "Includes controlled wallet, journal, database, migration, seed, recovery, RPC, and documentation tests; manual provider behavior is separate.",
-      "executedAt": "2026-09-22T00:26:37.341Z"
+      "executedAt": "2026-09-22T01:22:21.115Z"
     },
     {
       "id": "RUN-API-CONTRACT",
-      "scenarios": ["SALE-002", "ARCH-001"],
+      "scenarios": [
+        "SALE-002",
+        "ARCH-001"
+      ],
       "level": "LOCAL-TEST",
-      "command": "pnpm vitest run tests/integration/api-contract.test.ts",
+      "command": "pnpm vitest run tests/integration/api-contract.test.ts tests/integration/api-reader-contract.test.ts",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "1 file, 12 tests passed, including full/partial funding selector and deployment mismatch behavior",
-      "limitations": "Readonly local API contract; no authentication or pagination contract is in scope.",
-      "executedAt": "2026-09-21T11:03:32.802Z"
+      "result": "2 files, 17 tests passed for public wire schemas, canonical uint256 sale IDs, stable 400/404/500 boundaries, safe block selectors, historical reconciliation scope, and stale/fresh/recovery observation semantics",
+      "limitations": "Read-only local Fastify and SQLite contract; no authentication, pagination, or public endpoint load claim.",
+      "executedAt": "2026-09-22T01:22:21.115Z"
     },
     {
       "id": "RUN-ARCHITECTURE",
-      "scenarios": ["ARCH-001"],
+      "scenarios": [
+        "ARCH-001"
+      ],
       "level": "LOCAL-TEST",
       "command": "pnpm check:architecture",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "146 source files validated and 8 negative fixtures rejected, including recovery-to-wallet-write and capability-to-adapter dependency violations",
+      "result": "149 source files validated and 8 negative fixtures rejected, including recovery-to-wallet-write and capability-to-adapter dependency violations",
       "limitations": "Static source imports only; runtime process behavior is verified separately.",
-      "executedAt": "2026-09-22T00:26:37.341Z"
+      "executedAt": "2026-09-22T01:22:21.115Z"
     },
     {
       "id": "RUN-GENERATE-CHECK",
-      "scenarios": ["REL-001"],
+      "scenarios": [
+        "REL-001"
+      ],
       "level": "LOCAL-TEST",
       "command": "pnpm generate:check",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generated ABI, OpenAPI, schema metadata, and artifacts matched providers",
+      "result": "Generated ABI, OpenAPI freshness fields, uint256 route metadata, schema metadata, and artifacts matched providers",
       "limitations": "No released third-party consumer or prior protocol version exists.",
-      "executedAt": "2026-09-21T15:19:50Z"
+      "executedAt": "2026-09-22T01:22:21.115Z"
     },
     {
       "id": "RUN-WORKSPACE-VERIFY",
-      "scenarios": ["SALE-002", "TX-001", "TX-002", "IDX-002", "IDX-003", "ARCH-001", "REL-001"],
+      "scenarios": [
+        "SALE-002",
+        "TX-001",
+        "TX-002",
+        "IDX-002",
+        "IDX-003",
+        "ARCH-001",
+        "REL-001"
+      ],
       "level": "LOCAL-TEST",
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generation and database checks, formatting, documentation, architecture, type checking, lint, 13 Foundry tests, 188 unit/component/database tests, 39 integration tests, and all 7 workspace builds passed",
+      "result": "Generation and database checks, formatting, documentation, architecture, type checking, lint, 13 Foundry tests, 203 unit/component/database tests, 46 integration tests, and all 7 workspace builds passed",
       "limitations": "The gate does not establish manual MetaMask behavior, public-network safety, branch protection, hardware power-loss durability, or cross-device journal coordination.",
-      "executedAt": "2026-09-22T00:26:37.341Z"
+      "executedAt": "2026-09-22T01:22:21.115Z"
     },
     {
       "id": "RUN-DOCS-CHECK",
-      "scenarios": ["DOC-27", "DOC-28", "DOC-30", "DOC-31"],
+      "scenarios": [
+        "DOC-27",
+        "DOC-28",
+        "DOC-30",
+        "DOC-31"
+      ],
       "level": "LOCAL-TEST",
       "command": "pnpm docs:check",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
       "result": "18 capabilities and 48 commands generated; workspace evidence, public reachability, bilingual parity, and 8 negative fixtures passed",
       "limitations": "Mermaid visual rendering and independent contributor onboarding remain manual checks.",
-      "executedAt": "2026-09-22T00:26:37.341Z"
+      "executedAt": "2026-09-22T01:22:21.115Z"
     },
     {
       "id": "RUN-WEB-COMPONENT",
-      "scenarios": ["TX-001"],
+      "scenarios": [
+        "TX-001"
+      ],
       "level": "LOCAL-TEST",
       "command": "pnpm test:components",
       "workingDirectory": "workspace root",
@@ -220,7 +271,11 @@
     },
     {
       "id": "RUN-CHAIN-SEED-JOURNAL",
-      "scenarios": ["DB-26", "DB-27", "DB-28"],
+      "scenarios": [
+        "DB-26",
+        "DB-27",
+        "DB-28"
+      ],
       "level": "LOCAL-TEST",
       "command": "pnpm vitest run apps/indexer/src/cli/chain-seed-journal.test.ts",
       "workingDirectory": "workspace root",
@@ -231,7 +286,12 @@
     },
     {
       "id": "RUN-TRANSACTION-RECOVERY",
-      "scenarios": ["SALE-002", "TX-001", "TX-002", "ARCH-001"],
+      "scenarios": [
+        "SALE-002",
+        "TX-001",
+        "TX-002",
+        "ARCH-001"
+      ],
       "level": "LOCAL-TEST",
       "command": "pnpm vitest run apps/web/src/capabilities/transactions/recovery.test.ts apps/web/src/capabilities/transactions/submit-operation.test.ts apps/web/src/integrations/evm/inspect-transaction.test.ts apps/web/src/integrations/persistence/local-storage-journal.test.ts apps/web/src/capabilities/transactions/ui/TransactionTimeline.test.tsx apps/web/src/capabilities/transactions/ui/SubmissionNotice.test.tsx apps/web/src/pages/transaction-surfaces.test.tsx",
       "workingDirectory": "workspace root",
@@ -242,7 +302,9 @@
     },
     {
       "id": "RUN-INDEXER-KILL",
-      "scenarios": ["IDX-002"],
+      "scenarios": [
+        "IDX-002"
+      ],
       "level": "LOCAL-TEST",
       "command": "pnpm vitest run tests/integration/indexer-kill-recovery.test.ts tests/integration/projection-kill-recovery.test.ts",
       "workingDirectory": "workspace root",
@@ -260,7 +322,14 @@
       "status": "executed/pass",
       "result": "2 files, 7 tests passed for repriced/cancelled/different-call replacement, receipt orphan/reinclusion, canonical reindex, restore-behind-head catch-up, and same-address deployment reset rejection",
       "limitations": "Local deterministic Anvil only; no public-network finality, archive-provider, or manual wallet claim.",
-      "scenarios": ["TX-001", "TX-002", "IDX-003", "DB-40", "DB-41", "DB-49"]
+      "scenarios": [
+        "TX-001",
+        "TX-002",
+        "IDX-003",
+        "DB-40",
+        "DB-41",
+        "DB-49"
+      ]
     },
     {
       "id": "RUN-DB-PARALLEL",
@@ -271,19 +340,24 @@
       "status": "executed/pass",
       "result": "3 real Anvil/SQLite integration files and 6 tests passed concurrently with isolated roots, environment IDs, databases, locks, ports, deployments, and signer nonce spaces",
       "limitations": "Parallel workers share the same host and repository dependencies; the evidence is local process isolation, not cross-host isolation.",
-      "scenarios": ["DB-54"]
+      "scenarios": [
+        "DB-54"
+      ]
     },
     {
       "id": "RUN-CI",
-      "scenarios": ["REL-001", "ARCH-001"],
+      "scenarios": [
+        "REL-001",
+        "ARCH-001"
+      ],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35667161153)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35674566002)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/pass",
-      "result": "Remote verify job passed frozen dependency installation, docs smoke, pnpm verify, pnpm test:e2e, and graceful browser diagnostics handling for commit 00fbc749700e6510c8228b10a1216df8a1a073f7.",
-      "executedAt": "2026-09-21T23:26:54Z",
-      "limitations": "This remote result covers commit 00fbc749700e6510c8228b10a1216df8a1a073f7. The uncommitted R4 source fingerprint has local evidence only and has not run in remote CI.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35667161153"
+      "result": "Remote verify job passed frozen dependency installation, docs smoke, pnpm verify, pnpm test:e2e, and graceful browser diagnostics handling for the R4 commit fa1f14e2c4336bedf2dbd4639944fe1223824dc4.",
+      "executedAt": "2026-09-22T01:06:53Z",
+      "limitations": "This remote result covers the committed R4 source. The uncommitted R5 source fingerprint has local evidence only and has not run in remote CI.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35674566002"
     }
   ]
 }

@@ -72,6 +72,9 @@ Bootstrap ownership, deployment descriptor checks, complete claim reconciliation
 prerequisites are recorded in
 [bootstrap and projection integrity gates](adr/0009-bootstrap-and-projection-integrity-gates.md).
 
+Historical reconciliation scope, exact value boundaries, and worker observation freshness are
+recorded in [API values and observation freshness](adr/0010-api-values-and-observation-freshness.md).
+
 ## Evaluate current evidence
 
 - [Implementation status](implementation-status.md) and [implementation plan](implementation-plan.md)

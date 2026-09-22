@@ -382,6 +382,24 @@ test('keeps pending and included evidence across reload while projection catches
     ).toBeVisible();
     await expect(page.getByText(/Projection STALE/)).toBeVisible({ timeout: 10_000 });
 
+    const browser = page.context().browser();
+    if (!browser) throw new Error('Playwright browser is unavailable');
+    const observerContext = await browser.newContext();
+    try {
+      const observerPage = await observerContext.newPage();
+      await observerPage.goto('http://127.0.0.1:15173/');
+      await expect(
+        observerPage.getByText(
+          /Indexer observation stale .* last known projection CURRENT .* current lag unknown/,
+        ),
+      ).toBeVisible({ timeout: 10_000 });
+      await expect(observerPage.getByRole('listitem').filter({ hasText: 'FUND SALE' })).toHaveCount(
+        0,
+      );
+    } finally {
+      await observerContext.close();
+    }
+
     await page.reload();
     await expect(
       page.getByRole('listitem').filter({ hasText: 'FUND SALE' }).getByText('INCLUDED_SUCCESS'),

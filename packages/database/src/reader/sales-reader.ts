@@ -11,6 +11,7 @@ import type {
   EventRecord,
   FundingObservationRecord,
   ReadModelReader,
+  ReconciliationRecord,
   ReadSnapshot,
   SaleRecord,
   SystemRecord,
@@ -82,6 +83,8 @@ function readSystemRecord(
   db: Database.Database,
   deploymentId: string,
   provenance: ProjectionProvenance,
+  now: Date,
+  heartbeatStaleAfterMs: number,
 ): SystemRecord {
   const status = db
     .prepare(
@@ -92,15 +95,33 @@ function readSystemRecord(
        FROM indexer_runtime_status WHERE deployment_id=?`,
     )
     .get(deploymentId) as Omit<SystemRecord, 'lagBlocks'>;
+  const heartbeatTime = status.workerHeartbeatAt
+    ? Date.parse(status.workerHeartbeatAt)
+    : Number.NaN;
+  const heartbeatAgeMs = Number.isFinite(heartbeatTime)
+    ? Math.max(0, now.getTime() - heartbeatTime)
+    : null;
+  const observationFreshness =
+    heartbeatAgeMs === null
+      ? 'UNKNOWN'
+      : heartbeatAgeMs > heartbeatStaleAfterMs
+        ? 'STALE'
+        : 'FRESH';
   const lagBlocks =
-    status.lastObservedHead === null
+    observationFreshness !== 'FRESH' || status.lastObservedHead === null
       ? null
       : String(
           BigInt(status.lastObservedHead) > BigInt(provenance.indexedBlockNumber)
             ? BigInt(status.lastObservedHead) - BigInt(provenance.indexedBlockNumber)
             : 0n,
         );
-  return { ...status, lagBlocks };
+  return {
+    ...status,
+    observationFreshness,
+    observationAgeSeconds:
+      heartbeatAgeMs === null ? null : String(Math.floor(heartbeatAgeMs / 1_000)),
+    lagBlocks,
+  };
 }
 
 function parseSaleFunded(value: string): SaleFundedDecoded | null {
@@ -130,13 +151,21 @@ function parseSaleFunded(value: string): SaleFundedDecoded | null {
 
 export interface ReadObservationHooks {
   readonly afterFundingBaseRead?: () => void;
+  readonly now?: () => Date;
+  readonly heartbeatStaleAfterMs?: number;
 }
+
+export const DEFAULT_WORKER_HEARTBEAT_STALE_AFTER_MS = 30_000;
 
 export async function createReadOnlyReader(
   paths: EnvironmentPaths,
   deploymentId: string,
   hooks: ReadObservationHooks = {},
 ): Promise<ReadModelReader> {
+  const heartbeatStaleAfterMs =
+    hooks.heartbeatStaleAfterMs ?? DEFAULT_WORKER_HEARTBEAT_STALE_AFTER_MS;
+  if (!Number.isSafeInteger(heartbeatStaleAfterMs) || heartbeatStaleAfterMs <= 0)
+    throw new Error('INVALID_HEARTBEAT_STALE_THRESHOLD');
   verifyOwnedEnvironment(paths);
   const locks = await acquireRuntimeLocks(paths, false);
   try {
@@ -163,10 +192,7 @@ export async function createReadOnlyReader(
     }
 
     const snapshot = <T>(query: () => T): ReadSnapshot<T> =>
-      db.transaction(() => ({
-        data: query(),
-        provenance: readProvenance(db, deploymentId),
-      }))();
+      db.transaction(() => ({ data: query(), provenance: readProvenance(db, deploymentId) }))();
     const selectSales = `SELECT s.sale_id AS saleId,s.token_id AS tokenId,s.seller,s.buyer,
       s.price_wei AS priceWei,CAST(s.funded_at AS TEXT) AS fundedAt,
       CAST(s.expires_at AS TEXT) AS expiresAt,s.status,s.token_reclaimed AS tokenReclaimed,
@@ -227,7 +253,13 @@ export async function createReadOnlyReader(
           throw new Error('BLOCK_NUMBER_UNSAFE');
         return snapshot((): FundingObservationRecord => {
           const provenance = readProvenance(db, deploymentId);
-          const freshness = readSystemRecord(db, deploymentId, provenance);
+          const freshness = readSystemRecord(
+            db,
+            deploymentId,
+            provenance,
+            hooks.now?.() ?? new Date(),
+            heartbeatStaleAfterMs,
+          );
           const sale = readSale(saleId);
           hooks.afterFundingBaseRead?.();
           const canonicalAtHeight = db
@@ -368,7 +400,13 @@ export async function createReadOnlyReader(
       systemStatus: () =>
         snapshot(() => {
           const provenance = readProvenance(db, deploymentId);
-          return readSystemRecord(db, deploymentId, provenance);
+          return readSystemRecord(
+            db,
+            deploymentId,
+            provenance,
+            hooks.now?.() ?? new Date(),
+            heartbeatStaleAfterMs,
+          );
         }),
       recentEvents: (limit = 50) =>
         snapshot(() => {
@@ -391,14 +429,19 @@ export async function createReadOnlyReader(
         snapshot(() => {
           const row = db
             .prepare(
-              'SELECT comparison,freshness,CAST(block_number AS TEXT) AS blockNumber,block_hash AS blockHash,projector_version AS projectorVersion,projection_build_id AS projectionBuildId,scope_json AS scope,differences_json AS differences,created_at AS createdAt FROM reconciliation_runs WHERE deployment_id=? ORDER BY created_at DESC LIMIT 1',
+              'SELECT comparison,freshness,CAST(block_number AS TEXT) AS blockNumber,block_hash AS blockHash,projector_version AS projectorVersion,projection_build_id AS projectionBuildId,log_scope_hash AS logScopeHash,scope_json AS scope,differences_json AS differences,created_at AS createdAt FROM reconciliation_runs WHERE deployment_id=? ORDER BY created_at DESC LIMIT 1',
             )
-            .get(deploymentId) as Record<string, unknown> | undefined;
+            .get(deploymentId) as
+            | (Omit<ReconciliationRecord, 'scope' | 'differences'> & {
+                scope: string;
+                differences: string;
+              })
+            | undefined;
           return row
             ? {
                 ...row,
-                scope: JSON.parse(String(row['scope'])) as unknown,
-                differences: JSON.parse(String(row['differences'])) as unknown,
+                scope: JSON.parse(row.scope) as unknown,
+                differences: JSON.parse(row.differences) as unknown,
               }
             : null;
         }),

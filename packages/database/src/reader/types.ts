@@ -35,6 +35,8 @@ export interface VehicleRecord {
 }
 export interface SystemRecord {
   readonly projectionStatus: string;
+  readonly observationFreshness: 'FRESH' | 'STALE' | 'UNKNOWN';
+  readonly observationAgeSeconds: string | null;
   readonly lastObservedHead: string | null;
   readonly lagBlocks: string | null;
   readonly lastObservedAt: string | null;
@@ -43,6 +45,18 @@ export interface SystemRecord {
   readonly recoveryReason: string | null;
 }
 
+export interface ReconciliationRecord {
+  readonly comparison: 'MATCH' | 'MISMATCH' | 'UNVERIFIABLE';
+  readonly freshness: 'CURRENT' | 'PROJECTION_LAGGING' | 'HEAD_UNKNOWN';
+  readonly blockNumber: string | null;
+  readonly blockHash: string | null;
+  readonly projectorVersion: string;
+  readonly projectionBuildId: string;
+  readonly logScopeHash: string;
+  readonly scope: unknown;
+  readonly differences: unknown;
+  readonly createdAt: string;
+}
 export interface EventRecord {
   readonly blockNumber: string;
   readonly blockHash: string;
@@ -118,6 +132,6 @@ export interface ReadModelReader {
   listVehicles(): ReadSnapshot<readonly VehicleRecord[]>;
   systemStatus(): ReadSnapshot<SystemRecord>;
   recentEvents(limit?: number): ReadSnapshot<readonly EventRecord[]>;
-  latestReconciliation(): ReadSnapshot<unknown>;
+  latestReconciliation(): ReadSnapshot<ReconciliationRecord | null>;
   close(): Promise<void>;
 }

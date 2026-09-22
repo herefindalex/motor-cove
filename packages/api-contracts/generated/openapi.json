@@ -123,7 +123,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^(0|[1-9]\\d*)$"
+              "pattern": "^(0|[1-9]\\d*)$",
+              "maxLength": 78,
+              "description": "Canonical decimal uint256"
             }
           },
           {
@@ -872,6 +874,25 @@
                       "RECOVERY_REQUIRED"
                     ]
                   },
+                  "observationFreshness": {
+                    "type": "string",
+                    "enum": [
+                      "FRESH",
+                      "STALE",
+                      "UNKNOWN"
+                    ]
+                  },
+                  "observationAgeSeconds": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^(0|[1-9]\\d*)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "lastObservedHead": {
                     "anyOf": [
                       {
@@ -921,6 +942,8 @@
                 },
                 "required": [
                   "projectionStatus",
+                  "observationFreshness",
+                  "observationAgeSeconds",
                   "lastObservedHead",
                   "lagBlocks",
                   "lastObservedAt",
@@ -1519,6 +1542,25 @@
                   "RECOVERY_REQUIRED"
                 ]
               },
+              "observationFreshness": {
+                "type": "string",
+                "enum": [
+                  "FRESH",
+                  "STALE",
+                  "UNKNOWN"
+                ]
+              },
+              "observationAgeSeconds": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^(0|[1-9]\\d*)$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "lastObservedHead": {
                 "anyOf": [
                   {
@@ -1568,6 +1610,8 @@
             },
             "required": [
               "projectionStatus",
+              "observationFreshness",
+              "observationAgeSeconds",
               "lastObservedHead",
               "lagBlocks",
               "lastObservedAt",

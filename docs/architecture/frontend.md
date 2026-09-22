@@ -46,6 +46,11 @@ the `EscrowGateway` port. `use-escrow-gateway.ts` simulates and submits with gen
 the transaction capability records immutable account, chain, deployment, contract, value, action,
 and calldata summary before opening the wallet.
 
+Marketplace prices use the trading feature's bigint formatter. It emits an exact ETH decimal from
+wei, including values below one milli-ether and remainders smaller than a display unit. The value
+passed to `MarketActions.fund` remains the original decimal wei string. UI code must not use
+`Number`, `parseFloat`, or integer milli-ether division for this boundary.
+
 ## State ownership across page and wallet changes
 
 - Component-local state owns form input, disclosure, and the immediate feedback message.

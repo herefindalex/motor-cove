@@ -1,6 +1,17 @@
 import { z } from 'zod';
 
 export const decimalString = z.string().regex(/^(0|[1-9]\d*)$/);
+export const uint256Max = (1n << 256n) - 1n;
+export const uint256DecimalString = z
+  .string()
+  .refine(
+    (value) => /^(0|[1-9]\d*)$/.test(value) && BigInt(value) <= uint256Max,
+    'Value must be a canonical decimal uint256',
+  );
+export const safeBlockNumberString = uint256DecimalString.refine(
+  (value) => /^(0|[1-9]\d*)$/.test(value) && BigInt(value) <= BigInt(Number.MAX_SAFE_INTEGER),
+  'Block number exceeds the supported safe integer range',
+);
 export const hexAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 export const bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
 
@@ -62,6 +73,8 @@ export const responseEnvelope = <T extends z.ZodType>(data: T) =>
 
 export const systemStatusSchema = z.object({
   projectionStatus: projectionStatusSchema,
+  observationFreshness: z.enum(['FRESH', 'STALE', 'UNKNOWN']),
+  observationAgeSeconds: decimalString.nullable(),
   lastObservedHead: decimalString.nullable(),
   lagBlocks: decimalString.nullable(),
   lastObservedAt: z.string().nullable(),
@@ -123,7 +136,7 @@ export type SystemStatus = z.infer<typeof systemStatusSchema>;
 export const fundingObservationQuerySchema = z.object({
   deploymentId: bytes32,
   observeTxHash: bytes32,
-  observeBlockNumber: decimalString,
+  observeBlockNumber: safeBlockNumberString,
   observeBlockHash: bytes32,
   observeLogIndex: z.coerce.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
 });

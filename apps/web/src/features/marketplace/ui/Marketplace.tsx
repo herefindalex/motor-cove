@@ -1,5 +1,6 @@
 import type { SaleResponse } from '@motorcove/api-contracts';
 import type { ReactNode } from 'react';
+import { formatWeiAsEth } from '../../trading/index.js';
 
 interface Vehicle {
   tokenId: string | null;
@@ -68,7 +69,7 @@ export function Marketplace({
                   <p>{vehicle?.description}</p>
                   <dl>
                     <dt>Price</dt>
-                    <dd>{(BigInt(sale.priceWei) / 10n ** 15n).toString()} mETH</dd>
+                    <dd>{formatWeiAsEth(sale.priceWei)}</dd>
                     <dt>Seller</dt>
                     <dd>
                       <code>{sale.seller.slice(0, 8)}…</code>

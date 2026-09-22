@@ -59,7 +59,12 @@ export function createOpenApiDocument(): Record<string, unknown> {
               name: 'saleId',
               in: 'path',
               required: true,
-              schema: { type: 'string', pattern: '^(0|[1-9]\\d*)$' },
+              schema: {
+                type: 'string',
+                pattern: '^(0|[1-9]\\d*)$',
+                maxLength: 78,
+                description: 'Canonical decimal uint256',
+              },
             },
             {
               name: 'deploymentId',
