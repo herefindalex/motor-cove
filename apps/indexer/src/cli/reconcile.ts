@@ -33,12 +33,28 @@ try {
   const differences: Array<Record<string, unknown>> = [];
   let lastSaleId: string | null = null;
   let lastTokenId: string | null = null;
+  let paymentClaimsScope: {
+    firstSaleId: string | null;
+    lastSaleId: string | null;
+    projectedRows: number | null;
+    coverage: string;
+  } = {
+    firstSaleId: null,
+    lastSaleId: null,
+    projectedRows: null,
+    coverage: 'UNVERIFIED',
+  };
   try {
     const before = await client.getBlock({ blockNumber });
     if (before.hash !== checkpoint.blockHash) throw new Error('ANCHOR_HASH_MISMATCH');
     const sales = db
       .prepare(
         'SELECT sale_id AS saleId,token_id AS tokenId,seller,buyer,price_wei AS priceWei,CAST(funded_at AS TEXT) AS fundedAt,CAST(expires_at AS TEXT) AS expiresAt,status,token_reclaimed AS tokenReclaimed FROM sales WHERE deployment_id=? ORDER BY length(sale_id),sale_id',
+      )
+      .all(config.manifest.deploymentId) as Array<Record<string, unknown>>;
+    const claims = db
+      .prepare(
+        'SELECT sale_id AS saleId,beneficiary,amount_wei AS amountWei,kind,status FROM payment_claims WHERE deployment_id=? ORDER BY length(sale_id),sale_id',
       )
       .all(config.manifest.deploymentId) as Array<Record<string, unknown>>;
     const saleCount = await client.readContract({
@@ -50,6 +66,12 @@ try {
     if (saleCount > BigInt(Number.MAX_SAFE_INTEGER))
       throw new Error('RECONCILIATION_SCOPE_TOO_LARGE');
     lastSaleId = String(saleCount);
+    paymentClaimsScope = {
+      firstSaleId: saleCount === 0n ? null : '1',
+      lastSaleId,
+      projectedRows: claims.length,
+      coverage: 'CANONICAL_SALE_RANGE_AND_EXTRA_ROWS',
+    };
     const projectedSaleIds = new Set(sales.map((sale) => String(sale.saleId)));
     for (let saleId = 1n; saleId <= saleCount; saleId += 1n) {
       const canonicalSaleId = String(saleId);
@@ -91,11 +113,21 @@ try {
             projected: projected[field],
             chain: value,
           });
-      const projectedClaim = db
-        .prepare(
-          'SELECT beneficiary, amount_wei AS amountWei, kind, status FROM payment_claims WHERE deployment_id=? AND sale_id=?',
-        )
-        .get(config.manifest.deploymentId, String(saleId)) as Record<string, unknown> | undefined;
+    }
+    const projectedClaims = new Map(
+      claims.map((claim) => [
+        String(claim.saleId),
+        {
+          beneficiary: claim.beneficiary,
+          amountWei: claim.amountWei,
+          kind: claim.kind,
+          status: claim.status,
+        },
+      ]),
+    );
+    for (let saleId = 1n; saleId <= saleCount; saleId += 1n) {
+      const canonicalSaleId = String(saleId);
+      const projectedClaim = projectedClaims.get(canonicalSaleId);
       const chainClaim = await client.readContract({
         address: config.manifest.escrow.address as Address,
         abi: motorCoveEscrowAbi,
@@ -114,11 +146,21 @@ try {
             };
       if (JSON.stringify(projectedClaim) !== JSON.stringify(expectedClaim))
         differences.push({
-          saleId: String(saleId),
+          saleId: canonicalSaleId,
           field: 'paymentClaim',
           projected: projectedClaim ?? null,
           chain: expectedClaim ?? null,
         });
+      projectedClaims.delete(canonicalSaleId);
+    }
+    for (const [saleId, projectedClaim] of projectedClaims) {
+      differences.push({
+        saleId,
+        field: 'paymentClaim',
+        difference: 'EXTRA_PROJECTED_ROW',
+        projected: projectedClaim,
+        chain: null,
+      });
     }
     const owners = db
       .prepare(
@@ -186,7 +228,7 @@ try {
     logScopeHash: checkpoint.logScopeHash,
     scope: {
       sales: { firstSaleId: '1', lastSaleId },
-      paymentClaims: true,
+      paymentClaims: paymentClaimsScope,
       tokenOwnership: { firstTokenId: '1', lastTokenId },
     },
     differences,

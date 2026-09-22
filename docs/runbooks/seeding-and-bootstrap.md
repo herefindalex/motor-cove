@@ -11,7 +11,8 @@ ownership to an initial state.
 ## Target sequence
 
 1. Validate owner marker, loopback RPC, Anvil client, chain ID, and deployment identity.
-2. Take maintenance locks and write the external marker.
+2. Acquire environment bootstrap ownership. Each database operation then takes its existing
+   maintenance locks and writes its external marker.
 3. Migrate and verify DB, deploy contracts, and verify manifest code/getters/blocks.
 4. Before every chain seed transaction, durably record `PREPARED`; then `SUBMITTED` and `VERIFIED`.
 5. Obtain token/sale IDs from receipts and events, then seed catalog and bindings transactionally.
@@ -29,6 +30,8 @@ mint or list again.
 `dev:bootstrap` deploys local contracts through the environment-owned `seed-journal.json`, registers
 deployment evidence, seeds catalog bindings, catches up through the captured block/hash, and writes
 the receipt. Each deployment, mint, approval, and listing step binds its parameters to an intent
+A nonblocking ownership lock covers this complete callback, so two bootstrap processes for
+the same environment cannot both enter chain submission.
 digest. A rerun with a known hash waits for that receipt; a verified step rechecks the same receipt
 and never submits again. A stranded `PREPARED` step or a submit call whose outcome cannot be proven
 becomes `UNKNOWN` and stops for operator review. The command never guesses whether an ambiguous
@@ -45,6 +48,7 @@ environment and diagnose the RPC and transaction evidence.
 of a changed seed version without overwriting the applied dataset. Journal unit tests cover
 successful transitions, known-hash resume, verified receipt revalidation, identity/intent mismatch,
 and conservative `UNKNOWN` handling. The real-stack test covers fresh event-derived bootstrap and a
+A two-process regression proves that only one bootstrap callback enters while the owner is active.
 rerun after user settlement, refund, withdrawal, and NFT reclaim. A real process-kill injection in
 the broadcast-to-hash persistence window remains unverified. See the
 [database matrix](../testing/database-acceptance-matrix.md).

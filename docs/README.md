@@ -68,6 +68,9 @@ Concurrent maintenance, browser evidence, and RPC failure semantics are recorded
 [recovery evidence](adr/0007-concurrent-recovery-evidence.md). Rebuild-source, restore-identity,
 action-wide receipt, and cross-tab journal decisions are recorded in
 [recovery source and browser journal integrity](adr/0008-recovery-source-and-browser-journal-integrity.md).
+Bootstrap ownership, deployment descriptor checks, complete claim reconciliation, and projector
+prerequisites are recorded in
+[bootstrap and projection integrity gates](adr/0009-bootstrap-and-projection-integrity-gates.md).
 
 ## Evaluate current evidence
 

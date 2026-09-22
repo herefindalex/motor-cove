@@ -42,4 +42,51 @@ describe('pure projectors', () => {
       'requires FUNDED',
     );
   });
+
+  it.each([
+    {
+      kind: 'SaleFunded',
+      saleId: '9',
+      buyer: '0x0000000000000000000000000000000000000002',
+      amountWei: '10',
+      fundedAt: '100',
+      expiresAt: '400',
+    },
+    { kind: 'SaleCompleted', saleId: '9' },
+    { kind: 'SaleCancelled', saleId: '9' },
+    { kind: 'SaleExpired', saleId: '9' },
+    {
+      kind: 'TokenReclaimed',
+      saleId: '9',
+      tokenId: '3',
+      recipient: '0x0000000000000000000000000000000000000002',
+    },
+  ] as const)('rejects $kind when its SaleCreated prerequisite is missing', (event) => {
+    expect(() => projectSale(undefined, event)).toThrow(
+      `PROJECTOR_INTEGRITY: ${event.kind} requires SaleCreated for sale 9`,
+    );
+  });
+
+  it('rejects PaymentWithdrawn when its claim prerequisite is missing', () => {
+    expect(() =>
+      projectPayment(undefined, {
+        kind: 'PaymentWithdrawn',
+        saleId: '9',
+        recipient: '0x0000000000000000000000000000000000000002',
+      }),
+    ).toThrow(
+      'PROJECTOR_INTEGRITY: PaymentWithdrawn requires PaymentClaimCreated for payment-claim 9',
+    );
+  });
+
+  it('keeps unrelated events as no-ops when no entity exists', () => {
+    const transfer = {
+      kind: 'Transfer' as const,
+      tokenId: '9',
+      from: '0x0000000000000000000000000000000000000001' as const,
+      to: '0x0000000000000000000000000000000000000002' as const,
+    };
+    expect(projectSale(undefined, transfer)).toBeUndefined();
+    expect(projectPayment(undefined, transfer)).toBeUndefined();
+  });
 });

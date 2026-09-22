@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import type { EnvironmentPaths } from '../types/index.js';
 
 export interface AdvisoryLock {
@@ -46,6 +48,11 @@ export async function acquireAdvisoryLock(
       });
     },
   };
+}
+
+export async function acquireBootstrapOwnership(paths: EnvironmentPaths): Promise<AdvisoryLock> {
+  mkdirSync(dirname(paths.bootstrapLockPath), { recursive: true });
+  return acquireAdvisoryLock(paths.bootstrapLockPath, 'exclusive');
 }
 
 export async function acquireRuntimeLocks(paths: EnvironmentPaths, writer: boolean) {

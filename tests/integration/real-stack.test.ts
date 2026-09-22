@@ -76,6 +76,29 @@ describe('real Anvil → indexer → SQLite flow', () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
+  it('admits only one of two concurrent full bootstrap processes', async () => {
+    const beforeBlock = await rpcValue('eth_blockNumber');
+    const beforeJournal = readFileSync(managedPaths.seedJournalPath, 'utf8');
+    const runBootstrap = () =>
+      new Promise<{ code: number | null; output: string }>((resolveRun) => {
+        const child = spawn('corepack', ['pnpm', '--filter', '@motorcove/indexer', 'bootstrap'], {
+          cwd: root,
+          env: environment,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        let output = '';
+        child.stdout?.on('data', (chunk: Buffer) => (output += chunk.toString()));
+        child.stderr?.on('data', (chunk: Buffer) => (output += chunk.toString()));
+        child.once('exit', (code) => resolveRun({ code, output }));
+      });
+
+    const outcomes = await Promise.all([runBootstrap(), runBootstrap()]);
+    expect(outcomes.map(({ code }) => code).sort()).toEqual([0, 1]);
+    expect(outcomes.find(({ code }) => code !== 0)?.output).toContain('RESOURCE_BUSY');
+    expect(await rpcValue('eth_blockNumber')).toBe(beforeBlock);
+    expect(readFileSync(managedPaths.seedJournalPath, 'utf8')).toBe(beforeJournal);
+  }, 60_000);
+
   it('projects complete, withdraw, expiry, refund, and reclaim independently', async () => {
     if (!manifest.demoAccounts) throw new Error('Missing demo accounts');
     const chain = defineChain({
@@ -289,6 +312,56 @@ describe('real Anvil → indexer → SQLite flow', () => {
     expect(laggingReport).toEqual({
       comparison: 'MATCH',
       freshness: 'PROJECTION_LAGGING',
+    });
+    execFileSync(
+      'sqlite3',
+      [
+        managedPaths.databasePath,
+        `INSERT INTO payment_claims(deployment_id,sale_id,beneficiary,amount_wei,kind,status,creation_block_hash,creation_log_index) VALUES ('${manifest.deploymentId}','999','${manifest.demoAccounts?.seller.toLowerCase()}','1','SELLER_PROCEEDS','CLAIMABLE','${manifest.escrow.blockHash.toLowerCase()}',0);`,
+      ],
+      { cwd: root },
+    );
+    expect(() =>
+      execFileSync('corepack', ['pnpm', 'ops:reconcile'], {
+        cwd: root,
+        env: environment,
+        stdio: 'pipe',
+      }),
+    ).toThrow();
+    const orphanClaimDifferences = JSON.parse(
+      execFileSync(
+        'sqlite3',
+        [
+          managedPaths.databasePath,
+          'SELECT differences_json FROM reconciliation_runs ORDER BY created_at DESC LIMIT 1;',
+        ],
+        { cwd: root, encoding: 'utf8' },
+      ).trim(),
+    ) as Array<Record<string, unknown>>;
+    expect(orphanClaimDifferences).toContainEqual({
+      saleId: '999',
+      field: 'paymentClaim',
+      difference: 'EXTRA_PROJECTED_ROW',
+      projected: {
+        beneficiary: manifest.demoAccounts?.seller.toLowerCase(),
+        amountWei: '1',
+        kind: 'SELLER_PROCEEDS',
+        status: 'CLAIMABLE',
+      },
+      chain: null,
+    });
+    execFileSync(
+      'sqlite3',
+      [
+        managedPaths.databasePath,
+        `DELETE FROM payment_claims WHERE deployment_id='${manifest.deploymentId}' AND sale_id='999';`,
+      ],
+      { cwd: root },
+    );
+    execFileSync('corepack', ['pnpm', 'ops:reconcile'], {
+      cwd: root,
+      env: environment,
+      stdio: 'pipe',
     });
     const beforeRebuild = await createReadOnlyReader(managedPaths, manifest.deploymentId);
     const originalBuildId = beforeRebuild.systemStatus().provenance.projectionBuildId;

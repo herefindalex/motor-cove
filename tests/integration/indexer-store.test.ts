@@ -80,6 +80,45 @@ async function fixture() {
 }
 
 describe('Indexer store', () => {
+  it('rolls back the full batch and requires recovery when an owned event lacks its prerequisite', async () => {
+    const paths = await fixture();
+    const first = header(1);
+    const missingSale = event(first, 0, {
+      kind: 'SaleFunded',
+      saleId: '999',
+      buyer,
+      amountWei: '100',
+      fundedAt: '1700000001',
+      expiresAt: '1700000301',
+    });
+    const writer = await openProjectionWriter(paths);
+    const store = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
+
+    await expect(store.commit([first], [missingSale], first)).rejects.toThrow(
+      `PROJECTOR_INTEGRITY: deployment=${deploymentId} event=SaleFunded blockHash=${first.hash} ` +
+        `transactionHash=${missingSale.transactionHash} logIndex=0 entity=sale:999 missing=SaleCreated`,
+    );
+
+    expect(writer.database.prepare('SELECT COUNT(*) AS count FROM indexed_blocks').get()).toEqual({
+      count: 0,
+    });
+    expect(writer.database.prepare('SELECT COUNT(*) AS count FROM chain_events').get()).toEqual({
+      count: 0,
+    });
+    expect(writer.database.prepare('SELECT COUNT(*) AS count FROM sales').get()).toEqual({
+      count: 0,
+    });
+    expect(await store.checkpoint()).toBeNull();
+    expect(
+      writer.database
+        .prepare(
+          'SELECT projection_status AS projectionStatus,recovery_reason AS recoveryReason FROM indexer_runtime_status WHERE deployment_id=?',
+        )
+        .get(deploymentId),
+    ).toEqual({ projectionStatus: 'RECOVERY_REQUIRED', recoveryReason: 'PROJECTOR_INTEGRITY' });
+    await writer.close();
+  });
+
   it('commits, verifies replay, rejects mismatches, and rebuilds atomically', async () => {
     const paths = await fixture();
     const first = header(1);

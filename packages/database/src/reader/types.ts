@@ -42,6 +42,7 @@ export interface SystemRecord {
   readonly workerHeartbeatAt: string | null;
   readonly recoveryReason: string | null;
 }
+
 export interface EventRecord {
   readonly blockNumber: string;
   readonly blockHash: string;
@@ -49,6 +50,24 @@ export interface EventRecord {
   readonly logIndex: number;
   readonly eventName: string;
   readonly decoded: unknown;
+}
+
+export interface DeploymentDescriptor {
+  readonly deploymentId: string;
+  readonly chainId: string;
+  readonly nftAddress: string;
+  readonly escrowAddress: string;
+  readonly protocolVersion: string;
+  readonly abiBundleHash: string;
+  readonly scanStartBlock: number;
+  readonly nftDeploymentBlock: number;
+  readonly nftDeploymentHash: string;
+  readonly nftRuntimeCodeHash: string;
+  readonly escrowDeploymentBlock: number;
+  readonly escrowDeploymentHash: string;
+  readonly escrowRuntimeCodeHash: string;
+  readonly manifestHash: string;
+  readonly manifestJson: string;
 }
 
 export interface FundingObservationSelector {
@@ -89,6 +108,7 @@ export interface FundingObservationRecord {
   };
 }
 export interface ReadModelReader {
+  deploymentDescriptor(): DeploymentDescriptor;
   listSales(): ReadSnapshot<readonly SaleRecord[]>;
   getSale(saleId: string): ReadSnapshot<SaleRecord | null>;
   observeFunding(

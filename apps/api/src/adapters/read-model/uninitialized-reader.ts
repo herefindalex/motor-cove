@@ -4,6 +4,9 @@ export class UninitializedReader implements ReadModelReader {
   private unavailable(): never {
     throw new Error('Read model is not initialized; run pnpm dev:bootstrap');
   }
+  deploymentDescriptor() {
+    return this.unavailable();
+  }
   listSales() {
     return this.unavailable();
   }

@@ -37,6 +37,7 @@ export function environmentPaths(workspaceRoot: string, environmentId: string): 
     backupsDir: resolve(managedRoot, 'backups', environmentId),
     serviceLockPath: resolve(locksDir, 'service.lock'),
     writerLockPath: resolve(locksDir, 'writer.lock'),
+    bootstrapLockPath: resolve(locksDir, 'bootstrap.lock'),
   };
 }
 
@@ -51,7 +52,7 @@ export function initializeOwnedEnvironment(paths: EnvironmentPaths): void {
   mkdirSync(paths.databaseDir, { recursive: true });
   mkdirSync(paths.reportsDir, { recursive: true });
   mkdirSync(paths.backupsDir, { recursive: true });
-  for (const path of [paths.serviceLockPath, paths.writerLockPath])
+  for (const path of [paths.serviceLockPath, paths.writerLockPath, paths.bootstrapLockPath])
     if (!existsSync(path)) writeFileSync(path, '', { flag: 'wx' });
   if (!existsSync(paths.ownerPath))
     writeFileSync(

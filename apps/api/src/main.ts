@@ -1,8 +1,7 @@
-import { createApp } from './app/create-app.js';
+import { startApi } from './start-api.js';
 import { environmentPaths } from '@motorcove/database/environment';
 import { createReadOnlyReader } from '@motorcove/database/reader';
 import { deploymentManifestSchema } from '@motorcove/chain-artifacts/manifest';
-import { publicConfigSchema } from '@motorcove/api-contracts';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -24,16 +23,4 @@ const manifest = deploymentManifestSchema.parse(
   ),
 );
 const reader = await createReadOnlyReader(environment, manifest.deploymentId);
-const status = reader.systemStatus();
-if (status.provenance.deploymentId !== manifest.deploymentId)
-  throw new Error('DEPLOYMENT_MISMATCH: manifest and database');
-const publicConfig = publicConfigSchema.parse({
-  deploymentId: manifest.deploymentId,
-  chainId: manifest.chainId,
-  protocolVersion: manifest.protocolVersion,
-  nftAddress: manifest.nft.address,
-  escrowAddress: manifest.escrow.address,
-  fundingPeriodSeconds: manifest.fundingPeriodSeconds,
-});
-const app = await createApp(reader, publicConfig);
-await app.listen({ host, port });
+await startApi(reader, manifest, { host, port });

@@ -1,5 +1,6 @@
 export type {
   EventRecord,
+  DeploymentDescriptor,
   FundingMatchedEvent,
   FundingObservationRecord,
   FundingObservationSelector,

@@ -26,6 +26,7 @@ export interface EnvironmentPaths {
   readonly backupsDir: string;
   readonly serviceLockPath: string;
   readonly writerLockPath: string;
+  readonly bootstrapLockPath: string;
 }
 
 export interface MaintenanceMarker {

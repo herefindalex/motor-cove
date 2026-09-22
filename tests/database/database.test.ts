@@ -36,6 +36,14 @@ describe('database boundaries', () => {
     );
     db.close();
     const reader = await createReadOnlyReader(paths, hashes.deployment);
+    expect(reader.deploymentDescriptor()).toMatchObject({
+      deploymentId: hashes.deployment,
+      chainId: '31337',
+      nftAddress: hashes.address,
+      escrowAddress: hashes.escrow,
+      protocolVersion: '0.1.0',
+      manifestHash: hashes.manifest,
+    });
     expect(reader.getSale(huge).data.priceWei).toBe(uint256Max.toString());
     await reader.close();
     expect(canonicalUint256(uint256Max)).toBe(uint256Max.toString());

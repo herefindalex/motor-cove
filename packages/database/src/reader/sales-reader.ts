@@ -7,6 +7,7 @@ import { parseUint256 } from '../codecs/uint256.js';
 import type { EnvironmentPaths, ProjectionProvenance } from '../types/index.js';
 import { verifyDatabase } from '../maintenance/migrations.js';
 import type {
+  DeploymentDescriptor,
   EventRecord,
   FundingObservationRecord,
   ReadModelReader,
@@ -143,15 +144,29 @@ export async function createReadOnlyReader(
     const db = openReadOnlyDatabase(paths.databasePath);
     verifyDatabase(db);
     const deployment = db
-      .prepare('SELECT escrow_address AS escrowAddress FROM deployments WHERE deployment_id=?')
-      .get(deploymentId) as { escrowAddress: string } | undefined;
+      .prepare(
+        `SELECT deployment_id AS deploymentId,chain_id AS chainId,nft_address AS nftAddress,
+                escrow_address AS escrowAddress,protocol_version AS protocolVersion,
+                abi_bundle_hash AS abiBundleHash,scan_start_block AS scanStartBlock,
+                nft_deployment_block AS nftDeploymentBlock,nft_deployment_hash AS nftDeploymentHash,
+                nft_runtime_code_hash AS nftRuntimeCodeHash,
+                escrow_deployment_block AS escrowDeploymentBlock,
+                escrow_deployment_hash AS escrowDeploymentHash,
+                escrow_runtime_code_hash AS escrowRuntimeCodeHash,manifest_hash AS manifestHash,
+                manifest_json AS manifestJson
+         FROM deployments WHERE deployment_id=?`,
+      )
+      .get(deploymentId) as DeploymentDescriptor | undefined;
     if (!deployment) {
       db.close();
       throw new Error('DEPLOYMENT_MISMATCH');
     }
 
     const snapshot = <T>(query: () => T): ReadSnapshot<T> =>
-      db.transaction(() => ({ data: query(), provenance: readProvenance(db, deploymentId) }))();
+      db.transaction(() => ({
+        data: query(),
+        provenance: readProvenance(db, deploymentId),
+      }))();
     const selectSales = `SELECT s.sale_id AS saleId,s.token_id AS tokenId,s.seller,s.buyer,
       s.price_wei AS priceWei,CAST(s.funded_at AS TEXT) AS fundedAt,
       CAST(s.expires_at AS TEXT) AS expiresAt,s.status,s.token_reclaimed AS tokenReclaimed,
@@ -192,6 +207,7 @@ export async function createReadOnlyReader(
     };
 
     return {
+      deploymentDescriptor: () => ({ ...deployment }),
       listSales: () =>
         snapshot(() =>
           (

@@ -21,7 +21,7 @@ from `CURRENT` or lagging. It does not repair data.
 
 Historical RPC state may be unavailable. In that case report `UNVERIFIABLE`; never return a false
 match. A projection at H can validly be `MATCH` and `PROJECTION_LAGGING` while head is H+k.
-The current implementation reads anchored `saleCount` and checks every sale ID, then reads anchored
-`nextTokenId` and checks every minted token owner. Claims are checked for every enumerated sale.
-Missing projection rows therefore produce `MISMATCH`; unavailable historical reads still produce
-`UNVERIFIABLE`.
+The current implementation reads anchored `saleCount` and checks every Sale ID, reads every claim
+getter in that canonical range, and independently enumerates every projected claim row. Missing,
+changed, extra, or orphan claims therefore produce `MISMATCH`. It then reads anchored `nextTokenId`
+and checks every minted token owner. Unavailable historical reads still produce `UNVERIFIABLE`.

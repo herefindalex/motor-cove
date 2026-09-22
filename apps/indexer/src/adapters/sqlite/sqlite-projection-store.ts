@@ -8,6 +8,7 @@ import {
   type PaymentProjection,
 } from '../../domain/projectors/payment-projector.js';
 import { projectSale, type SaleProjection } from '../../domain/projectors/sale-projector.js';
+import { ProjectionIntegrityError } from '../../domain/projectors/projection-integrity-error.js';
 import type { BlockHeader, ProjectionUnitOfWork } from '../../ports/index.js';
 
 const DECODER_VERSION = 'motorcove-events-v1';
@@ -54,6 +55,19 @@ export type CommitFaultPoint =
   | 'AFTER_EVENT_WRITES'
   | 'BEFORE_COMMIT'
   | 'AFTER_COMMIT';
+
+class ProjectionCommitIntegrityError extends Error {
+  constructor(deploymentId: string, ordered: OrderedEvent, cause: ProjectionIntegrityError) {
+    super(
+      `PROJECTOR_INTEGRITY: deployment=${deploymentId} event=${ordered.event.kind} ` +
+        `blockHash=${ordered.blockHash} transactionHash=${ordered.transactionHash} ` +
+        `logIndex=${ordered.logIndex} entity=${cause.entity}:${cause.entityId} ` +
+        `missing=${cause.missingPrerequisite}`,
+      { cause },
+    );
+    this.name = 'ProjectionCommitIntegrityError';
+  }
+}
 
 export class SqliteProjectionStore implements ProjectionUnitOfWork {
   private readonly sourceScopeChanged: boolean;
@@ -182,7 +196,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
     checkpoint: BlockHeader,
   ): Promise<void> {
     this.commitFaultHook?.('BEFORE_BEGIN');
-    this.db.transaction(() => {
+    const commit = this.db.transaction(() => {
       const recanonicalizedBlocks = new Set<string>();
       for (const header of headers) {
         const blockEvents = events
@@ -271,7 +285,18 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
         )
         .run(new Date().toISOString(), this.deploymentId);
       this.commitFaultHook?.('BEFORE_COMMIT');
-    })();
+    });
+    try {
+      commit();
+    } catch (error) {
+      if (error instanceof ProjectionCommitIntegrityError)
+        this.db
+          .prepare(
+            "UPDATE indexer_runtime_status SET projection_status='RECOVERY_REQUIRED',recovery_reason='PROJECTOR_INTEGRITY',worker_heartbeat_at=? WHERE deployment_id=?",
+          )
+          .run(new Date().toISOString(), this.deploymentId);
+      throw error;
+    }
     this.commitFaultHook?.('AFTER_COMMIT');
   }
 
@@ -639,7 +664,14 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
            FROM payment_claims WHERE deployment_id=? AND sale_id=?`,
         )
         .get(this.deploymentId, ordered.event.saleId) as PaymentRow | undefined;
-      const nextClaim = projectPayment(currentClaim, ordered.event);
+      let nextClaim: PaymentProjection | undefined;
+      try {
+        nextClaim = projectPayment(currentClaim, ordered.event);
+      } catch (error) {
+        if (error instanceof ProjectionIntegrityError)
+          throw new ProjectionCommitIntegrityError(this.deploymentId, ordered, error);
+        throw error;
+      }
       if (nextClaim && nextClaim !== currentClaim) {
         const creationBlockHash = currentClaim?.creationBlockHash ?? ordered.blockHash;
         const creationLogIndex = currentClaim?.creationLogIndex ?? ordered.logIndex;
@@ -683,7 +715,14 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
       const saleProjection = currentSale
         ? { ...currentSale, tokenReclaimed: currentSale.tokenReclaimed === 1 }
         : undefined;
-      const nextSale = projectSale(saleProjection, ordered.event);
+      let nextSale: SaleProjection | undefined;
+      try {
+        nextSale = projectSale(saleProjection, ordered.event);
+      } catch (error) {
+        if (error instanceof ProjectionIntegrityError)
+          throw new ProjectionCommitIntegrityError(this.deploymentId, ordered, error);
+        throw error;
+      }
       if (nextSale && nextSale !== saleProjection) {
         this.db
           .prepare(

@@ -3,7 +3,7 @@ export {
   initializeOwnedEnvironment,
   verifyOwnedEnvironment,
 } from '../connection/environment.js';
-export { acquireMaintenanceLocks } from '../connection/flock.js';
+export { acquireBootstrapOwnership, acquireMaintenanceLocks } from '../connection/flock.js';
 export { backupEnvironment, verifyBackup } from './backup.js';
 export { restoreEnvironment } from './restore.js';
 export { resetEnvironment } from './reset.js';

@@ -1,4 +1,5 @@
 import type { NormalizedEvent } from '../events.js';
+import { ProjectionIntegrityError } from './projection-integrity-error.js';
 
 export interface SaleProjection {
   readonly saleId: string;
@@ -30,7 +31,17 @@ export function projectSale(
       tokenReclaimed: false,
     };
   }
-  if (!('saleId' in event) || !current || event.saleId !== current.saleId) return current;
+  if (
+    event.kind !== 'SaleFunded' &&
+    event.kind !== 'SaleCompleted' &&
+    event.kind !== 'SaleCancelled' &&
+    event.kind !== 'SaleExpired' &&
+    event.kind !== 'TokenReclaimed'
+  )
+    return current;
+  if (!current) throw new ProjectionIntegrityError('sale', event.saleId, event.kind, 'SaleCreated');
+  if (event.saleId !== current.saleId)
+    throw new ProjectionIntegrityError('sale', event.saleId, event.kind, `sale ${event.saleId}`);
   switch (event.kind) {
     case 'SaleFunded':
       if (current.status !== 'LISTED') throw new Error('SaleFunded requires LISTED');

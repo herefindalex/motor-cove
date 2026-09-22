@@ -1,4 +1,5 @@
 import type { NormalizedEvent } from '../events.js';
+import { ProjectionIntegrityError } from './projection-integrity-error.js';
 
 export interface PaymentProjection {
   readonly saleId: string;
@@ -23,7 +24,21 @@ export function projectPayment(
       recipient: null,
     };
   }
-  if (event.kind === 'PaymentWithdrawn' && current?.saleId === event.saleId) {
+  if (event.kind === 'PaymentWithdrawn') {
+    if (!current)
+      throw new ProjectionIntegrityError(
+        'payment-claim',
+        event.saleId,
+        event.kind,
+        'PaymentClaimCreated',
+      );
+    if (current.saleId !== event.saleId)
+      throw new ProjectionIntegrityError(
+        'payment-claim',
+        event.saleId,
+        event.kind,
+        `claim ${event.saleId}`,
+      );
     if (current.status !== 'CLAIMABLE') throw new Error('Claim already withdrawn');
     return { ...current, status: 'WITHDRAWN', recipient: event.recipient };
   }
