@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, renderHook } from '@testing-library/react';
 import {
   resumeJournalEntry,
   submitOperation,
   type JournalEntry,
+  useJournalEntries,
 } from '../../capabilities/transactions/index.js';
 import { LocalStorageJournal } from './local-storage-journal.js';
 
@@ -29,7 +31,10 @@ const entry: JournalEntry = {
 
 describe('LocalStorageJournal', () => {
   beforeEach(() => localStorage.clear());
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it('round trips a runtime validated entry', async () => {
     const journal = new LocalStorageJournal();
@@ -86,6 +91,44 @@ describe('LocalStorageJournal', () => {
       receiptStatus: 'SUCCESS',
     });
     expect(localStorage.getItem(storageKey)).toBeNull();
+  });
+
+  it('keeps volatile evidence readable and reports unavailable storage without throwing', () => {
+    const journal = new LocalStorageJournal();
+    const volatile = journal.saveVolatile({
+      ...entry,
+      originalTxHash: `0x${'4'.repeat(64)}`,
+      currentTxHash: `0x${'4'.repeat(64)}`,
+      status: 'SUBMITTED',
+    });
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('storage denied by browser policy', 'SecurityError');
+    });
+
+    expect(journal.load(deploymentId)).toEqual([volatile]);
+    expect(journal.loadIssues(deploymentId)).toEqual([
+      expect.objectContaining({ deploymentId, reason: 'STORAGE_UNAVAILABLE' }),
+    ]);
+    expect(() => renderHook(() => useJournalEntries(journal, deploymentId))).not.toThrow();
+  });
+
+  it('keeps a one-shot read failure visible in the same snapshot and classifies blocked writes', async () => {
+    const journal = new LocalStorageJournal();
+    let reads = 0;
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      reads += 1;
+      if (reads === 1) throw new DOMException('transient storage denial', 'SecurityError');
+      return null;
+    });
+
+    expect(journal.load(deploymentId)).toEqual([]);
+    expect(journal.loadIssues(deploymentId)).toEqual([
+      expect.objectContaining({ reason: 'STORAGE_UNAVAILABLE' }),
+    ]);
+    expect(reads).toBe(1);
+
+    reads = 0;
+    await expect(journal.save(entry)).rejects.toThrow('JOURNAL_STORAGE_UNAVAILABLE');
   });
 
   it('preserves the durable intent beneath a volatile overlay during unrelated writes', async () => {

@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { JournalEntry } from '../model.js';
 import type { TransactionJournal } from '../ports.js';
+import { useJournalSnapshot } from '../use-journal-entries.js';
 
 export function TransactionTimeline({
   deploymentId,
@@ -11,14 +10,7 @@ export function TransactionTimeline({
   journal: TransactionJournal;
   saleId?: string | undefined;
 }) {
-  const [entries, setEntries] = useState<readonly JournalEntry[]>(() => journal.load(deploymentId));
-
-  useEffect(() => {
-    const refresh = () => setEntries(journal.load(deploymentId));
-    refresh();
-    return journal.subscribe(refresh);
-  }, [deploymentId, journal]);
-
+  const { entries, issues } = useJournalSnapshot(journal, deploymentId);
   const visible = entries
     .filter((entry) => saleId === undefined || entry.saleId === saleId)
     .slice(-8)
@@ -27,8 +19,14 @@ export function TransactionTimeline({
   return (
     <section aria-label="Transaction timeline">
       <h2>Transaction timeline</h2>
+      {issues.some((issue) => issue.reason === 'STORAGE_UNAVAILABLE') && (
+        <p className="error" role="status">
+          Browser transaction storage is unavailable. Entries shown here may exist only in this tab
+          and will not survive a reload.
+        </p>
+      )}
       {visible.length === 0 ? (
-        <p className="empty">No wallet operations recorded for this deployment.</p>
+        <p className="empty">No wallet operations recorded for deployment.</p>
       ) : (
         <ol className="transaction-timeline">
           {visible.map((entry) => (

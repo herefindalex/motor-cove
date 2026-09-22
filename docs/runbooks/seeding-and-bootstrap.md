@@ -71,3 +71,16 @@ normalized endpoint is rejected before chain writes.
 Keep the generated `managed-node.json` with the environment lifecycle. A missing or edited binding
 is an ownership failure; recreate the environment deliberately instead of copying another
 environment's binding.
+
+## Recoverable post-hash persistence
+
+If the first `SUBMITTED` journal write fails after the submit callback returned a hash, the command
+retries only the journal write. A successful retry preserves the step as `SUBMITTED`, records the
+`POST_SUBMIT_PERSISTENCE_FAILURE` category, and returns
+`CHAIN_SEED_POST_SUBMIT_PERSISTENCE_RECOVERED`. Reopen the same environment and rerun bootstrap: it
+waits for the saved hash and does not call submit again. A failure before any hash remains
+`SUBMIT_OUTCOME_UNKNOWN` and requires operator review.
+
+Journal regression tests inject one transient post-hash write fault and prove that the reopened
+journal verifies the original hash without a second submit. Hashless submission failures, stranded
+`PREPARED` steps, changed intent, and changed receipt evidence remain fail-closed.

@@ -47,7 +47,19 @@ export class LocalStorageJournal implements TransactionJournal {
   }
 
   private loadDurable(deploymentId: string): readonly JournalEntry[] {
-    const raw = localStorage.getItem(key(deploymentId));
+    let raw: string | null;
+    try {
+      raw = localStorage.getItem(key(deploymentId));
+    } catch (error) {
+      this.issues.set(deploymentId, [
+        {
+          deploymentId,
+          reason: 'STORAGE_UNAVAILABLE',
+          detail: error instanceof Error ? error.message : String(error),
+        },
+      ]);
+      return [];
+    }
     if (!raw) {
       this.issues.delete(deploymentId);
       return [];
@@ -98,7 +110,6 @@ export class LocalStorageJournal implements TransactionJournal {
   }
 
   loadIssues(deploymentId: string): readonly JournalLoadIssue[] {
-    this.load(deploymentId);
     return this.issues.get(deploymentId) ?? [];
   }
 
@@ -115,7 +126,11 @@ export class LocalStorageJournal implements TransactionJournal {
     }
     const stored = await withWriteLock(parsed.deploymentId, () => {
       const loaded = this.loadDurable(parsed.deploymentId);
-      if ((this.issues.get(parsed.deploymentId)?.length ?? 0) > 0) {
+      const issues = this.issues.get(parsed.deploymentId) ?? [];
+      if (issues.some((issue) => issue.reason === 'STORAGE_UNAVAILABLE')) {
+        throw new Error('JOURNAL_STORAGE_UNAVAILABLE');
+      }
+      if (issues.length > 0) {
         throw new Error('JOURNAL_STORAGE_INVALID');
       }
       const current = loaded.find((item) => item.clientOperationId === parsed.clientOperationId);

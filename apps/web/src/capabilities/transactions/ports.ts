@@ -2,7 +2,7 @@ import type { JournalEntry } from './model.js';
 
 export interface JournalLoadIssue {
   readonly deploymentId: string;
-  readonly reason: 'CORRUPT_STORAGE' | 'INVALID_ENTRY';
+  readonly reason: 'CORRUPT_STORAGE' | 'INVALID_ENTRY' | 'STORAGE_UNAVAILABLE';
   readonly detail: string;
 }
 

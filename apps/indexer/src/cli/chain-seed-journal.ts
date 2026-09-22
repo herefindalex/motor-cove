@@ -17,6 +17,11 @@ interface ChainSeedStep {
   status: ChainSeedStepStatus;
   transactionHash?: Hex;
   receipt?: ChainSeedReceipt;
+  failureCategory?:
+    | 'SUBMIT_OUTCOME_UNKNOWN'
+    | 'POST_SUBMIT_PERSISTENCE_FAILURE'
+    | 'PREPARED_WITHOUT_HASH'
+    | 'RECEIPT_CHANGED';
   error?: string;
   updatedAt: string;
 }
@@ -115,21 +120,41 @@ export class ChainSeedJournal {
       };
       this.data.steps[stepId] = step;
       this.save();
+      let transactionHash: Hex;
       try {
-        const transactionHash = await submit();
-        step.transactionHash = transactionHash;
-        step.status = 'SUBMITTED';
-        step.updatedAt = now();
-        this.save();
+        transactionHash = await submit();
       } catch (error) {
         step.status = 'UNKNOWN';
+        step.failureCategory = 'SUBMIT_OUTCOME_UNKNOWN';
         step.error = error instanceof Error ? error.message : String(error);
         step.updatedAt = now();
         this.save();
         throw new Error(`CHAIN_SEED_AMBIGUOUS: ${stepId}`);
       }
+
+      step.transactionHash = transactionHash;
+      step.status = 'SUBMITTED';
+      step.updatedAt = now();
+      try {
+        this.save();
+      } catch (error) {
+        step.failureCategory = 'POST_SUBMIT_PERSISTENCE_FAILURE';
+        step.error = error instanceof Error ? error.message : String(error);
+        step.updatedAt = now();
+        try {
+          this.save();
+        } catch (persistenceError) {
+          throw new Error(`CHAIN_SEED_POST_SUBMIT_PERSISTENCE_FAILED: ${stepId}`, {
+            cause: persistenceError,
+          });
+        }
+        throw new Error(`CHAIN_SEED_POST_SUBMIT_PERSISTENCE_RECOVERED: ${stepId}`, {
+          cause: error,
+        });
+      }
     } else if (step.status === 'PREPARED') {
       step.status = 'UNKNOWN';
+      step.failureCategory = 'PREPARED_WITHOUT_HASH';
       step.error = 'Process stopped after PREPARED before a transaction hash was journaled';
       step.updatedAt = now();
       this.save();
@@ -148,6 +173,7 @@ export class ChainSeedJournal {
         step.receipt.contractAddress?.toLowerCase() !== receipt.contractAddress?.toLowerCase()
       ) {
         step.status = 'UNKNOWN';
+        step.failureCategory = 'RECEIPT_CHANGED';
         step.error = 'Previously verified receipt changed';
         step.updatedAt = now();
         this.save();
@@ -156,6 +182,8 @@ export class ChainSeedJournal {
     } else {
       step.receipt = receipt;
       step.status = 'VERIFIED';
+      delete step.failureCategory;
+      delete step.error;
       step.updatedAt = now();
       this.save();
     }

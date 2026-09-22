@@ -44,4 +44,25 @@ describe('TransactionTimeline', () => {
     expect(screen.getByText('WALLET_REJECTED')).toBeTruthy();
     expect(screen.queryByText('SUBMITTED')).toBeNull();
   });
+
+  it('shows that entries may be tab-only when durable storage cannot be read', () => {
+    const journal: TransactionJournal = {
+      load: () => [],
+      loadIssues: () => [
+        {
+          deploymentId,
+          reason: 'STORAGE_UNAVAILABLE',
+          detail: 'storage denied by browser policy',
+        },
+      ],
+      save: (entry) => entry,
+      subscribe: () => () => undefined,
+    };
+
+    render(<TransactionTimeline deploymentId={deploymentId} journal={journal} />);
+    expect(screen.getByRole('status').textContent).toContain(
+      'Browser transaction storage is unavailable',
+    );
+    expect(screen.getByText('No wallet operations recorded for deployment.')).toBeTruthy();
+  });
 });

@@ -29,3 +29,11 @@ and checks every minted token owner. Unavailable historical reads still produce 
 The stored report owns its historical `logScopeHash`. In `GET /v1/system/reconciliation`, that value
 is returned in `data.logScopeHash`; the response envelope's `provenance.logScopeHash` describes the
 current read snapshot. A scope transition may make them different without rewriting the report.
+
+## Unavailable latest-head observation
+
+If the latest-head read fails after the checkpoint is available, the command still persists the
+current attempt as `UNVERIFIABLE` with `HEAD_UNKNOWN`, records the RPC cause, and exits nonzero. It
+does not reuse a previous report or head as evidence for the new run. Failure to open or write the
+database remains an external command failure because no durable report can be promised in that
+case.

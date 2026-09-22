@@ -21,4 +21,5 @@ export {
   TransactionJournalProvider,
   useTransactionJournal,
 } from './ui/TransactionJournalContext.js';
-export { useJournalEntries } from './use-journal-entries.js';
+export { useJournalEntries, useJournalSnapshot } from './use-journal-entries.js';
+export type { JournalSnapshot } from './use-journal-entries.js';

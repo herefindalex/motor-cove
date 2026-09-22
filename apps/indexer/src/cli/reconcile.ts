@@ -28,7 +28,7 @@ try {
     throw new Error('READ_MODEL_UNINITIALIZED');
   const blockNumber = BigInt(checkpoint.blockNumber);
   const client = createPublicClient({ transport: http(config.rpcUrl) });
-  const head = await client.getBlock();
+  let head: Awaited<ReturnType<typeof client.getBlock>> | undefined;
   let comparison: 'MATCH' | 'MISMATCH' | 'UNVERIFIABLE' = 'MATCH';
   const differences: Array<Record<string, unknown>> = [];
   let lastSaleId: string | null = null;
@@ -45,6 +45,7 @@ try {
     coverage: 'UNVERIFIED',
   };
   try {
+    head = await client.getBlock();
     const before = await client.getBlock({ blockNumber });
     if (before.hash !== checkpoint.blockHash) throw new Error('ANCHOR_HASH_MISMATCH');
     const sales = db
@@ -212,8 +213,9 @@ try {
     comparison = 'UNVERIFIABLE';
     differences.push({ error: error instanceof Error ? error.message : String(error) });
   }
-  const freshness =
-    head.number === blockNumber && head.hash === checkpoint.blockHash
+  const freshness = !head
+    ? 'HEAD_UNKNOWN'
+    : head.number === blockNumber && head.hash === checkpoint.blockHash
       ? 'CURRENT'
       : 'PROJECTION_LAGGING';
   const report = {

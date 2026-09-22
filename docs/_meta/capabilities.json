@@ -68,16 +68,16 @@
     {
       "id": "CAP-06",
       "name": "Transaction lifecycle",
-      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, and serializes same-profile browser writes. Persists per-operation revisions, rejects stale journal writes, and rechecks live context after the final awaited pre-wallet write.",
+      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, serializes same-profile browser writes, and preserves tab-local evidence when durable storage reads are unavailable.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/capabilities/transactions",
         "apps/web/src/integrations/evm/inspect-transaction.ts",
         "apps/web/src/integrations/persistence/local-storage-journal.ts"
       ],
-      "scenarios": ["TX-001", "TX-002", "TX-003"],
+      "scenarios": ["TX-001", "TX-002", "TX-003", "TX-004"],
       "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E"],
-      "limits": "Non-durable known-hash tracking survives client-side route changes only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
+      "limits": "Non-durable known-hash tracking survives client-side route changes and storage read denial only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
     },
     {
       "id": "CAP-07",
@@ -213,7 +213,7 @@
     {
       "id": "CAP-13",
       "name": "Failure diagnosis and recovery",
-      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, alternative-hash read-only recovery, per-event canonical source evidence, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands. Projection maintenance releases locks across all preflight failures, preserves pre-refresh source evidence, and supports the explicit source-incomplete rebuild to full-reindex transition.",
+      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, alternative-hash read-only recovery, per-event canonical source evidence, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands. Seed persistence and reconciliation head failures preserve explicit recoverable or unverifiable evidence.",
       "implementation": "partial",
       "code": [
         "apps/web/src/pages/InspectorPage.tsx",
@@ -221,7 +221,9 @@
         "apps/api/src/modules/system",
         "packages/database/src/reader/sales-reader.ts",
         "packages/database/src/maintenance",
-        "docs/adr/0016-wallet-outcomes-and-managed-node-ownership.md"
+        "docs/adr/0016-wallet-outcomes-and-managed-node-ownership.md",
+        "docs/adr/0017-recoverable-evidence-and-unavailable-observations.md",
+        "apps/indexer/src/cli/reconcile.ts"
       ],
       "scenarios": [
         "TX-001",
@@ -234,7 +236,9 @@
         "DB-56",
         "DB-57",
         "TX-003",
-        "DB-58"
+        "DB-58",
+        "DB-59",
+        "DB-60"
       ],
       "verification": [
         "RUN-TRANSACTION-RECOVERY",

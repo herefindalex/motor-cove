@@ -30,6 +30,7 @@ interface JournalFile {
       status: string;
       transactionHash?: Hex;
       receipt?: ChainSeedReceipt;
+      failureCategory?: string;
       error?: string;
     }
   >;
@@ -138,6 +139,92 @@ describe('ChainSeedJournal', () => {
 
     expect(submit).not.toHaveBeenCalled();
     expect(readJournal(path).steps['deploy-nft']?.status).toBe('VERIFIED');
+  });
+
+  it('persists a known hash after a transient SUBMITTED write fault and resumes read-only', async () => {
+    const { journal, path } = createJournal();
+    const journalInternals = journal as unknown as {
+      data: { steps: Record<string, { status: string }> };
+      save: () => void;
+    };
+    const persist = journalInternals.save.bind(journal);
+    let injected = false;
+    vi.spyOn(journalInternals, 'save').mockImplementation(() => {
+      if (!injected && journalInternals.data.steps['deploy-nft']?.status === 'SUBMITTED') {
+        injected = true;
+        throw new Error('controlled transient write failure');
+      }
+      persist();
+    });
+
+    await expect(
+      journal.transaction(
+        'deploy-nft',
+        'deploy:abc',
+        async () => transactionHash,
+        async () => receipt,
+      ),
+    ).rejects.toThrow('CHAIN_SEED_POST_SUBMIT_PERSISTENCE_RECOVERED: deploy-nft');
+
+    expect(readJournal(path).steps['deploy-nft']).toMatchObject({
+      status: 'SUBMITTED',
+      transactionHash,
+      failureCategory: 'POST_SUBMIT_PERSISTENCE_FAILURE',
+    });
+
+    const reopened = ChainSeedJournal.open(path, {
+      environmentId: 'test',
+      chainId: 31337,
+      account,
+      newDeploymentId: deploymentId,
+    });
+    const submit = vi.fn(async () => hash(0x88));
+    const waitForReceipt = vi.fn(async () => receipt);
+
+    await expect(
+      reopened.transaction('deploy-nft', 'deploy:abc', submit, waitForReceipt),
+    ).resolves.toEqual(receipt);
+    expect(submit).not.toHaveBeenCalled();
+    expect(waitForReceipt).toHaveBeenCalledWith(transactionHash);
+    expect(readJournal(path).steps['deploy-nft']).toMatchObject({
+      status: 'VERIFIED',
+      transactionHash,
+    });
+    expect(readJournal(path).steps['deploy-nft']?.failureCategory).toBeUndefined();
+  });
+
+  it('keeps a stable failure classification when both post-hash persistence attempts fail', async () => {
+    const { journal, path } = createJournal();
+    const journalInternals = journal as unknown as {
+      data: { steps: Record<string, { status: string }> };
+      save: () => void;
+    };
+    const persist = journalInternals.save.bind(journal);
+    vi.spyOn(journalInternals, 'save').mockImplementation(() => {
+      if (journalInternals.data.steps['deploy-nft']?.status === 'SUBMITTED') {
+        throw new Error('controlled persistent write failure');
+      }
+      persist();
+    });
+    const submit = vi.fn(async () => transactionHash);
+
+    await expect(
+      journal.transaction('deploy-nft', 'deploy:abc', submit, async () => receipt),
+    ).rejects.toThrow('CHAIN_SEED_POST_SUBMIT_PERSISTENCE_FAILED: deploy-nft');
+    expect(submit).toHaveBeenCalledOnce();
+    expect(readJournal(path).steps['deploy-nft']).toMatchObject({ status: 'PREPARED' });
+
+    const reopened = ChainSeedJournal.open(path, {
+      environmentId: 'test',
+      chainId: 31337,
+      account,
+      newDeploymentId: deploymentId,
+    });
+    const retrySubmit = vi.fn(async () => hash(0x88));
+    await expect(
+      reopened.transaction('deploy-nft', 'deploy:abc', retrySubmit, async () => receipt),
+    ).rejects.toThrow('CHAIN_SEED_AMBIGUOUS: deploy-nft');
+    expect(retrySubmit).not.toHaveBeenCalled();
   });
 
   it('marks a submit error UNKNOWN and refuses an automatic retry', async () => {

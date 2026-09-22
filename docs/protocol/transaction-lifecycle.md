@@ -138,3 +138,11 @@ request outcome is recorded independently from transaction status:
 
 This preserves both facts when they coexist: what the wallet call reported and what transaction
 evidence was found.
+
+## Durable storage read availability
+
+A durable storage read failure is reported as `STORAGE_UNAVAILABLE`. The browser adapter still
+merges known volatile entries so their hashes remain visible in the current application instance,
+and the transaction timeline states that reload or tab close loses volatile-only evidence. This
+read fallback does not weaken the pre-wallet boundary: inability to durably save the initial intent
+still prevents the wallet request.

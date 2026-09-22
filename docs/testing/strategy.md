@@ -154,3 +154,19 @@ The database tests normalize loopback aliases, reject duplicate endpoint claims 
 changes, preserve the binding across reset, and fail closed when ownership is missing. A harness
 integration starts two real Anvil processes and proves that each environment can reset only its own
 node while the other chain remains unchanged.
+
+## R12 recoverable evidence and unavailable observation regressions
+
+Chain-seed tests inject one failure into the first `SUBMITTED` journal write. The retry must preserve
+the returned hash and a stable persistence category; reopening the journal verifies that exact hash
+without another submit call. Hashless submission failures and stranded `PREPARED` steps remain
+blocked.
+
+Browser-storage tests make `localStorage.getItem()` throw `SecurityError`. The journal must return
+the same-instance volatile hash, expose `STORAGE_UNAVAILABLE`, keep the transaction hook mounted,
+and show the reload limitation. A denied initial durable intent write still prevents the wallet
+request.
+
+Reconciliation tests use a real in-memory SQLite report table and a controlled chain client whose
+first head read fails. The run must insert one new `UNVERIFIABLE / HEAD_UNKNOWN` report, retain the
+checkpoint identity and failure reason, close the writer, and set a nonzero exit status.
