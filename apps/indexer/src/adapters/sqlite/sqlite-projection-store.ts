@@ -429,11 +429,19 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
     })();
   }
 
-  prepareForReindex(blockNumber: bigint): void {
+  requiresSourceRefresh(): boolean {
+    return this.sourceRefreshRequired;
+  }
+
+  prepareForReindex(
+    blockNumber: bigint,
+    sourceArchive?: { readonly verifiedBackupId: string },
+  ): void {
     if (!this.sourceRefreshRequired) {
       this.rewindFrom(blockNumber);
       return;
     }
+    if (!sourceArchive?.verifiedBackupId) throw new Error('SOURCE_REFRESH_ARCHIVE_REQUIRED');
     const deployment = this.db
       .prepare('SELECT scan_start_block AS scanStartBlock FROM deployments WHERE deployment_id=?')
       .get(this.deploymentId) as { scanStartBlock: number } | undefined;

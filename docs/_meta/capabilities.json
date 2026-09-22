@@ -68,7 +68,7 @@
     {
       "id": "CAP-06",
       "name": "Transaction lifecycle",
-      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, preserves funding-specific projection proof, and serializes same-profile browser writes.",
+      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, preserves funding-specific projection proof, and serializes same-profile browser writes. Persists per-operation revisions, rejects stale journal writes, and rechecks live context after the final awaited pre-wallet write.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/capabilities/transactions",
@@ -120,7 +120,7 @@
     {
       "id": "CAP-10",
       "name": "Event-driven backend",
-      "behavior": "Reads bounded eligible log ranges, orders events, applies pure projectors, advances a checkpoint, verifies bound raw and decoded source evidence before rebuild, and labels retained events with canonical and source-scan evidence.",
+      "behavior": "Reads bounded eligible log ranges, orders events, applies pure projectors, advances a checkpoint, verifies bound raw and decoded source evidence before rebuild, and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse and verify their captured target, and source-refreshing reindex requires a verified backup recorded in the maintenance marker.",
       "implementation": "implemented",
       "code": [
         "apps/indexer/src/application/ingest-range.ts",
@@ -205,7 +205,7 @@
     {
       "id": "CAP-13",
       "name": "Failure diagnosis and recovery",
-      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, per-event canonical source evidence, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands.",
+      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, per-event canonical source evidence, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands. Projection maintenance releases locks across all preflight failures and preserves pre-refresh source evidence in a verified backup.",
       "implementation": "partial",
       "code": [
         "apps/web/src/pages/InspectorPage.tsx",

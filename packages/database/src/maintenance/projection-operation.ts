@@ -8,32 +8,52 @@ import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
 import { clearMaintenanceMarker, writeMaintenanceMarker } from './marker.js';
 import { loadSchemaContract, verifyDatabase } from './migrations.js';
 
+export interface ProjectionRecovery {
+  readonly reindexFromBlock?: string;
+  readonly targetBlock?: string;
+  readonly targetHash?: string;
+}
+
+export interface ProjectionMaintenanceContext {
+  readonly marker: MaintenanceMarker;
+  recordBackup(backupId: string): void;
+}
+
 export interface ProjectionMaintenanceOptions<T> {
   readonly operationType: 'REBUILD_PROJECTION' | 'REINDEX_PROJECTION';
   readonly expectedDeploymentId: string;
-  readonly recovery?: {
-    readonly reindexFromBlock?: string;
-    readonly targetBlock?: string;
-    readonly targetHash?: string;
-  };
-  readonly run: (database: Database.Database) => T | Promise<T>;
+  readonly recovery?: ProjectionRecovery;
+  readonly resolveRecovery?: (
+    existing: MaintenanceMarker | undefined,
+  ) => ProjectionRecovery | Promise<ProjectionRecovery>;
+  readonly run: (
+    database: Database.Database,
+    context: ProjectionMaintenanceContext,
+  ) => T | Promise<T>;
 }
 
-function resumableMarker(
-  path: string,
-  options: ProjectionMaintenanceOptions<unknown>,
-): MaintenanceMarker | undefined {
+function existingMarker(path: string): MaintenanceMarker | undefined {
   if (!existsSync(path)) return undefined;
-  const existing = JSON.parse(readFileSync(path, 'utf8')) as MaintenanceMarker;
-  const recovery = options.recovery ?? {};
+  return JSON.parse(readFileSync(path, 'utf8')) as MaintenanceMarker;
+}
+
+function assertMarkerOwner(
+  existing: MaintenanceMarker,
+  options: ProjectionMaintenanceOptions<unknown>,
+): void {
+  if (
+    existing.operationType !== options.operationType ||
+    existing.expectedDeploymentId !== options.expectedDeploymentId
+  )
+    throw new Error('MAINTENANCE_INCOMPLETE');
+}
+
+function assertMarkerRecovery(existing: MaintenanceMarker, recovery: ProjectionRecovery): void {
   const matches =
-    existing.operationType === options.operationType &&
-    existing.expectedDeploymentId === options.expectedDeploymentId &&
     existing.reindexFromBlock === recovery.reindexFromBlock &&
     existing.targetBlock === recovery.targetBlock &&
     existing.targetHash === recovery.targetHash;
   if (!matches) throw new Error('MAINTENANCE_INCOMPLETE');
-  return existing;
 }
 
 export async function runProjectionMaintenance<T>(
@@ -42,36 +62,53 @@ export async function runProjectionMaintenance<T>(
 ): Promise<{ operationId: string; result: T }> {
   verifyOwnedEnvironment(paths);
   const locks = await acquireMaintenanceLocks(paths);
-  const existing = resumableMarker(paths.maintenancePath, options);
-  const operationId = existing?.operationId ?? randomUUID();
-  const marker: MaintenanceMarker = {
-    operationId,
-    operationType: options.operationType,
-    stage: 'PREPARED',
-    environmentId: paths.environmentId,
-    targetDatabase: paths.databasePath,
-    expectedSchemaContract: loadSchemaContract().contractVersion,
-    expectedDeploymentId: options.expectedDeploymentId,
-    ...options.recovery,
-    startedAt: existing?.startedAt ?? new Date().toISOString(),
-  };
-  let markerOwned = false;
   let database: Database.Database | undefined;
+  let currentMarker: MaintenanceMarker | undefined;
   try {
-    if (!existing) writeMaintenanceMarker(paths.maintenancePath, marker);
-    markerOwned = true;
+    const existing = existingMarker(paths.maintenancePath);
+    if (existing) assertMarkerOwner(existing, options);
+    const recovery = options.resolveRecovery
+      ? await options.resolveRecovery(existing)
+      : (options.recovery ?? {});
+    if (existing) assertMarkerRecovery(existing, recovery);
+    const operationId = existing?.operationId ?? randomUUID();
+    currentMarker = {
+      operationId,
+      operationType: options.operationType,
+      stage: 'PREPARED',
+      environmentId: paths.environmentId,
+      targetDatabase: paths.databasePath,
+      expectedSchemaContract: loadSchemaContract().contractVersion,
+      expectedDeploymentId: options.expectedDeploymentId,
+      ...recovery,
+      ...(existing?.backupId ? { backupId: existing.backupId } : {}),
+      startedAt: existing?.startedAt ?? new Date().toISOString(),
+    };
+    if (!existing) writeMaintenanceMarker(paths.maintenancePath, currentMarker);
     database = openProjectionDatabase(paths.databasePath);
     verifyDatabase(database);
-    writeMaintenanceMarker(paths.maintenancePath, { ...marker, stage: 'ACTIVE' });
-    const result = await options.run(database);
+    currentMarker = { ...currentMarker, stage: 'ACTIVE' };
+    writeMaintenanceMarker(paths.maintenancePath, currentMarker);
+    const context: ProjectionMaintenanceContext = {
+      get marker() {
+        if (!currentMarker) throw new Error('MAINTENANCE_MARKER_UNAVAILABLE');
+        return currentMarker;
+      },
+      recordBackup(backupId) {
+        if (!currentMarker) throw new Error('MAINTENANCE_MARKER_UNAVAILABLE');
+        currentMarker = { ...currentMarker, backupId };
+        writeMaintenanceMarker(paths.maintenancePath, currentMarker);
+      },
+    };
+    const result = await options.run(database, context);
     database.close();
     database = undefined;
     clearMaintenanceMarker(paths.maintenancePath);
     return { operationId, result };
   } catch (error) {
-    if (markerOwned && existsSync(paths.maintenancePath))
+    if (currentMarker && existsSync(paths.maintenancePath))
       writeMaintenanceMarker(paths.maintenancePath, {
-        ...marker,
+        ...currentMarker,
         stage: 'FAILED',
         lastError: error instanceof Error ? error.message : String(error),
       });

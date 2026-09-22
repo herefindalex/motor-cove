@@ -46,11 +46,11 @@ export class LocalStorageJournal implements TransactionJournal {
     return [...durable.filter((entry) => !volatileIds.has(entry.clientOperationId)), ...volatile];
   }
 
-  load(deploymentId: string): readonly JournalEntry[] {
+  private loadDurable(deploymentId: string): readonly JournalEntry[] {
     const raw = localStorage.getItem(key(deploymentId));
     if (!raw) {
       this.issues.delete(deploymentId);
-      return this.withVolatile(deploymentId, []);
+      return [];
     }
 
     let value: unknown;
@@ -64,14 +64,14 @@ export class LocalStorageJournal implements TransactionJournal {
           detail: error instanceof Error ? error.message : String(error),
         },
       ]);
-      return this.withVolatile(deploymentId, []);
+      return [];
     }
 
     if (!Array.isArray(value)) {
       this.issues.set(deploymentId, [
         { deploymentId, reason: 'INVALID_ENTRY', detail: 'Journal root must be an array.' },
       ]);
-      return this.withVolatile(deploymentId, []);
+      return [];
     }
 
     const entries: JournalEntry[] = [];
@@ -90,7 +90,11 @@ export class LocalStorageJournal implements TransactionJournal {
     }
     if (issues.length === 0) this.issues.delete(deploymentId);
     else this.issues.set(deploymentId, issues);
-    return this.withVolatile(deploymentId, entries);
+    return entries;
+  }
+
+  load(deploymentId: string): readonly JournalEntry[] {
+    return this.withVolatile(deploymentId, this.loadDurable(deploymentId));
   }
 
   loadIssues(deploymentId: string): readonly JournalLoadIssue[] {
@@ -98,34 +102,41 @@ export class LocalStorageJournal implements TransactionJournal {
     return this.issues.get(deploymentId) ?? [];
   }
 
-  async save(entry: JournalEntry): Promise<void> {
+  async save(entry: JournalEntry): Promise<JournalEntry> {
     const parsed = journalEntrySchema.parse(entry);
     if (this.volatileEntries.has(parsed.clientOperationId)) {
-      this.volatileEntries.set(parsed.clientOperationId, parsed);
+      const current = this.volatileEntries.get(parsed.clientOperationId);
+      if ((parsed.revision ?? 0) !== (current?.revision ?? 0))
+        throw new Error('JOURNAL_REVISION_CONFLICT');
+      const stored = { ...parsed, revision: (parsed.revision ?? 0) + 1 };
+      this.volatileEntries.set(parsed.clientOperationId, stored);
       for (const listener of this.listeners) listener();
-      return;
+      return stored;
     }
-    await withWriteLock(parsed.deploymentId, () => {
-      const loaded = this.load(parsed.deploymentId);
+    const stored = await withWriteLock(parsed.deploymentId, () => {
+      const loaded = this.loadDurable(parsed.deploymentId);
       if ((this.issues.get(parsed.deploymentId)?.length ?? 0) > 0) {
         throw new Error('JOURNAL_STORAGE_INVALID');
       }
       const current = loaded.find((item) => item.clientOperationId === parsed.clientOperationId);
-      if (current && Date.parse(current.updatedAt) > Date.parse(parsed.updatedAt)) return;
-      const entries = loaded.filter(
-        (item) =>
-          item.clientOperationId !== parsed.clientOperationId &&
-          !this.volatileEntries.has(item.clientOperationId),
-      );
-      localStorage.setItem(key(parsed.deploymentId), JSON.stringify([...entries, parsed]));
+      const expectedRevision = parsed.revision ?? 0;
+      if ((current?.revision ?? 0) !== expectedRevision)
+        throw new Error('JOURNAL_REVISION_CONFLICT');
+      const persisted = { ...parsed, revision: expectedRevision + 1 };
+      const entries = loaded.filter((item) => item.clientOperationId !== parsed.clientOperationId);
+      localStorage.setItem(key(parsed.deploymentId), JSON.stringify([...entries, persisted]));
+      return persisted;
     });
     for (const listener of this.listeners) listener();
+    return stored;
   }
 
-  saveVolatile(entry: JournalEntry): void {
+  saveVolatile(entry: JournalEntry): JournalEntry {
     const parsed = journalEntrySchema.parse(entry);
-    this.volatileEntries.set(parsed.clientOperationId, parsed);
+    const stored = { ...parsed, revision: (parsed.revision ?? 0) + 1 };
+    this.volatileEntries.set(parsed.clientOperationId, stored);
     for (const listener of this.listeners) listener();
+    return stored;
   }
 
   subscribe(listener: () => void): () => void {

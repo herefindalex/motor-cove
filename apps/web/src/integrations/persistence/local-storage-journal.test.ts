@@ -30,7 +30,7 @@ describe('LocalStorageJournal', () => {
   it('round trips a runtime validated entry', async () => {
     const journal = new LocalStorageJournal();
     await journal.save(entry);
-    expect(journal.load(deploymentId)).toEqual([entry]);
+    expect(journal.load(deploymentId)).toEqual([{ ...entry, revision: 1 }]);
     expect(journal.loadIssues(deploymentId)).toEqual([]);
   });
 
@@ -68,16 +68,44 @@ describe('LocalStorageJournal', () => {
       currentTxHash: `0x${'4'.repeat(64)}` as const,
       status: 'SUBMITTED' as const,
     };
-    journal.saveVolatile(volatile);
-    expect(journal.load(deploymentId)).toEqual([volatile]);
+    const volatileStored = journal.saveVolatile(volatile);
+    expect(journal.load(deploymentId)).toEqual([{ ...volatile, revision: 1 }]);
     expect(localStorage.getItem(storageKey)).toBeNull();
 
-    await journal.save({ ...volatile, status: 'INCLUDED_SUCCESS', receiptStatus: 'SUCCESS' });
+    await journal.save({
+      ...volatileStored,
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+    });
     expect(journal.load(deploymentId)[0]).toMatchObject({
       status: 'INCLUDED_SUCCESS',
       receiptStatus: 'SUCCESS',
     });
     expect(localStorage.getItem(storageKey)).toBeNull();
+  });
+
+  it('preserves the durable intent beneath a volatile overlay during unrelated writes', async () => {
+    const journal = new LocalStorageJournal();
+    const prepared = await journal.save(entry);
+    const volatile = journal.saveVolatile({
+      ...prepared,
+      originalTxHash: `0x${'4'.repeat(64)}`,
+      currentTxHash: `0x${'4'.repeat(64)}`,
+      status: 'SUBMITTED',
+    });
+    const second = {
+      ...entry,
+      clientOperationId: 'operation-b',
+      createdAt: '2026-09-21T00:00:02.000Z',
+      updatedAt: '2026-09-21T00:00:02.000Z',
+    };
+    await journal.save(second);
+
+    expect(JSON.parse(localStorage.getItem(storageKey) ?? '[]')).toEqual([
+      { ...entry, revision: 1 },
+      { ...second, revision: 1 },
+    ]);
+    expect(journal.load(deploymentId)).toEqual([{ ...second, revision: 1 }, volatile]);
   });
 
   it('serializes journal writes from independent instances through one deployment lock', async () => {
@@ -92,7 +120,10 @@ describe('LocalStorageJournal', () => {
 
     await Promise.all([firstJournal.save(entry), secondJournal.save(second)]);
 
-    expect(firstJournal.load(deploymentId)).toEqual([entry, second]);
+    expect(firstJournal.load(deploymentId)).toEqual([
+      { ...entry, revision: 1 },
+      { ...second, revision: 1 },
+    ]);
   });
 
   it('does not let an older same-operation write erase newer evidence', async () => {
@@ -106,8 +137,34 @@ describe('LocalStorageJournal', () => {
       receiptBlockNumber: '12',
     };
     await journal.save(newer);
-    await journal.save({ ...entry, updatedAt: '2026-09-21T00:00:01.000Z' });
+    await expect(journal.save({ ...entry, updatedAt: '2026-09-21T00:00:01.000Z' })).rejects.toThrow(
+      'JOURNAL_REVISION_CONFLICT',
+    );
 
-    expect(journal.load(deploymentId)).toEqual([newer]);
+    expect(journal.load(deploymentId)).toEqual([{ ...newer, revision: 1 }]);
+  });
+
+  it('uses a persisted revision instead of wall time to acknowledge a hash', async () => {
+    const journal = new LocalStorageJournal();
+    const prepared = await journal.save(entry);
+    const awaiting = await journal.save({
+      ...prepared,
+      updatedAt: '2026-09-21T00:00:02.000Z',
+      status: 'AWAITING_WALLET',
+    });
+    const submitted = await journal.save({
+      ...awaiting,
+      updatedAt: '2026-09-20T23:59:59.000Z',
+      originalTxHash: `0x${'4'.repeat(64)}`,
+      currentTxHash: `0x${'4'.repeat(64)}`,
+      status: 'SUBMITTED',
+    });
+
+    expect(submitted.revision).toBe(3);
+    expect(journal.load(deploymentId)[0]).toMatchObject({
+      revision: 3,
+      status: 'SUBMITTED',
+      currentTxHash: `0x${'4'.repeat(64)}`,
+    });
   });
 });

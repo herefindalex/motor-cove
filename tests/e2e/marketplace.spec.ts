@@ -199,7 +199,11 @@ test('lists, expires, refunds, and reclaims through distinct real transactions',
   );
   await card.getByRole('link', { name: 'Harbor RS' }).click();
   await expect(page).toHaveURL(/\/sales\/\d+$/);
-  await expect(page.getByText(submittedHash, { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: 'Transaction timeline' })
+      .getByText(submittedHash, { exact: true }),
+  ).toBeVisible();
   expect(
     await page.evaluate(() =>
       (
@@ -445,6 +449,27 @@ test('keeps pending and included evidence across reload while projection catches
     } finally {
       await observerContext.close();
     }
+
+    const durableFunding = await page.evaluate(() => {
+      for (const key of Object.keys(localStorage)) {
+        if (!key.startsWith('motorcove:journal:v1:')) continue;
+        const value = JSON.parse(localStorage.getItem(key) ?? '[]') as unknown;
+        if (!Array.isArray(value)) continue;
+        for (const candidate of value as unknown[]) {
+          if (
+            typeof candidate === 'object' &&
+            candidate !== null &&
+            'action' in candidate &&
+            candidate.action === 'FUND_SALE' &&
+            'status' in candidate &&
+            candidate.status === 'INCLUDED_SUCCESS'
+          )
+            return true;
+        }
+      }
+      return false;
+    });
+    expect(durableFunding).toBe(true);
 
     await page.reload();
     await expect(

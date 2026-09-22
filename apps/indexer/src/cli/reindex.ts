@@ -1,10 +1,14 @@
 import { motorCoveEscrowAbi } from '@motorcove/chain-artifacts';
-import { runProjectionMaintenance } from '@motorcove/database/maintenance';
+import {
+  backupEnvironment,
+  runProjectionMaintenance,
+  verifyBackup,
+} from '@motorcove/database/maintenance';
 import { createPublicClient, http, keccak256, type Address } from 'viem';
 import { ViemChainReader } from '../adapters/evm/viem-chain-reader.js';
 import { SqliteProjectionStore } from '../adapters/sqlite/sqlite-projection-store.js';
 import { ingestRange } from '../application/ingest-range.js';
-import { resolveEligibleReindexTarget } from '../application/reindex-target.js';
+import { resolveReindexOperationRecovery } from '../application/reindex-target.js';
 import { loadConfig, logScopeHash } from '../runtime/config.js';
 
 if (!process.argv.includes('--yes')) throw new Error('CONFIRMATION_REQUIRED: pass --yes');
@@ -40,17 +44,30 @@ if (
   throw new Error('DEPLOYMENT_MISMATCH: runtime identity');
 
 const chain = new ViemChainReader(client, nft, escrow);
-const target = await resolveEligibleReindexTarget(chain, config.indexingDepth);
-if (!target) throw new Error('REINDEX_TARGET_NOT_AVAILABLE');
+let completedRecovery:
+  | { reindexFromBlock: string; targetBlock: string; targetHash: string }
+  | undefined;
 const operation = await runProjectionMaintenance(config.environment, {
   operationType: 'REINDEX_PROJECTION',
   expectedDeploymentId: config.manifest.deploymentId,
   recovery: {
     reindexFromBlock: fromBlock.toString(),
-    targetBlock: target.number.toString(),
-    targetHash: target.hash,
   },
-  run: async (database) => {
+  resolveRecovery: async (existing) => {
+    completedRecovery = await resolveReindexOperationRecovery(
+      chain,
+      config.indexingDepth,
+      fromBlock,
+      existing,
+    );
+    return completedRecovery;
+  },
+  run: async (database, maintenance) => {
+    const targetBlock = maintenance.marker.targetBlock;
+    const targetHash = maintenance.marker.targetHash;
+    if (targetBlock === undefined || targetHash === undefined)
+      throw new Error('REINDEX_TARGET_NOT_AVAILABLE');
+    const target = { number: BigInt(targetBlock), hash: targetHash };
     const store = SqliteProjectionStore.forMaintenance(
       database,
       config.manifest.deploymentId,
@@ -61,7 +78,22 @@ const operation = await runProjectionMaintenance(config.environment, {
         allowLogScopeChange: fromBlock === BigInt(config.manifest.scanStartBlock),
       },
     );
-    store.prepareForReindex(fromBlock);
+    let verifiedBackupId: string | undefined;
+    if (store.requiresSourceRefresh()) {
+      if (maintenance.marker.backupId) {
+        verifyBackup(config.environment, maintenance.marker.backupId);
+        verifiedBackupId = maintenance.marker.backupId;
+      } else {
+        const backup = await backupEnvironment(config.environment, {
+          locksAlreadyHeld: true,
+          reason: `pre-reindex-source-refresh:${maintenance.marker.operationId}`,
+        });
+        verifyBackup(config.environment, backup.backupId);
+        maintenance.recordBackup(backup.backupId);
+        verifiedBackupId = backup.backupId;
+      }
+    }
+    store.prepareForReindex(fromBlock, verifiedBackupId ? { verifiedBackupId } : undefined);
     const rebuild = store.rebuildFromJournal();
     for (let attempt = 0; attempt < 1_000; attempt += 1) {
       const checkpoint = await store.checkpoint();
@@ -84,6 +116,7 @@ const operation = await runProjectionMaintenance(config.environment, {
     return rebuild;
   },
 });
+if (!completedRecovery) throw new Error('REINDEX_TARGET_NOT_AVAILABLE');
 console.log(
   JSON.stringify({
     service: 'reindex',
@@ -91,8 +124,8 @@ console.log(
     operationId: operation.operationId,
     deploymentId: config.manifest.deploymentId,
     fromBlock: fromBlock.toString(),
-    targetBlock: target.number.toString(),
-    targetHash: target.hash,
+    targetBlock: completedRecovery.targetBlock,
+    targetHash: completedRecovery.targetHash,
     ...operation.result,
   }),
 );

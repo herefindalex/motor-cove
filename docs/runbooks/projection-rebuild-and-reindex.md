@@ -37,7 +37,9 @@ Inspect the marker with `pnpm ops:recover --env <id>`. For `REBUILD_PROJECTION` 
 `REINDEX_PROJECTION`, `--complete` intentionally returns `ACTION_REQUIRED`; it does not clear the
 marker. Stop the runtime and rerun the same rebuild command, or the same reindex command with the
 original `--from` value. Resume requires matching operation type, deployment, rewind point, captured
-target block, and target hash. A mismatch remains blocked.
+target block, and target hash. The resumed command verifies and reuses the marker's original target;
+it does not move the target when the live head advances. A missing or changed target anchor remains
+blocked before another rewind.
 
 ## Source preflight and maintenance compatibility
 
@@ -54,3 +56,15 @@ If the target hash changes while it is captured, reindex stops before the mainte
 Runtime startup rejects projector or log-scope mismatches. Maintenance accepts only explicitly
 supported prior projector versions. A scope change is allowed only when reindex starts at the
 deployment scan-start block.
+
+## Source refresh archive boundary
+
+When a supported scope, decoder, or source-digest transition requires replacing stored headers and
+events, reindex creates and verifies an environment backup under the existing exclusive maintenance
+gate. It writes the verified backup ID into the reindex marker before deleting active source rows.
+An interrupted resume verifies the recorded backup again. If backup creation, checksum verification,
+or marker persistence fails, the active source journal remains unchanged.
+
+The backup preserves the prior SQLite source rows, including displaced or orphan evidence. Reindex
+still refetches only the canonical range needed by the active build; the backup is diagnostic and
+recovery evidence, not a promise that an RPC can reproduce historical orphan logs.

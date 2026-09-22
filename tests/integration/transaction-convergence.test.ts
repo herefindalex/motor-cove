@@ -166,6 +166,7 @@ describe('transaction recovery converges across Anvil, API, SQLite, and Indexer'
       loadIssues: () => [],
       save: (value) => {
         entries[0] = value;
+        return value;
       },
       subscribe: () => () => undefined,
     };

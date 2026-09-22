@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -156,5 +156,58 @@ describe('projection maintenance isolation', () => {
       }),
     ).rejects.toThrow('MAINTENANCE_INCOMPLETE');
     expect(readFileSync(paths.maintenancePath, 'utf8')).toBe(original);
+  });
+
+  it('releases maintenance locks after rejecting a mismatched marker', async () => {
+    const paths = await fixture();
+    await expect(
+      runProjectionMaintenance(paths, {
+        operationType: 'REINDEX_PROJECTION',
+        expectedDeploymentId: `0x${'8'.repeat(64)}`,
+        recovery: {
+          reindexFromBlock: '1',
+          targetBlock: '2',
+          targetHash: `0x${'9'.repeat(64)}`,
+        },
+        run: () => {
+          throw new Error('controlled failure');
+        },
+      }),
+    ).rejects.toThrow('controlled failure');
+    const original = readFileSync(paths.maintenancePath, 'utf8');
+
+    await expect(
+      runProjectionMaintenance(paths, {
+        operationType: 'REINDEX_PROJECTION',
+        expectedDeploymentId: `0x${'8'.repeat(64)}`,
+        recovery: {
+          reindexFromBlock: '1',
+          targetBlock: '3',
+          targetHash: `0x${'a'.repeat(64)}`,
+        },
+        run: () => undefined,
+      }),
+    ).rejects.toThrow('MAINTENANCE_INCOMPLETE');
+    expect(readFileSync(paths.maintenancePath, 'utf8')).toBe(original);
+
+    const locks = await acquireMaintenanceLocks(paths);
+    await locks.release();
+  });
+
+  it('releases maintenance locks when marker JSON is invalid', async () => {
+    const paths = await fixture();
+    writeFileSync(paths.maintenancePath, '{');
+
+    await expect(
+      runProjectionMaintenance(paths, {
+        operationType: 'REBUILD_PROJECTION',
+        expectedDeploymentId: `0x${'b'.repeat(64)}`,
+        run: () => undefined,
+      }),
+    ).rejects.toThrow();
+    expect(readFileSync(paths.maintenancePath, 'utf8')).toBe('{');
+
+    const locks = await acquireMaintenanceLocks(paths);
+    await locks.release();
   });
 });

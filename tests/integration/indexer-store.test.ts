@@ -1,12 +1,15 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import Database from 'better-sqlite3';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  backupEnvironment,
   environmentPaths,
   migrateEnvironment,
   registerDeployment,
   seedCatalog,
+  verifyBackup,
 } from '@motorcove/database/maintenance';
 import { openProjectionWriter } from '@motorcove/database/projection-writer';
 import { createReadOnlyReader } from '@motorcove/database/reader';
@@ -495,7 +498,8 @@ describe('Indexer store', () => {
       scopeHash,
       { allowLogScopeChange: true },
     );
-    maintenance.prepareForReindex(1n);
+    expect(() => maintenance.prepareForReindex(1n)).toThrow('SOURCE_REFRESH_ARCHIVE_REQUIRED');
+    maintenance.prepareForReindex(1n, { verifiedBackupId: 'verified-scope-refresh' });
     expect(maintenance.rebuildFromJournal()).toMatchObject({ events: 0 });
     await maintenance.commit([first], [source], first);
     expect(
@@ -523,8 +527,34 @@ describe('Indexer store', () => {
       .prepare('UPDATE chain_events SET source_record_digest=NULL WHERE deployment_id=?')
       .run(deploymentId);
     writer.database
+      .prepare('UPDATE indexed_blocks SET is_canonical=0 WHERE deployment_id=?')
+      .run(deploymentId);
+    writer.database
       .prepare('UPDATE indexer_checkpoint SET projector_version=? WHERE deployment_id=?')
       .run('0', deploymentId);
+    writeFileSync(paths.deploymentPath, `${JSON.stringify({ deploymentId })}\n`);
+    const backup = await backupEnvironment(paths, {
+      locksAlreadyHeld: true,
+      reason: 'test-pre-source-refresh',
+    });
+    verifyBackup(paths, backup.backupId);
+    const archive = new Database(join(backup.path, 'database.sqlite'), {
+      readonly: true,
+      fileMustExist: true,
+    });
+    expect(
+      archive
+        .prepare(
+          `SELECT COUNT(*) AS events,
+                  SUM(CASE WHEN b.is_canonical=0 THEN 1 ELSE 0 END) AS orphanEvents
+           FROM chain_events e
+           JOIN indexed_blocks b
+             ON b.deployment_id=e.deployment_id AND b.block_hash=e.block_hash
+           WHERE e.deployment_id=?`,
+        )
+        .get(deploymentId),
+    ).toEqual({ events: 1, orphanEvents: 1 });
+    archive.close();
 
     const maintenance = SqliteProjectionStore.forMaintenance(
       writer.database,
@@ -533,7 +563,8 @@ describe('Indexer store', () => {
       scopeHash,
       { supportedProjectorVersions: ['0'] },
     );
-    maintenance.prepareForReindex(1n);
+    expect(() => maintenance.prepareForReindex(1n)).toThrow('SOURCE_REFRESH_ARCHIVE_REQUIRED');
+    maintenance.prepareForReindex(1n, { verifiedBackupId: backup.backupId });
     expect(maintenance.rebuildFromJournal()).toMatchObject({ events: 0 });
     await maintenance.commit([first], [source], first);
     const refreshed = writer.database

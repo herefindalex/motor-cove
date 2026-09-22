@@ -70,6 +70,7 @@ function ports(
       const index = saved.findIndex((item) => item.clientOperationId === value.clientOperationId);
       if (index === -1) saved.push(value);
       else saved[index] = value;
+      return value;
     },
     subscribe: () => () => undefined,
   };

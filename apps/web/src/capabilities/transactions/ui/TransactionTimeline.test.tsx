@@ -33,7 +33,7 @@ describe('TransactionTimeline', () => {
     const journal: TransactionJournal = {
       load: () => [rejected],
       loadIssues: () => [],
-      save: () => undefined,
+      save: (value) => value,
       subscribe: () => () => undefined,
     };
 

@@ -45,6 +45,7 @@ function journal(): TransactionJournal {
       );
       if (index === -1) entries.push(entry);
       else entries[index] = entry;
+      return entry;
     },
     saveVolatile: (entry) => {
       const index = entries.findIndex(
@@ -52,6 +53,7 @@ function journal(): TransactionJournal {
       );
       if (index === -1) entries.push(entry);
       else entries[index] = entry;
+      return entry;
     },
     subscribe: () => () => {},
   };

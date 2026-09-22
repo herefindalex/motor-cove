@@ -88,8 +88,14 @@ async function update(
   )
     return { entry: current, applied: false };
   const next = { ...current, ...values, updatedAt: new Date().toISOString() };
-  await ports.journal.save(next);
-  return { entry: next, applied: true };
+  try {
+    const stored = await ports.journal.save(next);
+    return { entry: stored, applied: true };
+  } catch (error) {
+    if (error instanceof Error && error.message === 'JOURNAL_REVISION_CONFLICT')
+      return { entry: latestEntry(entry, ports.journal), applied: false };
+    throw error;
+  }
 }
 
 export async function resumeJournalEntry(

@@ -77,6 +77,9 @@ recorded in [API values and observation freshness](adr/0010-api-values-and-obser
 Live deployment rechecks, volatile navigation, maintenance preconditions, lock cleanup, raw event
 validity, resolved dependency boundaries, and independent liability evidence are recorded in
 [runtime identity and diagnostic evidence](adr/0011-runtime-identity-and-diagnostic-evidence.md).
+Fixed-target maintenance resume, verified source archives, final pre-wallet context checks, and
+per-operation journal revisions are recorded in
+[resumable maintenance and journal revisions](adr/0012-resumable-maintenance-and-journal-revisions.md).
 
 ## Evaluate current evidence
 

@@ -28,6 +28,7 @@ identity, target, exact calldata, value, and sale before any wallet call. The su
 PREPARING saved
 → simulation and full live-context recheck
 → AWAITING_WALLET saved
+→ full live-context recheck after the awaited save
 → one wallet call
 → returned hash saved immediately
 → receipt, event, and projection reads only
@@ -92,6 +93,16 @@ Funding additionally verifies the exact `SaleFunded` log and then asks the API f
 A successful receipt for any other action updates only transaction evidence; it does not imply Sale,
 Payment, or projection convergence.
 
-All durable journal writes are awaited. Tabs in one browser profile serialize deployment journal
-writes with the Web Locks API, and older same-operation updates cannot replace newer evidence. Closing
-the lock owner releases the lock for another tab. The journal does not coordinate different devices.
+All durable journal writes are awaited. Each operation has a persisted revision; `save()` compares
+the expected revision and advances it while holding the deployment Web Lock. A stale revision raises
+`JOURNAL_REVISION_CONFLICT` instead of silently acknowledging a discarded write. `updatedAt` remains
+diagnostic display evidence and does not order writes. Callers carry forward the entry returned by
+`save()`, including its new revision.
+
+If hashless recovery advances an entry while the wallet request is still open, the returned hash is
+merged only into the latest revision of the same immutable intent. A different intent or an existing
+different hash is never overwritten. Memory-only evidence overlays the durable pre-submit row; an
+unrelated operation write does not erase that durable fallback.
+
+Tabs in one browser profile serialize deployment journal writes with the Web Locks API. Closing the
+lock owner releases the lock for another tab. The journal does not coordinate different devices.

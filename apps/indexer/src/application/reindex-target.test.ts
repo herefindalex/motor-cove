@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BlockHeader } from '../ports/index.js';
-import { resolveEligibleReindexTarget } from './reindex-target.js';
+import { resolveEligibleReindexTarget, resolveReindexOperationRecovery } from './reindex-target.js';
 
 const hash = (number: bigint): `0x${string}` => `0x${number.toString(16).padStart(64, '0')}`;
 
@@ -53,5 +53,65 @@ describe('resolveEligibleReindexTarget', () => {
         2n,
       ),
     ).rejects.toThrow('REINDEX_TARGET_CHANGED');
+  });
+
+  it('resumes the recorded target when the chain head advances', async () => {
+    let headReads = 0;
+    await expect(
+      resolveReindexOperationRecovery(
+        {
+          getHead: async () => {
+            headReads += 1;
+            return block(11n);
+          },
+          getBlock: async (number) => block(number),
+        },
+        0n,
+        1n,
+        {
+          reindexFromBlock: '1',
+          targetBlock: '10',
+          targetHash: block(10n).hash,
+        },
+      ),
+    ).resolves.toEqual({
+      reindexFromBlock: '1',
+      targetBlock: '10',
+      targetHash: block(10n).hash,
+    });
+    expect(headReads).toBe(0);
+  });
+
+  it('rejects resume when the recorded target is no longer canonical', async () => {
+    await expect(
+      resolveReindexOperationRecovery(
+        {
+          getHead: async () => block(11n),
+          getBlock: async (number) => ({ ...block(number), hash: hash(99n) }),
+        },
+        0n,
+        1n,
+        {
+          reindexFromBlock: '1',
+          targetBlock: '10',
+          targetHash: block(10n).hash,
+        },
+      ),
+    ).rejects.toThrow('REINDEX_TARGET_CHANGED');
+  });
+
+  it('rejects resume when the requested start differs from the operation', async () => {
+    await expect(
+      resolveReindexOperationRecovery(
+        { getHead: async () => block(11n), getBlock: async (number) => block(number) },
+        0n,
+        2n,
+        {
+          reindexFromBlock: '1',
+          targetBlock: '10',
+          targetHash: block(10n).hash,
+        },
+      ),
+    ).rejects.toThrow('MAINTENANCE_INCOMPLETE');
   });
 });

@@ -21,6 +21,18 @@ behavior to current local evidence. A passing row describes the recorded run in
 | ARCH-001 | Frontend and service dependencies follow declared public boundaries                                          | Architecture checks passed for the source graph and rejected invalid fixtures, including recovery-to-wallet-write and Web imports whose relative or aliased target resolves into the database package.                                                                                                                             |
 | REL-001  | Generated ABI, OpenAPI, schema, projector, and deployment identities remain compatible                       | Generation checks, workspace consumers, schema source digest, runtime gates, API manifest/database descriptor gate, and same-address/new-deployment rejection passed locally.                                                                                                                                                      |
 
+## R7 recovery and concurrency coverage
+
+- **TX-002:** the final live-context check occurs after the awaited durable
+  `AWAITING_WALLET` write. Per-operation revisions reject stale journal updates, and Chromium
+  verifies multi-tab writer handoff without using wall-clock order.
+- **IDX-003:** an interrupted reindex resumes the target stored in its marker even after the head
+  advances. Anchor change, mismatched recovery identity, and malformed marker cases fail closed and
+  release their maintenance locks.
+- **IDX-004:** any scope, decoder, or source-digest refresh requires a verified environment backup
+  recorded in the marker before active raw events or headers can be removed. The archive fixture
+  proves displaced source evidence remains readable.
+
 Database acceptance IDs `DB-01` through `DB-54` are maintained in the
 [database acceptance matrix](database-acceptance-matrix.md). Documentation acceptance IDs
 `DOC-01` through `DOC-32` are maintained in the

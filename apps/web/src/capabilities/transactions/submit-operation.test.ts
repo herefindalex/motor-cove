@@ -24,11 +24,13 @@ function journal(failOnSave?: number) {
       const index = entries.findIndex((item) => item.clientOperationId === entry.clientOperationId);
       if (index === -1) entries.push(entry);
       else entries[index] = entry;
+      return entry;
     },
     saveVolatile: (entry) => {
       const index = entries.findIndex((item) => item.clientOperationId === entry.clientOperationId);
       if (index === -1) entries.push(entry);
       else entries[index] = entry;
+      return entry;
     },
     subscribe: () => () => undefined,
   };
@@ -135,6 +137,44 @@ describe('submitOperation', () => {
     });
   });
 
+  it('merges a returned hash into the latest hashless journal revision', async () => {
+    const store = journal();
+    const originalSave = store.port.save.bind(store.port);
+    let submittedWrites = 0;
+    store.port.save = async (entry) => {
+      if (entry.status === 'SUBMITTED' && entry.currentTxHash) {
+        submittedWrites += 1;
+        if (submittedWrites === 1) {
+          const current = store.entries.find(
+            (candidate) => candidate.clientOperationId === entry.clientOperationId,
+          );
+          if (!current) throw new Error('test journal entry missing');
+          store.entries[store.entries.indexOf(current)] = {
+            ...current,
+            revision: (current.revision ?? 0) + 1,
+            status: 'UNKNOWN',
+            verificationAvailability: 'AVAILABLE',
+            lastErrorCategory: 'HASH_REQUIRED_FROM_WALLET_ACTIVITY',
+          };
+          throw new Error('JOURNAL_REVISION_CONFLICT');
+        }
+      }
+      return originalSave(entry);
+    };
+
+    const { action, context, submit } = fixture();
+    await expect(submitOperation(context, action, store.port)).resolves.toMatchObject({
+      kind: 'submitted',
+      hash,
+    });
+    expect(submit).toHaveBeenCalledTimes(1);
+    expect(store.entries[0]).toMatchObject({
+      currentTxHash: hash,
+      status: 'SUBMITTED',
+    });
+    expect(store.entries[0]?.lastErrorCategory).toBeUndefined();
+  });
+
   it('retains a durable hash when nonce lookup fails', async () => {
     const store = journal();
     const { action, context } = fixture({
@@ -194,6 +234,42 @@ describe('submitOperation', () => {
       ),
     ).toMatchObject({ kind: 'failed' });
     expect(submit).toHaveBeenCalledTimes(0);
+  });
+
+  it('rechecks context after the awaiting-wallet write finishes', async () => {
+    const store = journal();
+    const originalSave = store.port.save.bind(store.port);
+    let releaseAwaitingWrite!: () => void;
+    const awaitingWrite = new Promise<void>((resolve) => {
+      releaseAwaitingWrite = resolve;
+    });
+    let saves = 0;
+    store.port.save = async (entry) => {
+      saves += 1;
+      if (saves === 2) await awaitingWrite;
+      return originalSave(entry);
+    };
+    let current = true;
+    const { action, context, submit } = fixture();
+    const submission = submitOperation(
+      { ...context, contextStillCurrent: () => current },
+      action,
+      store.port,
+    );
+
+    await vi.waitFor(() => expect(saves).toBe(2));
+    current = false;
+    releaseAwaitingWrite();
+
+    await expect(submission).resolves.toMatchObject({
+      kind: 'failed',
+      message: 'OPERATION_CONTEXT_CHANGED',
+    });
+    expect(submit).not.toHaveBeenCalled();
+    expect(store.entries[0]).toMatchObject({
+      status: 'FAILED_BEFORE_SUBMIT',
+      lastErrorCategory: 'OPERATION_CONTEXT_CHANGED',
+    });
   });
 
   it('creates a new operation id for an explicit retry', async () => {

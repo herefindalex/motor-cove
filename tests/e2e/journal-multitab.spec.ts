@@ -29,7 +29,9 @@ async function save(page: Page, value: ReturnType<typeof entry>) {
     const module = (await eval(
       "import('/src/integrations/persistence/local-storage-journal.ts')",
     )) as {
-      LocalStorageJournal: new () => { save(entry: unknown): Promise<void> };
+      LocalStorageJournal: new () => {
+        save(entry: unknown): Promise<unknown>;
+      };
     };
     await new module.LocalStorageJournal().save(candidate);
   }, value);
@@ -96,7 +98,9 @@ test('preserves newer same-operation evidence and releases lock when a writer ta
   await writer.close();
   await successorSave;
   await holding;
-  await save(successor, entry('operation-a', '2026-09-21T00:00:01.000Z'));
+  await expect(save(successor, entry('operation-a', '2026-09-21T00:00:01.000Z'))).rejects.toThrow(
+    'JOURNAL_REVISION_CONFLICT',
+  );
 
   const stored = await successor.evaluate((key) => {
     const parsed = JSON.parse(localStorage.getItem(key) ?? '[]') as unknown;
@@ -111,13 +115,21 @@ test('preserves newer same-operation evidence and releases lock when a writer ta
         typeof item.updatedAt !== 'string'
       )
         throw new Error('journal operation is invalid');
-      return { clientOperationId: item.clientOperationId, updatedAt: item.updatedAt };
+      if (!('revision' in item) || typeof item.revision !== 'number') {
+        throw new Error('journal revision is invalid');
+      }
+      return {
+        clientOperationId: item.clientOperationId,
+        updatedAt: item.updatedAt,
+        revision: item.revision,
+      };
     });
   }, storageKey);
   expect(stored).toHaveLength(1);
   expect(stored[0]).toMatchObject({
     clientOperationId: 'operation-a',
     updatedAt: '2026-09-21T00:00:03.000Z',
+    revision: 1,
   });
   await context.close();
 });

@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "53586bd2781e2bf5bf9ab0ae034cb72b898f285b",
+    "revision": "787b093dbb3a08eda28669106a7978c703e5c426",
     "dirty": true,
-    "capturedAt": "2026-09-22T02:17:33Z",
-    "sourceFingerprint": "sha256:3233ad5b04aac07d781b5a18500342d3cddecaa619ce133e41249c21bdbfe378",
+    "capturedAt": "2026-09-22T04:03:18Z",
+    "sourceFingerprint": "sha256:7a519b7eef82fba03a3e651a79489ca37f048d0ff2cf6e5b7075890ea517b678",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Captured from the uncommitted R6 working tree based on the committed R5 revision. Local deterministic Anvil, SQLite, Fastify, JSDOM, Playwright, and Foundry evidence does not establish public-network behavior, hardware power-loss durability, broad wallet-provider compatibility, or an external security audit.",
+    "limits": "Captured from the uncommitted R7 working tree based on committed R6 revision 787b093dbb3a08eda28669106a7978c703e5c426. Local deterministic Anvil, SQLite, Fastify, JSDOM, Playwright, and Foundry evidence does not establish public-network behavior, hardware power-loss durability, cross-device journal coordination, broad wallet-provider compatibility, or external security audit.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, and NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -19,7 +19,7 @@
       "status": "executed/pass",
       "result": "1 file, 11 tests passed, including a real 0000-to-0001 upgrade fixture that preserves an existing chain event while adding source-record evidence",
       "limitations": "The upgrade fixture uses controlled SQLite data and does not claim hardware power-loss behavior.",
-      "executedAt": "2026-09-21T22:44:02.710Z"
+      "executedAt": "2026-09-22T03:59:28Z"
     },
     {
       "id": "RUN-DB-BOUNDARIES",
@@ -44,20 +44,20 @@
       "command": "pnpm test:db",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "4 files, 23 tests passed: numeric and identity constraints, readonly API boundary, missing metadata, lock competition and SIGKILL release, ownership-safe markers, blocked and resumable projection maintenance, SQLITE_BUSY, bounded SQLITE_FULL, reset ownership, and CLI refusal",
+      "result": "The full unit/database gate passed, including malformed and mismatched projection marker failures followed by successful same-process reacquisition of the real maintenance locks",
       "limitations": "SQLITE_FULL uses SQLite max_page_count rather than exhausting the host filesystem. The reset refusal matrix does not prove resistance to a malicious loopback Anvil impersonator.",
-      "executedAt": "2026-09-21T15:52:24.155Z"
+      "executedAt": "2026-09-22T03:59:28Z"
     },
     {
       "id": "RUN-DB-SEEDS",
-      "scenarios": ["DB-23", "DB-24", "DB-25", "DB-29"],
+      "scenarios": ["DB-23", "DB-24", "DB-25", "DB-29", "DB-51"],
       "level": "DB-TEST",
       "command": "pnpm test:seeds",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "1 file, 4 tests passed: idempotence, manual-edit conflict rollback, deployment isolation, and changed seed-version refusal",
+      "result": "1 file, 5 tests passed: idempotence, incomplete-maintenance refusal before mutation, manual-edit conflict rollback, deployment isolation, and changed seed-version refusal",
       "limitations": "Chain transaction journaling is recorded separately in RUN-CHAIN-SEED-JOURNAL.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "executedAt": "2026-09-22T03:59:28Z"
     },
     {
       "id": "RUN-DB-RECOVERY",
@@ -68,7 +68,7 @@
       "status": "executed/pass",
       "result": "1 file, 13 tests passed: WAL backup, source-schema evidence, required sidecar checksums and identity, corrupt backup rejection, same-deployment restore, different-deployment and missing-manifest pre-quarantine refusal, and file-switch recovery",
       "limitations": "Synthetic process interruption only; no hardware power-loss claim. Restore-behind-head catch-up is recorded in RUN-INTEGRATION.",
-      "executedAt": "2026-09-21T23:17:51.462Z"
+      "executedAt": "2026-09-22T03:59:28Z"
     },
     {
       "id": "RUN-CONTRACTS",
@@ -79,7 +79,7 @@
       "status": "executed/pass",
       "result": "12 unit/fuzz tests and 1 stateful invariant passed (13 total); the invariant independently sums funded Sales and claimable Claims, compares them with totalLiability, checks balance coverage, and bounds successful transition counters",
       "limitations": "Local Foundry EVM only; no public network or external audit.",
-      "executedAt": "2026-09-22T02:17:33Z"
+      "executedAt": "2026-09-22T03:57:59Z"
     },
     {
       "id": "RUN-E2E",
@@ -97,9 +97,9 @@
       "command": "pnpm test:e2e",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "6 Playwright scenarios passed, including non-durable hash preservation across client navigation and the explicit reload limit, local marketplace and wallet recovery, real Chromium multi-tab journal coordination, and a fresh no-journal context that reports a stopped Indexer observation as stale while the API remains available",
+      "result": "6 Playwright scenarios passed, including a wallet-returned hash racing hashless recovery, durable evidence after reload, explicit non-durable reload limits, real Chromium multi-tab revision conflicts and writer handoff, local marketplace recovery, and stopped-Indexer freshness from a clean context",
       "limitations": "Wallet fault injection uses a controlled EIP-1193 adapter. Manual MetaMask and cross-device journal behavior are not verified.",
-      "executedAt": "2026-09-22T02:17:33Z"
+      "executedAt": "2026-09-22T03:57:59Z"
     },
     {
       "id": "RUN-INTEGRATION",
@@ -137,9 +137,9 @@
       "command": "pnpm test:integration",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "11 files, 47 tests passed across real SQLite, Fastify reader contracts, local Anvil, bootstrap process ownership, replay/reindex, per-event canonical and orphan source evidence, orphan-claim reconciliation, projector rollback, replacement/reorg, process-kill recovery, restore catch-up, transaction convergence, historical report scope, and heartbeat freshness",
+      "result": "11 files and 47 tests passed in the full integration gate. Focused R7 execution also passed 6 files and 25 tests covering reindex, verified source archives, database recovery, process interruption, and transaction convergence",
       "limitations": "Local deterministic Anvil and ordinary process termination only; public-network finality, unavailable archive history, hardware power loss, and full host-filesystem faults remain unverified.",
-      "executedAt": "2026-09-22T02:17:33Z"
+      "executedAt": "2026-09-22T03:57:59Z"
     },
     {
       "id": "RUN-INDEXER-UNIT",
@@ -148,9 +148,9 @@
       "command": "pnpm test:unit",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "34 files, 208 unit, component, migration, database, seed, recovery, API, exact-amount, deployment-context, observation-freshness, projector, transport, receipt-observation, journal-locking, signal-exit cleanup, and graceful polling tests passed",
+      "result": "The full 34-file, 220-test unit/component/database gate passed. Focused R7 execution passed fixed-target resume, changed-anchor refusal, maintenance cleanup, and source-refresh archive cases",
       "limitations": "Includes controlled wallet, journal, database, migration, seed, recovery, RPC, and documentation tests; manual provider behavior is separate.",
-      "executedAt": "2026-09-22T02:17:33Z"
+      "executedAt": "2026-09-22T03:57:59Z"
     },
     {
       "id": "RUN-API-CONTRACT",
@@ -170,9 +170,9 @@
       "command": "pnpm check:architecture",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "150 source files validated and 10 negative fixtures rejected, including recovery-to-wallet-write, capability-to-adapter, relative Web-to-database, and aliased Web-to-database dependency violations",
+      "result": "Architecture graph valid for 150 source files; all 10 invalid dependency fixtures were rejected",
       "limitations": "Static source imports only; runtime process behavior is verified separately.",
-      "executedAt": "2026-09-22T02:17:33Z"
+      "executedAt": "2026-09-22T03:57:59Z"
     },
     {
       "id": "RUN-GENERATE-CHECK",
@@ -181,9 +181,9 @@
       "command": "pnpm generate:check",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generated ABI, OpenAPI freshness and event-source evidence fields, uint256 route metadata, schema metadata, and artifacts matched providers",
+      "result": "Generated ABI, manifest, OpenAPI, schema, and documentation outputs matched their providers; no generation drift",
       "limitations": "No released third-party consumer or prior protocol version exists.",
-      "executedAt": "2026-09-22T02:17:33Z"
+      "executedAt": "2026-09-22T03:57:59Z"
     },
     {
       "id": "RUN-WORKSPACE-VERIFY",
@@ -192,9 +192,9 @@
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generation and database checks, formatting, documentation, architecture, type checking, lint, 13 Foundry tests, 208 unit/component/database tests, 47 integration tests, and all 7 workspace builds passed",
+      "result": "pnpm verify passed generation and database checks, formatting, documentation, architecture, type checking, lint, 13 Foundry tests, 34 files and 220 unit/component/database tests, 11 files and 47 integration tests, and all workspace builds",
       "limitations": "The gate does not establish manual MetaMask behavior, public-network safety, branch protection, hardware power-loss durability, or cross-device journal coordination.",
-      "executedAt": "2026-09-22T02:17:33Z"
+      "executedAt": "2026-09-22T03:57:59Z"
     },
     {
       "id": "RUN-DOCS-CHECK",
@@ -203,9 +203,9 @@
       "command": "pnpm docs:check",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "18 capabilities and 48 commands generated; workspace evidence, public reachability, bilingual parity, and 8 negative fixtures passed",
+      "result": "Documentation generation and checks passed for 18 capabilities and 48 commands; all 8 documentation negative fixtures were rejected",
       "limitations": "Mermaid visual rendering and independent contributor onboarding remain manual checks.",
-      "executedAt": "2026-09-22T02:17:33Z"
+      "executedAt": "2026-09-22T03:59:28Z"
     },
     {
       "id": "RUN-WEB-COMPONENT",
@@ -214,9 +214,9 @@
       "command": "pnpm test:components",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "2 files, 3 React Testing Library component tests passed in JSDOM, covering transaction timeline and non-durable submission evidence",
+      "result": "Web unit and component coverage passed within the 34-file, 220-test gate, including durable returned-hash merge, exact amount display, transaction notices, wallet errors, and observation freshness",
       "limitations": "Controlled journal fixture only; injected provider behavior is covered separately by Playwright and still lacks manual MetaMask evidence.",
-      "executedAt": "2026-09-21T12:51:48.123Z"
+      "executedAt": "2026-09-22T03:57:59Z"
     },
     {
       "id": "RUN-CHAIN-SEED-JOURNAL",
@@ -236,9 +236,9 @@
       "command": "pnpm vitest run apps/web/src/capabilities/transactions/recovery.test.ts apps/web/src/capabilities/transactions/submit-operation.test.ts apps/web/src/integrations/evm/inspect-transaction.test.ts apps/web/src/integrations/persistence/local-storage-journal.test.ts apps/web/src/capabilities/transactions/ui/TransactionTimeline.test.tsx apps/web/src/capabilities/transactions/ui/SubmissionNotice.test.tsx apps/web/src/pages/transaction-surfaces.test.tsx",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "7 files, 51 tests passed for durable pre-submit writes, all eight action receipt outcomes, non-funding reload/revert, replacement and reorg evidence, stale-result suppression, and serialized journal writes",
+      "result": "Focused submission and journal regression tests passed 2 files and 21 tests; the wider R7 focused suite passed 7 files and 67 tests. Cases cover final pre-wallet context recheck, revision conflicts, hashless recovery races, durable-intent preservation beneath volatile overlays, and no automatic resubmission",
       "limitations": "Controlled wallet and storage ports; real local-chain convergence is recorded by RUN-INTEGRATION and real same-profile multi-tab locking by RUN-E2E.",
-      "executedAt": "2026-09-21T22:44:02.710Z"
+      "executedAt": "2026-09-22T03:57:59Z"
     },
     {
       "id": "RUN-INDEXER-KILL",
@@ -277,13 +277,13 @@
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35675690347)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35679573677)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/fail",
-      "result": "The R5 remote verify job stopped at Prettier because docs/evidence/verification.json was not formatted. Generation and database checks ran before that failure; later verify lanes and Playwright did not run.",
-      "executedAt": "2026-09-22T01:26:40Z",
-      "limitations": "This remote failure covers committed R5 source 53586bd2781e2bf5bf9ab0ae034cb72b898f285b. The R6 working tree formats the evidence file and has local passing verify and E2E evidence, but no R6 remote result exists before its commit is pushed.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35675690347"
+      "result": "The committed R6 remote job passed docs:smoke and pnpm verify, then failed pnpm test:e2e because a hash locator matched both the non-durable alert and transaction timeline. R7 scopes that assertion to the timeline; current R7 local verify and all 6 E2E scenarios pass.",
+      "executedAt": "2026-09-22T02:33:51Z",
+      "limitations": "This remote result covers committed R6 source 787b093dbb3a08eda28669106a7978c703e5c426. The R7 changes remain local dirty-worktree evidence until their commit is pushed and its workflow completes.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35679573677"
     }
   ]
 }

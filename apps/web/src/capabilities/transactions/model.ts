@@ -23,6 +23,7 @@ export type TransactionObservation = z.infer<typeof transactionObservationSchema
 export const journalEntrySchema = z.object({
   schemaVersion: z.literal(1),
   clientOperationId: z.string().min(1),
+  revision: z.number().int().nonnegative().optional(),
   retryOf: z.string().min(1).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

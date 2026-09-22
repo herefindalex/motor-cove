@@ -31,15 +31,72 @@ function rejectedByUser(error: unknown): boolean {
   );
 }
 
+function revisionConflict(error: unknown): boolean {
+  return error instanceof Error && error.message === 'JOURNAL_REVISION_CONFLICT';
+}
+
+function sameSubmissionIntent(left: JournalEntry, right: JournalEntry): boolean {
+  return (
+    left.clientOperationId === right.clientOperationId &&
+    left.deploymentId === right.deploymentId &&
+    left.chainId === right.chainId &&
+    left.account === right.account &&
+    left.protocolVersion === right.protocolVersion &&
+    left.action === right.action &&
+    left.saleId === right.saleId &&
+    left.tokenId === right.tokenId &&
+    left.intendedContract === right.intendedContract &&
+    left.intendedCalldata === right.intendedCalldata &&
+    left.valueWei === right.valueWei
+  );
+}
+
+async function persistReturnedHash(
+  journal: TransactionJournal,
+  submitted: JournalEntry,
+): Promise<JournalEntry> {
+  try {
+    return await journal.save(submitted);
+  } catch (error) {
+    if (!revisionConflict(error)) throw error;
+    const current = journal
+      .load(submitted.deploymentId)
+      .find((entry) => entry.clientOperationId === submitted.clientOperationId);
+    if (!current || !sameSubmissionIntent(current, submitted)) throw error;
+
+    const durableHash = current.currentTxHash ?? current.originalTxHash;
+    const returnedHash = submitted.currentTxHash ?? submitted.originalTxHash;
+    if (!returnedHash) throw error;
+    if (durableHash) {
+      if (durableHash.toLowerCase() !== returnedHash.toLowerCase()) throw error;
+      return current;
+    }
+
+    return journal.save({
+      ...current,
+      updatedAt: submitted.updatedAt,
+      originalTxHash: submitted.originalTxHash,
+      currentTxHash: submitted.currentTxHash,
+      evidenceSource: submitted.evidenceSource,
+      association: submitted.association,
+      status: 'SUBMITTED',
+      verificationAvailability: undefined,
+      verificationRequestId: undefined,
+      lastErrorCategory: undefined,
+    });
+  }
+}
+
 export async function submitOperation(
   context: SubmissionContext,
   action: SubmissionAction,
   journal: TransactionJournal,
 ): Promise<SubmissionResult> {
   const createdAt = new Date().toISOString();
-  const base: JournalEntry = {
+  let base: JournalEntry = {
     schemaVersion: 1,
     clientOperationId: crypto.randomUUID(),
+    revision: 0,
     ...(action.retryOf === undefined ? {} : { retryOf: action.retryOf }),
     createdAt,
     updatedAt: createdAt,
@@ -58,7 +115,7 @@ export async function submitOperation(
   };
 
   // Durable intent boundary: a failed write prevents any wallet request.
-  await journal.save(base);
+  base = await journal.save(base);
 
   try {
     if (!context.contextStillCurrent()) throw new Error('OPERATION_CONTEXT_CHANGED');
@@ -81,13 +138,26 @@ export async function submitOperation(
     };
   }
 
-  const awaitingWallet: JournalEntry = {
+  let awaitingWallet: JournalEntry = {
     ...base,
     updatedAt: new Date().toISOString(),
     walletRequestStartedAt: new Date().toISOString(),
     status: 'AWAITING_WALLET',
   };
-  await journal.save(awaitingWallet);
+  awaitingWallet = await journal.save(awaitingWallet);
+  if (!context.contextStillCurrent()) {
+    await journal.save({
+      ...awaitingWallet,
+      updatedAt: new Date().toISOString(),
+      status: 'FAILED_BEFORE_SUBMIT',
+      lastErrorCategory: 'OPERATION_CONTEXT_CHANGED',
+    });
+    return {
+      kind: 'failed',
+      message: 'OPERATION_CONTEXT_CHANGED',
+      clientOperationId: base.clientOperationId,
+    };
+  }
 
   let hash: `0x${string}`;
   try {
@@ -109,7 +179,7 @@ export async function submitOperation(
       : { kind: 'unknown', clientOperationId: base.clientOperationId };
   }
 
-  const submitted: JournalEntry = {
+  let submitted: JournalEntry = {
     ...awaitingWallet,
     updatedAt: new Date().toISOString(),
     originalTxHash: hash,
@@ -119,9 +189,9 @@ export async function submitOperation(
     status: 'SUBMITTED',
   };
   try {
-    await journal.save(submitted);
+    submitted = await persistReturnedHash(journal, submitted);
   } catch {
-    journal.saveVolatile?.(submitted);
+    submitted = journal.saveVolatile?.(submitted) ?? submitted;
     return {
       kind: 'submitted-non-durable',
       hash,
