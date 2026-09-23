@@ -24,6 +24,33 @@ describe('WalletPanel', () => {
     expect(screen.queryByRole('button', { name: 'Connect wallet' })).toBeNull();
   });
 
+  it('shows the expected local network and the connected account context', () => {
+    const { rerender } = render(
+      <WalletPanel
+        {...requiredProps}
+        state={{
+          kind: 'wrong-network',
+          account: `0x${'2'.repeat(40)}`,
+          actualChainId: 1,
+          requiredChainId: 31337,
+        }}
+        connectors={[]}
+      />,
+    );
+    expect(screen.getByRole('status').textContent).toContain('Expected local chain 31337');
+    expect(screen.getByRole('button', { name: 'Switch to local chain' })).toBeTruthy();
+
+    rerender(
+      <WalletPanel
+        {...requiredProps}
+        state={{ kind: 'connected', account: `0x${'2'.repeat(40)}`, chainId: 31337 }}
+        connectors={[]}
+      />,
+    );
+    expect(screen.getByRole('status').textContent).toContain('Connected · local chain 31337');
+    expect(screen.getByRole('button', { name: 'Disconnect' })).toBeTruthy();
+  });
+
   it('routes an explicit local demo role through the selected connector', () => {
     const onConnect = vi.fn();
     render(

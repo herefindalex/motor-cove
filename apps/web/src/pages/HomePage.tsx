@@ -15,7 +15,9 @@ import {
 } from '../capabilities/transactions/index.js';
 import { parseEth } from '../features/trading/index.js';
 import { useChainTime } from '../integrations/evm/use-chain-time.js';
+import { useTokenApprovals } from '../integrations/evm/use-token-approvals.js';
 import { presentProjectionHealth } from '../features/diagnostics/index.js';
+import { resolveAssetApprovalStates } from './asset-approval-state.js';
 
 export function HomePage() {
   const configQuery = useQuery({
@@ -50,6 +52,43 @@ export function HomePage() {
   const [submissionResult, setSubmissionResult] = useState<SubmissionResult>();
   const [submissionError, setSubmissionError] = useState<string>();
   const account = wallet.state.kind === 'connected' ? wallet.state.account : undefined;
+  const sales = salesQuery.data?.data ?? [];
+  const vehicles = vehiclesQuery.data?.data ?? [];
+  const activeTokens = new Set(
+    sales
+      .filter((sale) => !sale.tokenReclaimed && sale.status !== 'COMPLETED')
+      .map((sale) => sale.tokenId),
+  );
+  const assets = vehicles.filter(
+    (vehicle): vehicle is typeof vehicle & { tokenId: string } =>
+      vehicle.tokenId !== null &&
+      Boolean(
+        account &&
+        vehicle.currentOwner?.toLowerCase() === account.toLowerCase() &&
+        !activeTokens.has(vehicle.tokenId),
+      ),
+  );
+  const chainApprovals = useTokenApprovals(
+    configQuery.data,
+    account,
+    assets.map((asset) => asset.tokenId),
+    journalEntries
+      .filter(
+        (entry) =>
+          entry.action === 'APPROVE_TOKEN' &&
+          entry.deploymentId === deploymentId &&
+          entry.account.toLowerCase() === account?.toLowerCase(),
+      )
+      .map((entry) => `${entry.clientOperationId}:${entry.status}:${entry.updatedAt}`)
+      .join('|'),
+  );
+  const approvalStates = resolveAssetApprovalStates(
+    assets.map((asset) => asset.tokenId),
+    chainApprovals,
+    journalEntries,
+    deploymentId,
+    account,
+  );
   const submissionContextKey = JSON.stringify([
     deploymentId ?? null,
     configQuery.data?.chainId ?? null,
@@ -128,8 +167,6 @@ export function HomePage() {
         </section>
       </>
     );
-  const sales = salesQuery.data?.data ?? [];
-  const vehicles = vehiclesQuery.data?.data ?? [];
   const indexedBlock = salesQuery.data?.provenance.indexedBlockNumber;
   const latestIncludedBlock = journalEntries.reduce<bigint | null>((latest, entry) => {
     if (entry.status !== 'INCLUDED_SUCCESS' || !entry.receiptBlockNumber) return latest;
@@ -149,20 +186,6 @@ export function HomePage() {
     indexedBlock,
     receiptLag,
   );
-  const activeTokens = new Set(
-    sales
-      .filter((sale) => !sale.tokenReclaimed && sale.status !== 'COMPLETED')
-      .map((sale) => sale.tokenId),
-  );
-  const assets = vehicles.filter(
-    (vehicle): vehicle is typeof vehicle & { tokenId: string } =>
-      vehicle.tokenId !== null &&
-      Boolean(
-        account &&
-        vehicle.currentOwner?.toLowerCase() === account.toLowerCase() &&
-        !activeTokens.has(vehicle.tokenId),
-      ),
-  );
   return (
     <>
       <section className="wallet-row">
@@ -179,8 +202,18 @@ export function HomePage() {
       </section>
       {configQuery.data && <TransactionObserver config={configQuery.data} journal={journal} />}
       {deploymentId && <TransactionTimeline deploymentId={deploymentId} journal={journal} />}
+      {receiptAheadOfProjection && (
+        <p className="notice" role="status">
+          {systemQuery.data?.data.projectionStatus === 'RECOVERY_REQUIRED'
+            ? 'Transaction included on-chain. Marketplace projection requires recovery.'
+            : systemQuery.data?.data.observationFreshness !== 'FRESH'
+              ? 'Transaction included on-chain. Marketplace projection verification is unavailable.'
+              : 'Transaction confirmed on-chain. Marketplace data is still syncing.'}
+        </p>
+      )}
       <Marketplace
         sales={sales}
+        loading={!salesQuery.data}
         vehicles={vehicles}
         account={account}
         actions={actions}
@@ -194,7 +227,10 @@ export function HomePage() {
       />
       <MyAssets
         assets={assets}
+        loading={!vehiclesQuery.data || !salesQuery.data}
         enabled={Boolean(gateway)}
+        approvalStates={approvalStates}
+        pendingActionKeys={pendingActions}
         onApprove={async (tokenId) => {
           if (gateway)
             await submit(`APPROVE_TOKEN:${tokenId}`, () => gateway.approveToken(BigInt(tokenId)));

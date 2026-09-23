@@ -7,6 +7,42 @@ import { SubmissionNotice } from './SubmissionNotice.js';
 describe('SubmissionNotice', () => {
   afterEach(cleanup);
 
+  it('distinguishes submitted, rejected, unknown, and failed outcomes', () => {
+    const hash = `0x${'5'.repeat(64)}` as const;
+    const { rerender } = render(
+      <SubmissionNotice result={{ kind: 'submitted', hash, clientOperationId: 'operation-1' }} />,
+    );
+    expect(screen.getByRole('status').textContent).toContain(
+      'Transaction submitted. Waiting for inclusion.',
+    );
+    expect(screen.getByRole('status').textContent).toContain(hash);
+
+    rerender(
+      <SubmissionNotice
+        result={{ kind: 'rejected', clientOperationId: 'operation-1', durable: true }}
+      />,
+    );
+    expect(screen.getByRole('status').textContent).toContain(
+      'No transaction submission was confirmed.',
+    );
+
+    rerender(
+      <SubmissionNotice
+        result={{ kind: 'unknown', clientOperationId: 'operation-1', durable: true }}
+      />,
+    );
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Check wallet activity before trying again.',
+    );
+
+    rerender(
+      <SubmissionNotice
+        result={{ kind: 'failed', clientOperationId: 'operation-1', message: 'simulation failed' }}
+      />,
+    );
+    expect(screen.getByRole('alert').textContent).toContain('simulation failed');
+  });
+
   it('shows the known hash and non-durable recovery warning', () => {
     const hash = `0x${'4'.repeat(64)}` as const;
     render(

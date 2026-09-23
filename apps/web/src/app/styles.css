@@ -60,7 +60,7 @@ button {
   cursor: pointer;
 }
 button:disabled {
-  opacity: 0.4;
+  opacity: 0.65;
   cursor: not-allowed;
 }
 button.secondary {
@@ -86,6 +86,11 @@ button.secondary {
 .wallet-row output {
   color: #85d9ba;
   overflow-wrap: anywhere;
+  line-height: 1.5;
+  max-width: 720px;
+}
+.wallet-row output[role='alert'] {
+  color: #ffb6b6;
 }
 .provenance {
   color: #8da4b6;
@@ -108,7 +113,7 @@ button.secondary {
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: linear-gradient(135deg, #173448, #132119);
+  background: #173448;
   color: #75d6b1;
   font-size: 1.4rem;
   letter-spacing: 0.15em;
@@ -161,11 +166,66 @@ input {
 }
 .asset {
   display: grid;
-  gap: 0.5rem;
-  min-width: 180px;
+  gap: 0.75rem;
+  flex: 1 1 250px;
+  min-width: min(100%, 250px);
   padding: 1rem;
   border: 1px solid #294253;
   border-radius: 8px;
+}
+.asset-identity {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+.asset-identity h3,
+.asset-status {
+  margin: 0;
+}
+.asset-identity span,
+.transaction-timeline time {
+  color: #8da4b6;
+  font-size: 0.85rem;
+}
+.asset-status {
+  min-height: 2.5rem;
+  color: #b7c9d8;
+}
+.asset label {
+  max-width: none;
+}
+.asset-actions,
+.timeline-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.asset-actions button {
+  flex: 1 1 120px;
+}
+.transaction-timeline {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+.transaction-timeline li {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.85rem;
+  border: 1px solid #294253;
+  border-radius: 8px;
+}
+.transaction-timeline code {
+  overflow-wrap: anywhere;
+}
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 2px solid #f3cc6b;
+  outline-offset: 3px;
 }
 .inspector {
   display: grid;

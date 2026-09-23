@@ -10,6 +10,41 @@ const deploymentId = `0x${'1'.repeat(64)}` as const;
 
 describe('TransactionTimeline', () => {
   afterEach(cleanup);
+  it('keeps raw state visible alongside inclusion and projection-lag meaning', () => {
+    const included: JournalEntry = {
+      schemaVersion: 1,
+      clientOperationId: 'operation-included',
+      createdAt: '2026-09-21T00:00:00.000Z',
+      updatedAt: '2026-09-21T00:00:01.000Z',
+      deploymentId,
+      chainId: 31337,
+      account: `0x${'2'.repeat(40)}`,
+      protocolVersion: '1',
+      action: 'FUND_SALE',
+      saleId: '1',
+      intendedContract: `0x${'3'.repeat(40)}`,
+      intendedCalldata: '0x1234',
+      calldataSummary: 'fundSale(1)',
+      valueWei: '1',
+      status: 'INCLUDED_SUCCESS',
+      currentTxHash: `0x${'4'.repeat(64)}`,
+      receiptBlockNumber: '123',
+      projectionObservation: 'NOT_REACHED',
+    };
+    const journal: TransactionJournal = {
+      load: () => [included],
+      loadIssues: () => [],
+      save: (value) => value,
+      subscribe: () => () => undefined,
+    };
+    render(<TransactionTimeline deploymentId={deploymentId} journal={journal} />);
+    expect(screen.getByText('INCLUDED_SUCCESS')).toBeTruthy();
+    expect(screen.getByText('Included successfully')).toBeTruthy();
+    expect(screen.getByText('Receipt block 123')).toBeTruthy();
+    expect(
+      screen.getByText('Transaction included; marketplace data is still syncing.'),
+    ).toBeTruthy();
+  });
 
   it('renders wallet rejection as a terminal pre-submission observation', () => {
     const rejected: JournalEntry = {

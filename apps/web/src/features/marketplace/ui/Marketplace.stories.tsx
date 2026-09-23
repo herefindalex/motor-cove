@@ -40,3 +40,4 @@ export const ProjectionLag: Story = {
   args: { provenance: <span className="notice">Projection stale · indexed 8 · head 12</span> },
 };
 export const Empty: Story = { args: { sales: [] } };
+export const Loading: Story = { args: { sales: [], loading: true } };
