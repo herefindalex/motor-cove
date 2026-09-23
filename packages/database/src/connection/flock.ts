@@ -63,6 +63,13 @@ export async function acquireBootstrapOwnership(paths: EnvironmentPaths): Promis
   return acquireAdvisoryLock(paths.bootstrapLockPath, 'exclusive');
 }
 
+export async function acquireBootstrapReadOwnership(
+  paths: EnvironmentPaths,
+): Promise<AdvisoryLock> {
+  mkdirSync(dirname(paths.bootstrapLockPath), { recursive: true });
+  return acquireAdvisoryLock(paths.bootstrapLockPath, 'shared');
+}
+
 export async function acquireRuntimeLocks(paths: EnvironmentPaths, writer: boolean) {
   const serviceGate = await acquireAdvisoryLock(paths.serviceLockPath, 'shared');
   try {

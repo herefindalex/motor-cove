@@ -21,6 +21,10 @@ from `CURRENT` or lagging. It does not repair data.
 
 Historical RPC state may be unavailable. In that case report `UNVERIFIABLE`; never return a false
 match. A projection at H can validly be `MATCH` and `PROJECTION_LAGGING` while head is H+k.
+Freshness uses a second latest-head observation after the anchored comparison, immediately before
+report publication. The anchored comparison remains at H; the later sample only qualifies whether
+that result is still current. Failure of the publication-time head read persists
+`UNVERIFIABLE / HEAD_UNKNOWN` and its transport cause.
 The current implementation reads anchored `saleCount` and checks every Sale ID, reads every claim
 getter in that canonical range, and independently enumerates every projected claim row. Missing,
 changed, extra, or orphan claims therefore produce `MISMATCH`. It then reads anchored `nextTokenId`

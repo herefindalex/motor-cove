@@ -11,8 +11,9 @@ ownership to an initial state.
 ## Target sequence
 
 1. Validate owner marker, loopback RPC, Anvil client, chain ID, and deployment identity.
-2. Acquire environment bootstrap ownership. Each database operation then takes its existing
-   maintenance locks and writes its external marker.
+2. Acquire exclusive environment bootstrap ownership. Standard backup takes shared bootstrap
+   ownership and restore takes exclusive ownership before their maintenance locks, so neither can
+   publish or install a snapshot across this lifecycle.
 3. Migrate and verify DB, deploy contracts, and verify manifest code/getters/blocks.
 4. Before every chain seed transaction, durably record `PREPARED`; then `SUBMITTED` and `VERIFIED`.
 5. Obtain token/sale IDs from receipts and events, then seed catalog and bindings transactionally.
@@ -36,6 +37,11 @@ receipt; a verified step rechecks the same receipt
 and never submits again. A stranded `PREPARED` step or a submit call whose outcome cannot be proven
 becomes `UNKNOWN` and stops for operator review. The command never guesses whether an ambiguous
 transaction should be sent again.
+
+A deployed standard backup contains both `seed-journal.json` and `bootstrap-receipt.json`, or
+neither for a deployment managed outside this bootstrap path. An incomplete pair is rejected. A
+migration safety snapshot created inside bootstrap explicitly reuses the caller's lifecycle
+ownership instead of trying to reacquire the non-reentrant lock.
 
 Catalog seeding acquires the existing exclusive maintenance gate and then checks the durable marker
 before opening the database or changing rows. A `PENDING` or `FAILED` marker from an incomplete

@@ -236,9 +236,19 @@ try {
     comparison = 'UNVERIFIABLE';
     differences.push({ error: error instanceof Error ? error.message : String(error) });
   }
-  const freshness = !head
+  let publicationHead = head;
+  if (head) {
+    try {
+      publicationHead = await client.getBlock();
+    } catch (error) {
+      publicationHead = undefined;
+      comparison = 'UNVERIFIABLE';
+      differences.push({ error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  const freshness = !publicationHead
     ? 'HEAD_UNKNOWN'
-    : head.number === blockNumber && head.hash === checkpoint.blockHash
+    : publicationHead.number === blockNumber && publicationHead.hash === checkpoint.blockHash
       ? 'CURRENT'
       : 'PROJECTION_LAGGING';
   const report = {

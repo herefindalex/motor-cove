@@ -11,7 +11,11 @@ import {
 } from 'node:fs';
 import { resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import { acquireMaintenanceLocks } from '../connection/flock.js';
+import {
+  acquireBootstrapReadOwnership,
+  acquireMaintenanceLocks,
+  type AdvisoryLock,
+} from '../connection/flock.js';
 import { verifyOwnedEnvironment } from '../connection/environment.js';
 import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
 import { verifyKnownSourceDatabase } from './migrations.js';
@@ -32,6 +36,7 @@ export type BackupMaintenancePurpose = 'MIGRATION_SAFETY' | 'SOURCE_REFRESH_ARCH
 
 export interface BackupEnvironmentOptions {
   readonly locksAlreadyHeld?: boolean;
+  readonly bootstrapOwnershipAlreadyHeld?: boolean;
   readonly reason?: string;
   readonly maintenance?: {
     readonly operationId: string;
@@ -189,11 +194,16 @@ export async function backupEnvironment(
 ) {
   verifyOwnedEnvironment(paths);
   if (!existsSync(paths.databasePath)) throw new Error('DB_NOT_INITIALIZED');
-  const locks = options.locksAlreadyHeld ? undefined : await acquireMaintenanceLocks(paths);
   const backupId = `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}`;
   const staging = resolve(paths.backupsDir, `.${backupId}.incomplete`);
   const destination = resolve(paths.backupsDir, backupId);
+  let bootstrapGate: AdvisoryLock | undefined;
+  let locks: AdvisoryLock | undefined;
   try {
+    bootstrapGate = options.bootstrapOwnershipAlreadyHeld
+      ? undefined
+      : await acquireBootstrapReadOwnership(paths);
+    locks = options.locksAlreadyHeld ? undefined : await acquireMaintenanceLocks(paths);
     const sourceCondition = readSourceCondition(paths, options);
     mkdirSync(staging, { recursive: true });
     const source = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
@@ -240,6 +250,12 @@ export async function backupEnvironment(
     }
     for (const [sourcePath, name] of sourceSidecars)
       if (existsSync(sourcePath)) copyFileSync(sourcePath, resolve(staging, name));
+    if (
+      snapshotDeployment.state === 'DEPLOYED' &&
+      existsSync(resolve(staging, 'seed-journal.json')) !==
+        existsSync(resolve(staging, 'bootstrap-receipt.json'))
+    )
+      throw new Error('BACKUP_INVALID: bootstrap lifecycle incomplete');
     const engineDb = new Database(':memory:');
     const sqliteEngine = engineDb.prepare('select sqlite_version() version').get();
     engineDb.close();
@@ -287,7 +303,11 @@ export async function backupEnvironment(
     rmSync(staging, { recursive: true, force: true });
     throw error;
   } finally {
-    await locks?.release();
+    try {
+      await locks?.release();
+    } finally {
+      await bootstrapGate?.release();
+    }
   }
 }
 
@@ -360,6 +380,11 @@ export function verifyBackup(paths: EnvironmentPaths, backupId: string) {
     }
     if (snapshotDeployment.state === 'DEPLOYED' && evidence.deployment?.present !== true)
       throw new Error('BACKUP_INVALID: deployment sidecar required');
+    if (
+      snapshotDeployment.state === 'DEPLOYED' &&
+      evidence.seedJournal?.present !== evidence.bootstrapReceipt?.present
+    )
+      throw new Error('BACKUP_INVALID: bootstrap lifecycle incomplete');
     if (
       snapshotDeployment.state === 'PREDEPLOYMENT' &&
       Object.values(evidence).some((entry) => entry?.present === true)

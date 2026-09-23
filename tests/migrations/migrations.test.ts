@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  acquireBootstrapOwnership,
   environmentPaths,
   initializeOwnedEnvironment,
   inspectEnvironment,
@@ -187,6 +188,22 @@ describe('native migration path', () => {
     expect(readdirSync(paths.backupsDir)).toHaveLength(1);
 
     await expect(migrateEnvironment(paths)).resolves.toMatchObject({ changed: true });
+    expect(readdirSync(paths.backupsDir)).toHaveLength(1);
+    expect(existsSync(paths.maintenancePath)).toBe(false);
+  });
+
+  it('creates the migration safety backup while bootstrap ownership is already held', async () => {
+    const { root, paths } = await databaseFixture('bootstrap-owned-migration');
+    roots.push(root);
+    downgradeToFirstMigration(paths.databasePath);
+    const ownership = await acquireBootstrapOwnership(paths);
+    try {
+      await expect(
+        migrateEnvironment(paths, { bootstrapOwnershipAlreadyHeld: true }),
+      ).resolves.toMatchObject({ changed: true });
+    } finally {
+      await ownership.release();
+    }
     expect(readdirSync(paths.backupsDir)).toHaveLength(1);
     expect(existsSync(paths.maintenancePath)).toBe(false);
   });

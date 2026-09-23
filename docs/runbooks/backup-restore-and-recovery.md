@@ -4,6 +4,11 @@ Use these commands only for an owned `.motorcove` environment with API and Index
 
 ## Create a snapshot
 
+Standard backup acquires shared bootstrap ownership before the maintenance service/writer locks.
+An active bootstrap or restore therefore returns `RESOURCE_BUSY` before snapshot work. A deployed
+snapshot with only one of `seed-journal.json` and `bootstrap-receipt.json` is incomplete and is not a
+restorable standard backup.
+
 ```bash
 pnpm db:backup --env docs-smoke
 ```
@@ -19,6 +24,11 @@ source checkpoint, build, scope, status, recovery reason, and marker identity fo
 diagnosis, but the normal restore command will not install them.
 
 ## Restore explicitly
+
+Restore acquires exclusive bootstrap ownership before maintenance locks. Before quarantine it
+requires active `deployment.json`, `seed-journal.json`, and `bootstrap-receipt.json` presence and
+bytes to match the verified backup. Database-only restore rejects a sidecar mismatch instead of
+combining two bootstrap generations.
 
 ```bash
 pnpm db:restore --env docs-smoke --backup <verified-backup-id> --yes

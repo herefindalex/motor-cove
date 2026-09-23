@@ -40,7 +40,7 @@ interface ForgeArtifact {
 const root = resolve(import.meta.dirname, '../../../..');
 const config = paths();
 async function bootstrap(): Promise<void> {
-  await migrateEnvironment(config.environment);
+  await migrateEnvironment(config.environment, { bootstrapOwnershipAlreadyHeld: true });
   execFileSync('forge', ['build', '--root', 'chain'], { cwd: root, stdio: 'inherit' });
   const localChain = defineChain({
     id: 31337,

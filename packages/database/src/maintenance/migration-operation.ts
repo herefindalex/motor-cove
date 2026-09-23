@@ -20,6 +20,7 @@ import {
 
 export interface MigrationOperationOptions {
   readonly applyMigrations?: (database: ReturnType<typeof openMaintenanceDatabase>) => void;
+  readonly bootstrapOwnershipAlreadyHeld?: boolean;
 }
 
 type SourceVerification = ReturnType<typeof verifyKnownSourceDatabase>;
@@ -121,6 +122,9 @@ export async function migrateEnvironment(
         } else {
           const backup = await backupEnvironment(paths, {
             locksAlreadyHeld: true,
+            ...(options.bootstrapOwnershipAlreadyHeld
+              ? { bootstrapOwnershipAlreadyHeld: true }
+              : {}),
             reason: 'pre-migration',
             maintenance: {
               operationId: activeMarker.operationId,

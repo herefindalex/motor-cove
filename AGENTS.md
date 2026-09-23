@@ -91,6 +91,12 @@ fixture when introducing a new dependency rule.
   unique temporary files; unpublished orphan bytes never advance or block a matching resume.
 - A standard backup requires no maintenance marker. Internal migration and source refresh archives
   bind the current operation and remain evidence-only; normal restore must not install them.
+- Standard backup must hold shared bootstrap ownership; restore must hold exclusive bootstrap
+  ownership before maintenance locks. A deployed standard snapshot requires matching seed journal
+  and bootstrap receipt evidence, and database-only restore must reject changed active sidecars
+  before quarantine.
+- Reconciliation freshness comes from a latest-head read after the anchored comparison. Head
+  movement produces projection lag; an unavailable publication head is unknown, never `CURRENT`.
 - Create `owner.json` only for a genuinely empty managed environment. Existing database files,
   sidecars, symlinks, or unknown files without ownership are preserved and rejected, never adopted.
 - A maintenance completion command must acquire ownership and then reread the current marker before

@@ -18,6 +18,7 @@ import { resolve } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  acquireBootstrapOwnership,
   backupEnvironment,
   migrateEnvironment,
   recoverEnvironment,
@@ -32,6 +33,88 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 describe('backup, restore, recovery', () => {
+  it('rejects a standard backup while bootstrap owns the environment lifecycle', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const ownership = await acquireBootstrapOwnership(paths);
+    const entriesBefore = readdirSync(paths.backupsDir).sort();
+    try {
+      await expect(backupEnvironment(paths)).rejects.toThrow('RESOURCE_BUSY');
+    } finally {
+      await ownership.release();
+    }
+    expect(readdirSync(paths.backupsDir).sort()).toEqual(entriesBefore);
+  });
+
+  it('rejects a deployed bootstrap snapshot whose journal has no completion receipt', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    writeFileSync(paths.seedJournalPath, '{"state":"incomplete"}\n');
+
+    await expect(backupEnvironment(paths)).rejects.toThrow(
+      'BACKUP_INVALID: bootstrap lifecycle incomplete',
+    );
+    expect(readdirSync(paths.backupsDir)).toHaveLength(0);
+  });
+
+  it('rejects a legacy backup whose recorded bootstrap sidecars are incomplete', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    writeFileSync(paths.seedJournalPath, '{"state":"verified"}\n');
+    writeFileSync(paths.bootstrapReceiptPath, '{"generation":"a"}\n');
+    const backup = await backupEnvironment(paths);
+    unlinkSync(resolve(backup.path, 'bootstrap-receipt.json'));
+    const manifestPath = resolve(backup.path, 'backup-manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      sidecars: { bootstrapReceipt: { present: boolean; sha256?: string } };
+    };
+    manifest.sidecars.bootstrapReceipt = { present: false };
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    expect(() => verifyBackup(paths, backup.backupId)).toThrow(
+      'BACKUP_INVALID: bootstrap lifecycle incomplete',
+    );
+  });
+
+  it('rejects restore when bootstrap sidecars advanced after the snapshot', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    writeFileSync(paths.seedJournalPath, '{"state":"verified"}\n');
+    writeFileSync(paths.bootstrapReceiptPath, '{"generation":"a"}\n');
+    const backup = await backupEnvironment(paths);
+    writeFileSync(paths.bootstrapReceiptPath, '{"generation":"b"}\n');
+    const entriesBefore = readdirSync(paths.environmentDir).sort();
+
+    await expect(restoreEnvironment(paths, backup.backupId, true)).rejects.toThrow(
+      'BACKUP_SIDECAR_MISMATCH: bootstrap-receipt.json',
+    );
+
+    expect(
+      readdirSync(paths.environmentDir).filter((entry) => entry.startsWith('.quarantine-')),
+    ).toHaveLength(0);
+    expect(readdirSync(paths.environmentDir).sort()).toEqual(
+      [...entriesBefore, 'maintenance.json'].sort(),
+    );
+  });
+
+  it('rejects restore while bootstrap owns the environment lifecycle', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const backup = await backupEnvironment(paths);
+    const ownership = await acquireBootstrapOwnership(paths);
+    try {
+      await expect(restoreEnvironment(paths, backup.backupId, true)).rejects.toThrow(
+        'RESOURCE_BUSY',
+      );
+    } finally {
+      await ownership.release();
+    }
+    expect(existsSync(paths.maintenancePath)).toBe(false);
+    expect(
+      readdirSync(paths.environmentDir).some((entry) => entry.startsWith('.quarantine-')),
+    ).toBe(false);
+  });
+
   it('rejects predeployment backup when any deployment lifecycle sidecar exists', async () => {
     const root = mkdtempSync(resolve(tmpdir(), 'motorcove-predeployment-sidecar-'));
     roots.push(root);

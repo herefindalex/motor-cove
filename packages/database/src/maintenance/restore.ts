@@ -2,7 +2,11 @@ import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { acquireMaintenanceLocks } from '../connection/flock.js';
+import {
+  acquireBootstrapOwnership,
+  acquireMaintenanceLocks,
+  type AdvisoryLock,
+} from '../connection/flock.js';
 import { verifyOwnedEnvironment } from '../connection/environment.js';
 import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
 import { verifyBackup } from './backup.js';
@@ -43,6 +47,21 @@ function manifestDeploymentId(paths: EnvironmentPaths): string {
   return manifest.deploymentId;
 }
 
+function assertActiveSidecarsMatchBackup(paths: EnvironmentPaths, backupDirectory: string): void {
+  for (const [active, name] of [
+    [paths.deploymentPath, 'deployment.json'],
+    [paths.bootstrapReceiptPath, 'bootstrap-receipt.json'],
+    [paths.seedJournalPath, 'seed-journal.json'],
+  ] as const) {
+    const archived = resolve(backupDirectory, name);
+    if (
+      existsSync(active) !== existsSync(archived) ||
+      (existsSync(active) && !readFileSync(active).equals(readFileSync(archived)))
+    )
+      throw new Error(`BACKUP_SIDECAR_MISMATCH: ${name}`);
+  }
+}
+
 export async function restoreEnvironment(
   paths: EnvironmentPaths,
   backupId: string,
@@ -50,7 +69,6 @@ export async function restoreEnvironment(
 ) {
   if (!confirmed) throw new Error('RESTORE_CONFIRMATION_REQUIRED');
   verifyOwnedEnvironment(paths);
-  const locks = await acquireMaintenanceLocks(paths);
   const operationId = randomUUID();
   const marker: MaintenanceMarker = {
     operationId,
@@ -65,7 +83,11 @@ export async function restoreEnvironment(
   const staging = resolve(paths.environmentDir, `.restore-${operationId}`);
   const quarantine = resolve(paths.environmentDir, `.quarantine-${operationId}`);
   let markerOwned = false;
+  let bootstrapOwnership: AdvisoryLock | undefined;
+  let locks: AdvisoryLock | undefined;
   try {
+    bootstrapOwnership = await acquireBootstrapOwnership(paths);
+    locks = await acquireMaintenanceLocks(paths);
     if (existsSync(paths.maintenancePath)) throw new Error('MAINTENANCE_INCOMPLETE');
     writeMaintenanceMarker(paths.maintenancePath, marker);
     markerOwned = true;
@@ -83,6 +105,7 @@ export async function restoreEnvironment(
       manifestId !== activeId
     )
       throw new Error('BACKUP_DEPLOYMENT_MISMATCH');
+    assertActiveSidecarsMatchBackup(paths, backup.directory);
     mkdirSync(staging);
     copyFileSync(backup.databasePath, resolve(staging, 'motorcove.sqlite'));
     const candidate = new Database(resolve(staging, 'motorcove.sqlite'), {
@@ -131,6 +154,10 @@ export async function restoreEnvironment(
       });
     throw error;
   } finally {
-    await locks.release();
+    try {
+      await locks?.release();
+    } finally {
+      await bootstrapOwnership?.release();
+    }
   }
 }
