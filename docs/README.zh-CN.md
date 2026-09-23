@@ -74,6 +74,7 @@
 
 - [实作状态](implementation-status.zh-CN.md)与[实作计划](implementation-plan.zh-CN.md)
 - [文档验收矩阵](testing/documentation-acceptance-matrix.zh-CN.md)
+- [交易界面的浏览器测试覆盖范围](testing/transaction-ux-e2e-coverage.zh-CN.md)
 - [数据库验收矩阵](testing/database-acceptance-matrix.zh-CN.md)
 - [机器可读验证纪录](evidence/verification.json)
 - [实测工具链](toolchain.zh-CN.md)

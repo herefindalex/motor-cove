@@ -97,6 +97,7 @@ identity are recorded in
 
 - [Implementation status](implementation-status.md) and [implementation plan](implementation-plan.md)
 - [Documentation acceptance matrix](testing/documentation-acceptance-matrix.md)
+- [Transaction UX browser coverage](testing/transaction-ux-e2e-coverage.md)
 - [Database acceptance matrix](testing/database-acceptance-matrix.md)
 - [Machine-readable verification records](evidence/verification.json)
 - [Measured toolchain](toolchain.md)

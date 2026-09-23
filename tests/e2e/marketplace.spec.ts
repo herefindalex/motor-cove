@@ -1,5 +1,42 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+
+const rpcUrl = 'http://127.0.0.1:19545';
+const approvalReadSelectors = new Set(['0x6352211e', '0x081812fc', '0xe985e9c5']);
+
+async function anvilRpc(request: APIRequestContext, method: string, params: unknown[] = []) {
+  const response = await request.post(rpcUrl, {
+    data: { jsonrpc: '2.0', id: 1, method, params },
+  });
+  const body = (await response.json()) as { result?: unknown; error?: { message: string } };
+  if (body.error) throw new Error(`${method}: ${body.error.message}`);
+  return body.result;
+}
+
+function approvalReadRequest(payload: unknown): boolean {
+  const calls: unknown[] = Array.isArray(payload) ? (payload as unknown[]) : [payload];
+  return calls.some((candidate) => {
+    if (!candidate || typeof candidate !== 'object') return false;
+    const call = candidate as Record<string, unknown>;
+    if (call.method !== 'eth_call') return false;
+    const params: unknown[] = Array.isArray(call.params) ? (call.params as unknown[]) : [];
+    const transaction = params[0];
+    if (!transaction || typeof transaction !== 'object') return false;
+    const data = (transaction as Record<string, unknown>).data;
+    return typeof data === 'string' && approvalReadSelectors.has(data.slice(0, 10).toLowerCase());
+  });
+}
+
+async function selectSeller(page: Page) {
+  await page.getByRole('button', { name: 'Connect wallet' }).click();
+  await page.evaluate(async () =>
+    (
+      window as unknown as {
+        __motorCoveTestWallet: { select(index: number): Promise<void> };
+      }
+    ).__motorCoveTestWallet.select(1),
+  );
+}
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
@@ -16,6 +53,8 @@ test.beforeEach(async ({ page }) => {
         private lastLostTransactionHash: string | undefined;
         private transactionSubmissionCount = 0;
         private readonly transactionSubmissionMethods: string[] = [];
+        private nextSubmissionGate: Promise<void> | undefined;
+        private releaseSubmissionGate: (() => void) | undefined;
         private readonly listeners = new Map<string, Set<Listener>>();
         async request({ method, params = [] }: { method: string; params?: unknown[] }) {
           if (method === 'wallet_switchEthereumChain') {
@@ -55,6 +94,11 @@ test.beforeEach(async ({ page }) => {
           if (isTransactionSubmission) {
             this.transactionSubmissionCount += 1;
             this.transactionSubmissionMethods.push(method);
+            if (this.nextSubmissionGate) {
+              const gate = this.nextSubmissionGate;
+              this.nextSubmissionGate = undefined;
+              await gate;
+            }
             if (this.rejectNextTransaction) {
               this.rejectNextTransaction = false;
               throw Object.assign(new Error('User rejected the request'), { code: 4001 });
@@ -107,6 +151,15 @@ test.beforeEach(async ({ page }) => {
         delayNext(milliseconds: number) {
           this.delayNextTransactionMs = milliseconds;
         }
+        pauseNextSubmission() {
+          this.nextSubmissionGate = new Promise<void>((resolve) => {
+            this.releaseSubmissionGate = resolve;
+          });
+        }
+        releaseNextSubmission() {
+          this.releaseSubmissionGate?.();
+          this.releaseSubmissionGate = undefined;
+        }
         loseNextResponse() {
           this.loseNextTransactionResponse = true;
         }
@@ -144,6 +197,10 @@ test('uses the explicit local demo wallet for real fund, complete, and withdraw 
   await expect(page.getByRole('button', { name: 'Withdraw proceeds' })).toBeEnabled();
   await page.getByRole('button', { name: 'Withdraw proceeds' }).click();
   await expect(page.getByText('WITHDRAWN')).toBeVisible();
+  await expect(
+    page.getByText('Transaction submitted. Check the timeline for its latest status.'),
+  ).toBeVisible();
+  await expect(page.getByText('Transaction submitted. Waiting for inclusion.')).toHaveCount(0);
 });
 
 test('lists, expires, refunds, and reclaims through distinct real transactions', async ({
@@ -160,7 +217,9 @@ test('lists, expires, refunds, and reclaims through distinct real transactions',
   const asset = page.locator('.asset').filter({ hasText: 'Harbor RS' });
   await expect(asset.getByRole('button', { name: 'Create sale' })).toBeDisabled();
   await asset.getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByText(/Transaction submitted\. Waiting for inclusion\./)).toBeVisible();
+  await expect(
+    page.getByText(/Transaction submitted\. Check the timeline for its latest status\./),
+  ).toBeVisible();
   await expect(asset.getByText('Approved on-chain')).toBeVisible();
   await asset.getByRole('button', { name: 'Create sale' }).click();
   const card = page.locator('.card').filter({ hasText: 'Harbor RS' });
@@ -269,7 +328,9 @@ test('surfaces network and rejection states, then recovers a lost wallet respons
   const asset = page.locator('.asset').filter({ hasText: 'Cinder XR' });
   await expect(asset.getByRole('button', { name: 'Create sale' })).toBeDisabled();
   await asset.getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByText(/Transaction submitted\. Waiting for inclusion\./)).toBeVisible();
+  await expect(
+    page.getByText(/Transaction submitted\. Check the timeline for its latest status\./),
+  ).toBeVisible();
   await expect(asset.getByText('Approved on-chain')).toBeVisible();
   await asset.getByRole('button', { name: 'Create sale' }).click();
   const card = page.locator('.card').filter({ hasText: 'Cinder XR' });
@@ -298,6 +359,10 @@ test('surfaces network and rejection states, then recovers a lost wallet respons
       .filter({ hasText: 'FUND SALE' })
       .getByText('REJECTED', { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Wallet request rejected.' }),
+  ).toContainText('Wallet request rejected. No transaction submission was confirmed.');
+  await expect(page.getByText('Wallet request rejected', { exact: true })).toBeVisible();
   const submissionsBeforeLostResponse = await page.evaluate(() =>
     (
       window as unknown as {
@@ -316,6 +381,9 @@ test('surfaces network and rejection states, then recovers a lost wallet respons
   await card.getByRole('button', { name: 'Fund exactly' }).click();
   const fundingEntry = page.getByRole('listitem').filter({ hasText: 'FUND SALE' });
   await expect(fundingEntry.getByText('UNKNOWN', { exact: true })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('Submission outcome is unknown.');
+  await expect(page.getByRole('alert')).toContainText('Check wallet activity before trying again.');
+  await expect(fundingEntry.getByText('Submission outcome unknown')).toBeVisible();
   const lostHash = await page.evaluate(() =>
     (
       window as unknown as {
@@ -448,7 +516,9 @@ test('keeps pending and included evidence across reload while projection catches
   const asset = page.locator('.asset').filter({ hasText: 'Vale Touring' });
   await expect(asset.getByRole('button', { name: 'Create sale' })).toBeDisabled();
   await asset.getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByText(/Transaction submitted\. Waiting for inclusion\./)).toBeVisible();
+  await expect(
+    page.getByText(/Transaction submitted\. Check the timeline for its latest status\./),
+  ).toBeVisible();
   await expect(asset.getByText('Approved on-chain')).toBeVisible();
   await asset.getByRole('button', { name: 'Create sale' }).click();
   const card = page.locator('.card').filter({ hasText: 'Vale Touring' });
@@ -496,10 +566,49 @@ test('keeps pending and included evidence across reload while projection catches
       ).__motorCoveTestWallet.select(0),
     );
     await expect(fundingEntry.getByText('INCLUDED_SUCCESS')).toBeVisible({ timeout: 10_000 });
+    await expect(fundingEntry.getByText('Included successfully')).toBeVisible();
     await expect(
       page.getByText(`Original account ${originalAccount} on chain 31337.`),
     ).toBeVisible();
     await expect(page.getByText(/Projection STALE/)).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByText(
+        'Transaction included on-chain. Marketplace projection verification is unavailable.',
+      ),
+    ).toBeVisible();
+
+    // Keep the real receipt and lagging sales response; vary only the API health evidence
+    // to cover the three distinct browser messages without mutating the managed database.
+    let healthFixture: 'real' | 'fresh' | 'recovery' = 'real';
+    await page.route(
+      (url) => url.pathname === '/v1/system/status',
+      async (route) => {
+        if (healthFixture === 'real') return route.continue();
+        const response = await route.fetch();
+        const envelope = (await response.json()) as { data: Record<string, unknown> };
+        await route.fulfill({
+          response,
+          json: {
+            ...envelope,
+            data: {
+              ...envelope.data,
+              projectionStatus: healthFixture === 'fresh' ? 'SYNCING' : 'RECOVERY_REQUIRED',
+              observationFreshness: healthFixture === 'fresh' ? 'FRESH' : 'UNKNOWN',
+              recoveryReason: healthFixture === 'fresh' ? null : 'CONTROLLED_E2E_RECOVERY',
+            },
+          },
+        });
+      },
+    );
+    healthFixture = 'fresh';
+    await expect(
+      page.getByText('Transaction confirmed on-chain. Marketplace data is still syncing.'),
+    ).toBeVisible();
+    healthFixture = 'recovery';
+    await expect(
+      page.getByText('Transaction included on-chain. Marketplace projection requires recovery.'),
+    ).toBeVisible();
+    healthFixture = 'real';
 
     const browser = page.context().browser();
     if (!browser) throw new Error('Playwright browser is unavailable');
@@ -550,4 +659,245 @@ test('keeps pending and included evidence across reload while projection catches
   }
 
   await expect(card.getByText('FUNDED')).toBeVisible({ timeout: 15_000 });
+});
+
+test('shows loading instead of an empty marketplace while API reads are pending', async ({
+  page,
+}) => {
+  let releaseReads = () => {};
+  const gate = new Promise<void>((resolve) => {
+    releaseReads = resolve;
+  });
+  const heldPaths = new Set<string>();
+  await page.route(
+    (url) => url.pathname === '/v1/sales' || url.pathname === '/v1/vehicles',
+    async (route) => {
+      heldPaths.add(new URL(route.request().url()).pathname);
+      await gate;
+      await route.continue();
+    },
+  );
+  try {
+    await page.goto('/');
+    await expect.poll(() => heldPaths.size).toBe(2);
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Loading projected listings…' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Loading owned vehicles…' }),
+    ).toBeVisible();
+    await expect(page.getByText('No projected listings.')).toHaveCount(0);
+  } finally {
+    releaseReads();
+  }
+  await expect(page.getByText('Apex GT')).toBeVisible();
+  await expect(page.getByText('Loading projected listings…')).toHaveCount(0);
+  await expect(page.getByText('Loading owned vehicles…')).toHaveCount(0);
+});
+
+test('fails closed when the on-chain approval read is unavailable', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let blockedReads = 0;
+  await page.route(
+    (url) => url.origin === rpcUrl,
+    async (route) => {
+      const payload = route.request().postDataJSON() as unknown;
+      if (!approvalReadRequest(payload)) return route.continue();
+      blockedReads += 1;
+      const calls = Array.isArray(payload) ? payload : [payload];
+      const failures = calls.map((call) => ({
+        jsonrpc: '2.0',
+        id: (call as { id: number }).id,
+        error: { code: -32000, message: 'Controlled approval read failure' },
+      }));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify(Array.isArray(payload) ? failures : failures[0]),
+      });
+    },
+  );
+  await page.goto('/');
+  await selectSeller(page);
+  const asset = page.locator('.asset').filter({ hasText: 'Harbor RS' });
+  await expect(
+    asset.getByText('Approval check unavailable. Try again when chain data returns.'),
+  ).toBeVisible();
+  await expect(asset.getByRole('button', { name: 'Approve' })).toBeDisabled();
+  await expect(asset.getByRole('button', { name: 'Create sale' })).toBeDisabled();
+  await expect(asset.getByLabel('Listing price for token #2 (test ETH)')).toBeVisible();
+  expect(blockedReads).toBeGreaterThan(0);
+  await asset
+    .getByRole('button', { name: 'Approve' })
+    .evaluate((button: HTMLButtonElement) => button.click());
+  expect(
+    await page.evaluate(() =>
+      (
+        window as unknown as { __motorCoveTestWallet: { submissionCount(): number } }
+      ).__motorCoveTestWallet.submissionCount(),
+    ),
+  ).toBe(0);
+});
+
+test('blocks listing when chain ownership differs from the indexed owner', async ({
+  page,
+  request,
+}) => {
+  const accounts = (await anvilRpc(request, 'eth_accounts')) as string[];
+  const buyerOwnerWord = `0x${accounts[2].slice(2).padStart(64, '0')}`;
+  let ownerReads = 0;
+  await page.route(
+    (url) => url.origin === rpcUrl,
+    async (route) => {
+      const payload = route.request().postDataJSON() as {
+        method?: string;
+        params?: [{ data?: string }];
+      };
+      if (
+        payload.method !== 'eth_call' ||
+        payload.params?.[0]?.data?.slice(0, 10).toLowerCase() !== '0x6352211e'
+      )
+        return route.continue();
+      ownerReads += 1;
+      const response = await route.fetch();
+      const body = (await response.json()) as Record<string, unknown>;
+      await route.fulfill({ response, json: { ...body, result: buyerOwnerWord } });
+    },
+  );
+  await page.goto('/');
+  await selectSeller(page);
+  const asset = page.locator('.asset').filter({ hasText: 'Harbor RS' });
+  await expect(
+    asset.getByText(
+      'Chain ownership differs from this indexed asset. Wait for marketplace data to sync.',
+    ),
+  ).toBeVisible();
+  await expect(asset.getByRole('button', { name: 'Create sale' })).toBeDisabled();
+  await expect(asset.getByRole('button', { name: 'Approve' })).toBeDisabled();
+  expect(ownerReads).toBeGreaterThan(0);
+});
+
+test('keeps listing gated through wallet, pending, and included approval stages', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/');
+  await selectSeller(page);
+  const asset = page.locator('.asset').filter({ hasText: 'Harbor RS' });
+  const approve = asset.getByRole('button', { name: 'Approve' });
+  const create = asset.getByRole('button', { name: 'Create sale' });
+  await expect(asset.getByText('Not approved on-chain')).toBeVisible();
+  await expect(approve).toBeEnabled();
+  await expect(create).toBeDisabled();
+
+  let releaseApprovalReads = () => {};
+  const approvalReadGate = new Promise<void>((resolve) => {
+    releaseApprovalReads = resolve;
+  });
+  let heldApprovalReads = 0;
+  let holdApprovalReads = false;
+  let releaseSimulation = () => {};
+  const simulationGate = new Promise<void>((resolve) => {
+    releaseSimulation = resolve;
+  });
+  let simulationCalls = 0;
+  await page.route(
+    (url) => url.origin === rpcUrl,
+    async (route) => {
+      const payload = route.request().postDataJSON() as {
+        method?: string;
+        params?: [{ data?: string }];
+      };
+      if (
+        payload.method === 'eth_call' &&
+        payload.params?.[0]?.data?.slice(0, 10).toLowerCase() === '0x095ea7b3'
+      ) {
+        simulationCalls += 1;
+        await simulationGate;
+        return route.continue();
+      }
+      if (!holdApprovalReads || !approvalReadRequest(payload)) return route.continue();
+      heldApprovalReads += 1;
+      await approvalReadGate;
+      await route.continue();
+    },
+  );
+
+  await anvilRpc(request, 'anvil_setAutomine', [false]);
+  try {
+    await page.evaluate(() =>
+      (
+        window as unknown as { __motorCoveTestWallet: { pauseNextSubmission(): void } }
+      ).__motorCoveTestWallet.pauseNextSubmission(),
+    );
+    await approve.click();
+    await expect(asset.getByText('Preparing approval request.')).toBeVisible();
+    await expect(create).toBeDisabled();
+    await expect.poll(() => simulationCalls).toBeGreaterThan(0);
+    expect(
+      await page.evaluate(() =>
+        (
+          window as unknown as { __motorCoveTestWallet: { submissionCount(): number } }
+        ).__motorCoveTestWallet.submissionCount(),
+      ),
+    ).toBe(0);
+    releaseSimulation();
+    const busyApprove = asset.getByRole('button', { name: 'Approving…' });
+    await expect(busyApprove).toBeDisabled();
+    await expect(busyApprove).toHaveAttribute('aria-busy', 'true');
+    await expect(asset.getByText('Waiting for the wallet approval request.')).toBeVisible();
+    await expect(create).toBeDisabled();
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (
+            window as unknown as { __motorCoveTestWallet: { submissionCount(): number } }
+          ).__motorCoveTestWallet.submissionCount(),
+        ),
+      )
+      .toBe(1);
+    holdApprovalReads = true;
+    await busyApprove.evaluate((button: HTMLButtonElement) => button.click());
+    expect(
+      await page.evaluate(() =>
+        (
+          window as unknown as { __motorCoveTestWallet: { submissionCount(): number } }
+        ).__motorCoveTestWallet.submissionCount(),
+      ),
+    ).toBe(1);
+
+    await page.evaluate(() =>
+      (
+        window as unknown as { __motorCoveTestWallet: { releaseNextSubmission(): void } }
+      ).__motorCoveTestWallet.releaseNextSubmission(),
+    );
+    await expect(asset.getByText('Approval submitted. Waiting for inclusion.')).toBeVisible();
+    await expect(create).toBeDisabled();
+    const approvalEntry = page.getByRole('listitem').filter({ hasText: 'APPROVE TOKEN' });
+    await expect(approvalEntry.getByText('SUBMITTED', { exact: true })).toBeVisible();
+    await expect(approvalEntry.getByText('Submitted; waiting for inclusion')).toBeVisible();
+
+    await anvilRpc(request, 'anvil_mine', [1]);
+    await expect(
+      asset.getByText('Approval included, but current on-chain permission is not confirmed yet.'),
+    ).toBeVisible();
+    await expect(create).toBeDisabled();
+    await expect(approvalEntry.getByText('INCLUDED_SUCCESS', { exact: true })).toBeVisible();
+    await expect(approvalEntry.getByText('Included successfully')).toBeVisible();
+    expect(heldApprovalReads).toBeGreaterThan(0);
+
+    releaseApprovalReads();
+    await expect(asset.getByText('Approved on-chain')).toBeVisible();
+    await expect(create).toBeEnabled();
+    await anvilRpc(request, 'anvil_setAutomine', [true]);
+    await create.click();
+    await expect(
+      page.locator('.card').filter({ hasText: 'Harbor RS' }).getByText('LISTED'),
+    ).toBeVisible();
+  } finally {
+    releaseSimulation();
+    releaseApprovalReads();
+    await anvilRpc(request, 'anvil_setAutomine', [true]);
+  }
 });
