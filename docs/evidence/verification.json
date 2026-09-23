@@ -400,9 +400,19 @@
       "limitations": "The browser proof uses Web Locks in one Chromium profile and controlled transaction callbacks. The no-Web-Locks fallback is same-realm only; cross-device, public-network, manual MetaMask behavior, and process death during wallet response persistence were not run.",
       "executedAt": "2026-09-23T01:38:00Z"
     },
-    {"id": "RUN-R20-FOCUSED", "scenarios": ["DB-71", "DB-72"], "level": "LOCAL-TEST", "command": "pnpm exec vitest run tests/recovery/backup-restore.test.ts tests/migrations/migrations.test.ts tests/integration/reconciliation-head-failure.test.ts; pnpm test:migrations; pnpm test:recovery; pnpm test:db; pnpm test:integration", "workingDirectory": "workspace root", "status": "executed/pass", "result": "Focused R20 suites passed 3 files / 52 tests. Full lanes passed migrations 25, recovery 24, database 38, and integration 60 tests. Real flock contention excludes backup/restore during bootstrap; complete sidecar pairs and pre-quarantine generation equality are enforced; publication-time head movement reports lag and publication read failure reports unknown.", "limitations": "Ownership evidence is same-host advisory flock; SQLite fixtures are harness-owned. Reconciliation uses a controlled chain client for exact head timing. No distributed lock, public RPC timing, or hardware power loss was exercised.", "executedAt": "2026-09-23T02:20:04Z"},
+    {
+      "id": "RUN-R20-FOCUSED",
+      "scenarios": ["DB-71", "DB-72"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm exec vitest run tests/recovery/backup-restore.test.ts tests/migrations/migrations.test.ts tests/integration/reconciliation-head-failure.test.ts; pnpm test:migrations; pnpm test:recovery; pnpm test:db; pnpm test:integration",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Focused R20 suites passed 3 files / 52 tests. Full lanes passed migrations 25, recovery 24, database 38, and integration 60 tests. Real flock contention excludes backup/restore during bootstrap; complete sidecar pairs and pre-quarantine generation equality are enforced; publication-time head movement reports lag and publication read failure reports unknown.",
+      "limitations": "Ownership evidence is same-host advisory flock; SQLite fixtures are harness-owned. Reconciliation uses a controlled chain client for exact head timing. No distributed lock, public RPC timing, or hardware power loss was exercised.",
+      "executedAt": "2026-09-23T02:20:04Z"
+    },
 
-{
+    {
       "id": "RUN-CI",
       "scenarios": ["REL-001", "ARCH-001", "DB-71", "DB-72"],
       "level": "REMOTE-CI",
