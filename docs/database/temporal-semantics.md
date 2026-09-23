@@ -57,9 +57,8 @@ against a fixed eligible target and uses actual chain observation to establish l
 Restore verifies a compatible snapshot, not that its saved timestamps still describe the live
 worker or current chain head. See [recovery semantics](recovery-semantics.md) for operation rules.
 
-## R26 audit result
+## Schema completeness
 
-The temporal model records what the current schema means. The
-[R26 audit](audits/r26/02_Temporal_Semantics_Matrix.md) evaluated missing timestamp, ordering,
-and provenance candidates. None justified a new column or migration under current requirements.
-The reader correction for a future worker heartbeat changes presentation, not stored schema.
+The current schema provides the timestamps, ordering, and provenance needed for the documented
+database lifecycle. No additional column or migration is required under current requirements.
+A future worker heartbeat is presented as unknown freshness without changing stored schema.

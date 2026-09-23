@@ -88,8 +88,8 @@ restore, and temporal contracts. It added a generated table contract and timesta
 checks without changing the physical schema. R26 (`e2a7830`) found that a future persisted worker
 heartbeat was incorrectly presented as fresh; the real SQLite/API regression failed on the old
 reader and passed after `UNKNOWN` freshness and null lag replaced that claim. Catalog no-op seed
-timestamp behavior is also pinned by a regression. R26 accepted no schema migration; its
-[matrix and decisions](database/audits/r26/02_Temporal_Semantics_Matrix.md) explain each candidate.
+timestamp behavior is also pinned by a regression. No schema migration was required;
+[database temporal semantics](database/temporal-semantics.md) describes the current contract.
 
 Both stages passed local `pnpm verify` and `pnpm test:e2e`. Remote CI completed successfully for
 [DB-DOC-2](https://github.com/herefindalex/motor-cove/actions/runs/35838072123) and

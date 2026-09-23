@@ -6,7 +6,7 @@ No physical schema change is accepted in R26. The current event/block anchors an
 recovery and audit questions without a second wall clock on each projection. The concrete future
 heartbeat error is corrected in reader presentation and a real SQLite/API test; it does not call
 for a new column. `db_contract.verified_at` needs a narrower description, which is updated in the
-TypeScript database model and [temporal reference](../../temporal-semantics.md).
+TypeScript database model and [temporal reference](../../database/temporal-semantics.md).
 
 The classes below are `KEEP`, `DOCUMENT`, `ADD`, `RENAME-LATER`, and `REJECT`. `REJECT` means the
 field has no demonstrated correctness, recovery, audit, or product need today; it is not a rule

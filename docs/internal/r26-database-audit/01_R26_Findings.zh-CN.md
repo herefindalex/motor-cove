@@ -7,7 +7,7 @@
 本次以 DB-DOC-2 提交 `b18e9416894c924a04ebe550ad97eb22134a9899` 为基线，检查现行
 Drizzle migrations 所产生的 13 个实体表、数据库模型、writer、reader、Indexer 投影及恢复路径。
 稽核没有使用用户既有数据库、真钱包或公网链；实际运行的测试及限制记于
-[验证纪录](../../../evidence/verification.json)。
+[验证纪录](../../evidence/verification.json)。
 
 **结论：目前没有足以支持添加数据库字段或 migration 的具体需求。** 各投影现值可以通过现有
 deployment、block hash、log index、source journal 与 build／scope 身份追溯。任意增加

@@ -13,7 +13,7 @@ pnpm exec vitest run tests/integration/api-reader-contract.test.ts
 ```
 
 The exact executed commands, results, toolchain, and limitations for this delivery are recorded in
-[verification evidence](../../../evidence/verification.json). The required full gates are:
+[verification evidence](../../evidence/verification.json). The required full gates are:
 
 ```bash
 pnpm docs:check

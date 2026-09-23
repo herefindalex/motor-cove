@@ -2,7 +2,7 @@
 
 This audit covers all 13 tables produced by the current migration bundle. The
 [findings summary](01_R26_Findings.zh-TW.md) is in Traditional Chinese. Physical column types
-and constraints remain in the [generated schema reference](../../schema-reference.generated.md).
+and constraints remain in the [generated schema reference](../../database/schema-reference.generated.md).
 `B` means contract or business time; `C` chain time or causal position; `O` local observation;
 `V` verification or report publication; `P` process liveness; `L` local mutation. A dash means
 there is no field in that category, not that the represented fact has no chronology.
