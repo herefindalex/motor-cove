@@ -5,6 +5,7 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -25,6 +26,44 @@ afterEach(() => {
 });
 
 describe('managed environment reset', () => {
+  it.each(['databaseDir', 'reportsDir'] as const)(
+    'rejects a post-ownership %s symlink before resetting the chain',
+    async (pathName) => {
+      const root = mkdtempSync(join(tmpdir(), `motorcove-reset-${pathName}-symlink-`));
+      roots.push(root);
+      const paths = environmentPaths(root, `reset-${pathName.toLowerCase()}-symlink`);
+      initializeOwnedEnvironment(paths);
+      const external = mkdtempSync(join(tmpdir(), `motorcove-reset-${pathName}-external-`));
+      roots.push(external);
+      const sentinel = join(external, 'sentinel.txt');
+      writeFileSync(sentinel, 'preserve');
+      rmSync(paths[pathName], { recursive: true, force: true });
+      symlinkSync(external, paths[pathName], 'dir');
+      let chainResetCalls = 0;
+
+      await expect(
+        resetEnvironment(paths, true, {
+          resetChain: async () => {
+            chainResetCalls += 1;
+          },
+        }),
+      ).rejects.toThrow('DB_NOT_OWNED');
+
+      expect(chainResetCalls).toBe(0);
+      expect(readFileSync(sentinel, 'utf8')).toBe('preserve');
+      expect(existsSync(paths.maintenancePath)).toBe(false);
+
+      rmSync(paths[pathName], { force: true });
+      mkdirSync(paths[pathName]);
+      await resetEnvironment(paths, true, {
+        resetChain: async () => {
+          chainResetCalls += 1;
+        },
+      });
+      expect(chainResetCalls).toBe(1);
+    },
+  );
+
   it('removes generated runtime state while preserving ownership, locks, and backups', async () => {
     const root = mkdtempSync(join(tmpdir(), 'motorcove-reset-'));
     roots.push(root);

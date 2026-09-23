@@ -76,6 +76,13 @@ original hash and verifies the candidate against the saved account, chain, deplo
 calldata, and value before associating any evidence. Supplying a candidate never starts a wallet
 write or treats the original transaction as safely replaceable.
 
+If the RPC explicitly reports that the saved original or current hash cannot be found, the journal
+has a nonce, and no receipt block was previously recorded, recovery persists
+`REPLACEMENT_HASH_REQUIRED`. The Observer asks for the current or replacement hash from wallet
+activity. It keeps the immutable intent and original hash, validates the supplied candidate through
+the same read-only identity checks, and never infers that the transaction is safe to resend. Generic
+transport failures remain ordinary unavailable observations; they do not request a replacement hash.
+
 A replacement with the same sender, nonce, target, calldata, and value continues as `REPRICED` and
 uses the replacement hash for receipt and projection evidence. A wallet cancellation is recorded as
 `CANCELLED`; another target, call, or value is `DIFFERENT_CALL`. Neither latter case proves funding,

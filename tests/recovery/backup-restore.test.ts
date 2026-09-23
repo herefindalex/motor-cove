@@ -351,6 +351,47 @@ describe('backup, restore, recovery', () => {
     expect(result.quarantine).toContain('.quarantine-');
   });
 
+  it('rejects changed backup bytes after verification before quarantining the active database', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const original = new Database(paths.databasePath);
+    original
+      .prepare(
+        `INSERT INTO catalog_vehicles VALUES ('toctou','BACKUP_A','snapshot','M','2026','/before.svg','MANUAL',NULL,NULL,'x','x')`,
+      )
+      .run();
+    original.close();
+    const backup = await backupEnvironment(paths);
+    const active = new Database(paths.databasePath);
+    active.prepare(`UPDATE catalog_vehicles SET name='ACTIVE' WHERE catalog_id='toctou'`).run();
+    active.close();
+    const replacement = resolve(root, 'replacement.sqlite');
+    copyFileSync(resolve(backup.path, 'database.sqlite'), replacement);
+    const changedBackup = new Database(replacement);
+    changedBackup
+      .prepare(`UPDATE catalog_vehicles SET name='BACKUP_B' WHERE catalog_id='toctou'`)
+      .run();
+    changedBackup.close();
+
+    await expect(
+      restoreEnvironment(paths, backup.backupId, true, {
+        copyDatabase: (source, destination) => {
+          copyFileSync(replacement, source);
+          copyFileSync(source, destination);
+        },
+      }),
+    ).rejects.toThrow('BACKUP_INVALID: staging checksum');
+
+    const preserved = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
+    expect(
+      preserved.prepare(`SELECT name FROM catalog_vehicles WHERE catalog_id='toctou'`).get(),
+    ).toEqual({ name: 'ACTIVE' });
+    preserved.close();
+    expect(
+      readdirSync(paths.environmentDir).some((entry) => entry.startsWith('.quarantine-')),
+    ).toBe(false);
+  });
+
   it('rejects a backup from a different deployment before quarantining the active database', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);

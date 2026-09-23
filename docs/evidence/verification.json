@@ -1,10 +1,10 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "442539f45be07fca035b73d077195ebedbfb464e",
+    "revision": "5e34deb602601090192ab89f3fdda146735b027f",
     "dirty": true,
-    "capturedAt": "2026-09-23T05:49:52Z",
-    "sourceFingerprint": "sha256:842dc38bd5b22b033313cd650edf44d2937e32970d441230a0edb8c2b719de46",
+    "capturedAt": "2026-09-23T06:40:48Z",
+    "sourceFingerprint": "sha256:87b7f5bbffb15b4b550d64db4784a37ce4ff406ae2d1106aeb07ec27a186fb56",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
     "limits": "Coverage hardening uses table-driven and jsdom component guards, harness-owned loopback Anvil, synthetic accounts, Chromium, and GitHub-hosted CI. The focused guards do not claim browser-extension wallet, public-network provider, cross-device coordination, or hardware power-loss coverage. Recovery barrier, bootstrap receipt, and rebuild freshness guards remain deferred until their product invariants are implemented.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
@@ -466,6 +466,17 @@
       "result": "Database documentation contract passed 1 file / 4 tests over 13 migrated tables. The full gate passed 17 Foundry tests, 53 unit/component/database files with 364 tests, 14 integration files with 61 tests, all 7 workspace builds, and 8 Playwright E2E scenarios.",
       "limitations": "Generation used an isolated in-memory better-sqlite3 database and current Drizzle migrations; it did not inspect or modify a managed environment. The documentation records the current staged-copy checksum and child-path containment gaps pending R23.",
       "executedAt": "2026-09-23T05:49:52Z"
+    },
+    {
+      "id": "RUN-R23-FOCUSED",
+      "scenarios": ["TX-009", "DB-74", "DB-75"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm exec vitest run tests/database/reset.test.ts tests/recovery/backup-restore.test.ts apps/web/src/integrations/evm/inspect-transaction.test.ts apps/web/src/capabilities/transactions/recovery.test.ts apps/web/src/integrations/evm/TransactionObserver.test.tsx; pnpm test:db; pnpm test:recovery; pnpm test:components; pnpm check:architecture; pnpm docs:check; pnpm --dir packages/database typecheck; pnpm verify; pnpm test:e2e",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Focused R23 regressions passed 5 files / 72 tests. Database and recovery lanes passed 6 files / 43 tests and 1 file / 25 tests; transaction UI components passed 2 files / 5 tests. The complete gate passed 17 Foundry tests, 53 unit/component/database files with 370 tests, 14 integration files with 61 tests, all 7 workspace builds, and 8 Playwright E2E scenarios. Documentation generated 18 capabilities and 48 commands, validated DB-01 through DB-75, and architecture checked 169 source files while rejecting all 10 negative fixtures.",
+      "limitations": "Reset coverage uses real temporary directories, symlinks, and advisory locks without an actual Anvil reset. Restore uses real better-sqlite3 backup files with a deterministic copy-boundary injection. Transaction recovery uses controlled EVM reader and UI adapters; no browser-extension wallet, public RPC, hardware power loss, or malicious filesystem actor was exercised.",
+      "executedAt": "2026-09-23T06:40:48Z"
     }
   ]
 }

@@ -15,6 +15,11 @@ const receiptNotFound = (error: unknown) =>
     error.message,
   );
 
+const transactionNotFound = (error: unknown) =>
+  error instanceof Error &&
+  (error.name === 'TransactionNotFoundError' ||
+    /transaction[\s\S]*(?:not found|could not be found)/i.test(error.message));
+
 type TransactionIntentEnvelope = {
   readonly from: string;
   readonly to: string | null;
@@ -96,6 +101,20 @@ export function createTransactionChainReader(
             } catch {
               // Preserve the original lookup error when the canonical header is also unavailable.
             }
+          }
+          const savedHash = entry.currentTxHash ?? entry.originalTxHash;
+          if (
+            entry.receiptBlockNumber === undefined &&
+            entry.nonce !== undefined &&
+            savedHash !== undefined &&
+            equalHex(savedHash, transactionHash) &&
+            transactionNotFound(transactionError)
+          ) {
+            return {
+              kind: 'REPLACEMENT_HASH_REQUIRED',
+              transactionHash,
+              nonce: entry.nonce,
+            };
           }
           throw transactionError;
         }

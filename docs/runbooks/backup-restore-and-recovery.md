@@ -34,10 +34,13 @@ combining two bootstrap generations.
 pnpm db:restore --env docs-smoke --backup <verified-backup-id> --yes
 ```
 
-Restore verifies before moving active files, quarantines the current main DB and WAL/SHM sidecars,
-installs the standalone snapshot, opens it with WAL policy, and verifies again. `--yes` confirms the
-destructive choice; it does not bypass ownership or checksum guards. DB restore never rolls back the
-chain. Restore accepts only a `STANDARD` snapshot whose recorded source condition was `READY`.
+Restore verifies the source bundle, copies its database to operation-owned staging, and repeats the
+manifest SHA-256 check over the staged bytes before moving active files. It then quarantines the
+current main DB and WAL/SHM sidecars, installs the standalone snapshot, opens it with WAL policy, and
+verifies again. A source change across the verify/copy boundary fails before quarantine. `--yes`
+confirms the destructive choice; it does not bypass ownership or checksum guards. DB restore never
+rolls back the chain. Restore accepts only a `STANDARD` snapshot whose recorded source condition was
+`READY`.
 
 ## Recover an interrupted operation
 

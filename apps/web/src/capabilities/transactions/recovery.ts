@@ -29,6 +29,11 @@ export type InspectedTransaction =
     }
   | { kind: 'NONCANONICAL'; transactionHash: `0x${string}` }
   | { kind: 'INTENT_MISMATCH'; transactionHash: `0x${string}`; reason: string }
+  | {
+      kind: 'REPLACEMENT_HASH_REQUIRED';
+      transactionHash: `0x${string}`;
+      nonce: number;
+    }
   | { kind: 'UNAVAILABLE'; transactionHash: `0x${string}`; reason: string };
 
 export interface TransactionChainReader {
@@ -64,6 +69,7 @@ export type RecoveryResult =
   | { kind: 'REFLECTED' }
   | { kind: 'INCONSISTENT' }
   | { kind: 'REJECTED_CANDIDATE'; reason: string }
+  | { kind: 'REPLACEMENT_HASH_REQUIRED' }
   | { kind: 'SUPERSEDED' }
   | { kind: 'UNAVAILABLE'; reason: string };
 
@@ -145,6 +151,14 @@ export async function resumeJournalEntry(
   const apply = (values: Partial<JournalEntry>) =>
     update(verifying, ports, values, verificationRequestId);
   const inspected = await ports.chain.inspectTransaction(verifying, verifiedHash);
+  if (inspected.kind === 'REPLACEMENT_HASH_REQUIRED') {
+    const result = await apply({
+      verificationAvailability: 'UNAVAILABLE',
+      lastErrorCategory: 'REPLACEMENT_HASH_REQUIRED',
+    });
+    if (!result.applied) return { kind: 'SUPERSEDED' };
+    return { kind: 'REPLACEMENT_HASH_REQUIRED' };
+  }
 
   if (inspected.kind === 'UNAVAILABLE') {
     const result = await apply({

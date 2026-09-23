@@ -146,7 +146,13 @@ export function TransactionObserver({
       {recoverable.map((entry) => {
         const hash = entry.currentTxHash ?? entry.originalTxHash;
         const candidate = candidates[entry.clientOperationId] ?? '';
+        const replacementHashRequired = entry.lastErrorCategory === 'REPLACEMENT_HASH_REQUIRED';
         const canSupplyCandidate = !hash || entry.verificationAvailability === 'UNAVAILABLE';
+        const candidateLabel = replacementHashRequired
+          ? 'Current or replacement transaction hash from wallet activity'
+          : hash
+            ? 'Alternative transaction hash from wallet activity'
+            : 'Candidate transaction hash from wallet activity';
         return (
           <article key={entry.clientOperationId}>
             <p>
@@ -162,17 +168,18 @@ export function TransactionObserver({
             {entry.verificationAvailability === 'UNAVAILABLE' && (
               <p>Last known evidence is retained. Verification is currently unavailable.</p>
             )}
+            {replacementHashRequired && (
+              <p>
+                The original transaction hash is no longer available from this RPC. Find the current
+                or replacement hash in wallet activity and paste it below. Rechecking is read-only
+                and never resends the transaction.
+              </p>
+            )}
             {canSupplyCandidate && (
               <label>
-                {hash
-                  ? 'Alternative transaction hash from wallet activity'
-                  : 'Candidate transaction hash from wallet activity'}
+                {candidateLabel}
                 <input
-                  aria-label={
-                    hash
-                      ? 'Alternative transaction hash from wallet activity'
-                      : 'Candidate transaction hash from wallet activity'
-                  }
+                  aria-label={candidateLabel}
                   value={candidate}
                   onChange={(event) =>
                     setCandidates((current) => ({

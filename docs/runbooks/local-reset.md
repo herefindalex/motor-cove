@@ -7,11 +7,15 @@ Reset is a destructive local operation, not migration, seed, rebuild, or restore
 1. Confirm local mode, loopback RPC, Anvil client, expected chain, and owned environment marker.
 2. Resolve real paths, reject symlinks/external paths, then acquire bootstrap lifecycle ownership,
    the exclusive service gate, and the exclusive writer lock in that order.
-3. Publish `RESET / PREPARED`, then call `anvil_reset` while the same operation owns those gates.
-4. Publish `CHAIN_RESET`, remove generated database and lifecycle sidecars, publish
+3. After acquiring the gates, re-run `lstat` and `realpath` containment checks for `databaseDir` and
+   `reportsDir`. Reject a missing, non-directory, symlinked, or external child before publishing a
+   marker or calling the chain.
+4. Publish `RESET / PREPARED`, then call `anvil_reset` while the same operation owns those gates.
+5. Publish `CHAIN_RESET`, recheck the destructive child paths, remove generated database and
+   lifecycle sidecars, publish
    `LOCAL_STATE_CLEARED`, then clear the marker.
-5. Preserve lock files, backups, source assets, managed-node binding, and other workspaces.
-6. Recreate a genuinely new deployment, then migrate, seed, index, and verify it.
+6. Preserve lock files, backups, source assets, managed-node binding, and other workspaces.
+7. Recreate a genuinely new deployment, then migrate, seed, index, and verify it.
 
 `--yes` cannot bypass any identity or path guard. Reset must not kill unknown processes, delete stable
 lock inodes, or pretend a new manifest ID is a new on-chain deployment.
@@ -47,3 +51,8 @@ Reset verifies this ownership before calling `anvil_reset`. It preserves the bin
 the generated database, deployment, bootstrap, seed, and report state. Start a separate local Anvil
 endpoint for each managed environment; changing only the hostname alias does not create a separate
 node.
+
+The post-lock child-path check closes the gap between initial environment ownership validation and
+destructive use. If another process replaces either generated directory with a symlink, reset stops
+before the chain callback and preserves both the external target and the absence of a new maintenance
+marker.

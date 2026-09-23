@@ -48,10 +48,11 @@ SQLite snapshot always contains the complete physical table set.
 
 Restore installs a historical database generation. Before quarantining the active database it
 validates the selected standard backup, source checksum, deployment descriptor, and active lifecycle
-sidecars. It then stages the database and verifies schema, history, integrity, and deployment before
-publication. The current implementation does not repeat the manifest checksum over the staged copy;
-that remaining copy-boundary gap must stay explicit until its regression and fix land. Restore does
-not roll back Anvil or any chain, and restored projections may require catch-up or explicit recovery.
+sidecars. It then stages the database, repeats the manifest SHA-256 check over the staged bytes, and
+verifies schema, history, integrity, and deployment before quarantining or publishing anything. A
+source change between verification and copying therefore leaves the active database in place and
+records the failed restore marker. Restore does not roll back Anvil or any chain, and restored
+projections may require catch-up or explicit recovery.
 
 ## Migration
 
@@ -63,11 +64,10 @@ the durable operation phase and revalidated backup evidence.
 ## Reset
 
 Reset is an explicit destructive operation for a harness-owned local environment. It validates the
-managed environment owner and top-level containment, records reset intent, resets the managed local
-chain, and removes generated state according to its phase. Child destructive paths are not yet all
-re-resolved against post-ownership symlink replacement before chain mutation; the documentation must
-not claim full containment until that regression and fix land. Reset is not a repair technique for a
-backup, migration, rebuild, or deployment mismatch.
+managed environment owner and top-level containment, acquires its maintenance gates, then rechecks
+the database and reports directories with `lstat` and `realpath` before recording intent or mutating
+the managed local chain. Generated-state cleanup repeats the same check before deletion. Reset is not
+a repair technique for a backup, migration, rebuild, or deployment mismatch.
 
 ## Failure selection
 

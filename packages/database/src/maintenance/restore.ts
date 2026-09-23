@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
@@ -12,6 +12,12 @@ import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
 import { verifyBackup } from './backup.js';
 import { clearMaintenanceMarker, writeMaintenanceMarker } from './marker.js';
 import { loadSchemaContract, verifyDatabase } from './migrations.js';
+
+export interface RestoreEnvironmentOptions {
+  readonly copyDatabase?: (source: string, destination: string) => void;
+}
+
+const fileHash = (path: string) => createHash('sha256').update(readFileSync(path)).digest('hex');
 
 function activeDeploymentId(paths: EnvironmentPaths): string {
   if (!existsSync(paths.databasePath)) throw new Error('DB_NOT_INITIALIZED');
@@ -66,6 +72,7 @@ export async function restoreEnvironment(
   paths: EnvironmentPaths,
   backupId: string,
   confirmed: boolean,
+  options: RestoreEnvironmentOptions = {},
 ) {
   if (!confirmed) throw new Error('RESTORE_CONFIRMATION_REQUIRED');
   verifyOwnedEnvironment(paths);
@@ -107,8 +114,12 @@ export async function restoreEnvironment(
       throw new Error('BACKUP_DEPLOYMENT_MISMATCH');
     assertActiveSidecarsMatchBackup(paths, backup.directory);
     mkdirSync(staging);
-    copyFileSync(backup.databasePath, resolve(staging, 'motorcove.sqlite'));
-    const candidate = new Database(resolve(staging, 'motorcove.sqlite'), {
+    const stagedDatabase = resolve(staging, 'motorcove.sqlite');
+    (options.copyDatabase ?? copyFileSync)(backup.databasePath, stagedDatabase);
+    if (fileHash(stagedDatabase) !== backup.manifest.databaseSha256) {
+      throw new Error('BACKUP_INVALID: staging checksum');
+    }
+    const candidate = new Database(stagedDatabase, {
       readonly: true,
       fileMustExist: true,
     });

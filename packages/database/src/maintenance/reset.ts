@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { acquireMaintenanceLocks } from '../connection/flock.js';
-import { verifyOwnedEnvironment } from '../connection/environment.js';
+import { verifyOwnedEnvironment, verifyResetDestructivePaths } from '../connection/environment.js';
 import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
 import { clearMaintenanceMarker, writeMaintenanceMarker } from './marker.js';
 import { loadSchemaContract } from './migrations.js';
@@ -13,6 +13,7 @@ export interface ResetEnvironmentOptions {
 }
 
 export function clearResetGeneratedState(paths: EnvironmentPaths): readonly string[] {
+  verifyResetDestructivePaths(paths);
   const targets = [
     paths.databasePath,
     `${paths.databasePath}-wal`,
@@ -56,6 +57,7 @@ export async function resetEnvironment(
   };
   let markerOwned = false;
   try {
+    verifyResetDestructivePaths(paths);
     writeMaintenanceMarker(paths.maintenancePath, marker);
     markerOwned = true;
     await options.resetChain();

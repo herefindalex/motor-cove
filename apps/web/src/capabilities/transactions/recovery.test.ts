@@ -169,6 +169,32 @@ describe('read-only transaction recovery', () => {
     });
   });
 
+  it('persists an explicit replacement-hash requirement without resubmitting', async () => {
+    const fixture = ports({
+      kind: 'REPLACEMENT_HASH_REQUIRED',
+      transactionHash: hash,
+      nonce: 9,
+    });
+    const submitted = entry({
+      originalTxHash: hash,
+      currentTxHash: hash,
+      nonce: 9,
+      status: 'SUBMITTED',
+    });
+
+    await expect(resumeJournalEntry(submitted, fixture.recoveryPorts)).resolves.toEqual({
+      kind: 'REPLACEMENT_HASH_REQUIRED',
+    });
+    expect(fixture.saved[0]).toMatchObject({
+      originalTxHash: hash,
+      currentTxHash: hash,
+      nonce: 9,
+      status: 'SUBMITTED',
+      verificationAvailability: 'UNAVAILABLE',
+      lastErrorCategory: 'REPLACEMENT_HASH_REQUIRED',
+    });
+  });
+
   it('continues a same-intent repricing with the replacement hash', async () => {
     const fixture = ports({
       ...included,

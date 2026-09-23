@@ -110,6 +110,28 @@ describe('TransactionObserver automatic receipt observation', () => {
     expect(lastCall?.[2]).toBe(alternativeHash);
   });
 
+  it('asks for the current or replacement wallet hash when the original disappeared', () => {
+    render(
+      <TransactionObserver
+        config={config}
+        journal={journalWith([
+          {
+            ...entry,
+            status: 'SUBMITTED',
+            nonce: 4,
+            verificationAvailability: 'UNAVAILABLE',
+            lastErrorCategory: 'REPLACEMENT_HASH_REQUIRED',
+          },
+        ])}
+      />,
+    );
+
+    expect(screen.getByText(/original transaction hash is no longer available/i)).toBeTruthy();
+    expect(
+      screen.getByLabelText('Current or replacement transaction hash from wallet activity'),
+    ).toBeTruthy();
+  });
+
   it('shows that the latest verification is tab-local when durable writes fail', () => {
     render(
       <TransactionObserver

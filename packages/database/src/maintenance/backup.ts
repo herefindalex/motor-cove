@@ -410,6 +410,7 @@ export function verifyBackup(paths: EnvironmentPaths, backupId: string) {
     databasePath,
     manifest: {
       ...manifest,
+      databaseSha256: manifest.databaseSha256,
       deploymentId: manifest.deploymentId,
       deploymentState:
         manifest.deploymentState ??

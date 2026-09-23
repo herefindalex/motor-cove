@@ -161,4 +161,25 @@ describe('createTransactionChainReader', () => {
     });
     expect(publicClient.getChainId).not.toHaveBeenCalled();
   });
+
+  it('requires a wallet replacement hash when a nonce-backed original hash disappeared', async () => {
+    const journalEntry = { ...entry('APPROVE_TOKEN'), nonce: 12 };
+    const publicClient = client(journalEntry);
+    vi.mocked(publicClient.getTransaction).mockRejectedValue(
+      Object.assign(new Error('Transaction could not be found'), {
+        name: 'TransactionNotFoundError',
+      }),
+    );
+
+    await expect(
+      createTransactionChainReader(publicClient, verificationContext).inspectTransaction(
+        journalEntry,
+        transactionHash,
+      ),
+    ).resolves.toEqual({
+      kind: 'REPLACEMENT_HASH_REQUIRED',
+      transactionHash,
+      nonce: 12,
+    });
+  });
 });

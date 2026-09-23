@@ -82,10 +82,21 @@
         "apps/web/src/integrations/evm/TransactionObserver.coordination.test.tsx",
         "docs/adr/0020-cross-tab-transaction-observation-ownership.md",
         "apps/web/src/integrations/persistence/browser-submission-coordinator.ts",
-        "docs/adr/0021-cross-tab-submission-and-volatile-rebase.md"
+        "docs/adr/0021-cross-tab-submission-and-volatile-rebase.md",
+        "docs/adr/0025-filesystem-transaction-and-restore-evidence.md"
       ],
-      "scenarios": ["TX-001", "TX-002", "TX-003", "TX-004", "TX-005", "TX-006", "TX-007", "TX-008"],
-      "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E"],
+      "scenarios": [
+        "TX-001",
+        "TX-002",
+        "TX-003",
+        "TX-004",
+        "TX-005",
+        "TX-006",
+        "TX-007",
+        "TX-008",
+        "TX-009"
+      ],
+      "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E", "RUN-R23-FOCUSED"],
       "limits": "Non-durable known-hash tracking survives client-side route changes and storage read denial only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-tab observation and submission ownership require Web Locks; their fallbacks coordinate one JavaScript realm only. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
     },
     {
@@ -185,7 +196,8 @@
         "docs/adr/0023-reset-intent-and-indexing-depth-convergence.md",
         "packages/database/src/model.ts",
         "tooling/docs/generate-database.ts",
-        "docs/database/README.md"
+        "docs/database/README.md",
+        "docs/adr/0025-filesystem-transaction-and-restore-evidence.md"
       ],
       "scenarios": [
         "DB-01",
@@ -228,7 +240,9 @@
         "DB-69",
         "DB-70",
         "DB-71",
-        "DB-73"
+        "DB-73",
+        "DB-74",
+        "DB-75"
       ],
       "verification": [
         "RUN-DB-MIGRATIONS",
@@ -238,7 +252,8 @@
         "RUN-CHAIN-SEED-JOURNAL",
         "RUN-INTEGRATION",
         "RUN-MANAGED-NODE-OWNERSHIP",
-        "RUN-DB-DOCUMENTATION"
+        "RUN-DB-DOCUMENTATION",
+        "RUN-R23-FOCUSED"
       ],
       "limits": "A real process kill in the broadcast-to-hash persistence window and other listed database fault-injection cases remain incomplete."
     },

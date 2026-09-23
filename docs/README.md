@@ -115,6 +115,7 @@ identity are recorded in
 - [Bootstrap snapshot and reconciliation publication decision](adr/0022-bootstrap-snapshots-and-reconciliation-publication.md)
 - [Reset intent and indexing-depth convergence decision](adr/0023-reset-intent-and-indexing-depth-convergence.md)
 - [Durable attempt ownership and escrow admission decision](adr/0024-durable-attempt-ownership-and-escrow-admission.md)
+- [Filesystem, transaction, and restore evidence decision](adr/0025-filesystem-transaction-and-restore-evidence.md)
 - [Indexing and recovery flow](flows/indexing-and-recovery.md)
 - [API](reference/api.md), [protocol artifacts](reference/protocol-artifacts.md), and
   [database schema](reference/database-schema.md)

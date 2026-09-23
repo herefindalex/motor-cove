@@ -83,6 +83,19 @@ export function initializeOwnedEnvironment(paths: EnvironmentPaths): void {
   verifyOwnedEnvironment(paths);
 }
 
+export function verifyResetDestructivePaths(paths: EnvironmentPaths): void {
+  verifyOwnedEnvironment(paths);
+  const realEnvironment = realpathSync(paths.environmentDir);
+  for (const path of [paths.databaseDir, paths.reportsDir]) {
+    if (!existsSync(path)) throw new Error(`DB_NOT_OWNED: reset path missing: ${path}`);
+    const metadata = lstatSync(path);
+    if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
+      throw new Error(`DB_NOT_OWNED: reset path is not an owned directory: ${path}`);
+    }
+    assertContained(realEnvironment, realpathSync(path));
+  }
+}
+
 export function verifyOwnedEnvironment(paths: EnvironmentPaths): void {
   if (!existsSync(paths.ownerPath)) throw new Error('DB_NOT_OWNED: owner.json missing');
   if (lstatSync(paths.environmentDir).isSymbolicLink()) throw new Error('DB_NOT_OWNED: symlink');
