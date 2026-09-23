@@ -83,6 +83,9 @@ vi.mock('../integrations/evm/use-escrow-gateway.js', () => ({
   }),
 }));
 vi.mock('../integrations/evm/use-chain-time.js', () => ({ useChainTime: () => undefined }));
+vi.mock('../integrations/evm/use-token-approvals.js', () => ({
+  useTokenApprovals: () => new Map([['1', 'approved']]),
+}));
 vi.mock('../integrations/evm/TransactionObserver.js', () => ({
   TransactionObserver: () => <div>observer</div>,
 }));

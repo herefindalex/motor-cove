@@ -26,6 +26,38 @@ const sale = (priceWei: string): SaleResponse => ({
 afterEach(cleanup);
 
 describe('Marketplace exact price presentation', () => {
+  it('shows initial loading separately from a successfully empty result', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <Marketplace
+          sales={[]}
+          vehicles={[]}
+          account={buyer}
+          actions={undefined}
+          provenance={null}
+          currentTimestamp={undefined}
+          loading
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('Loading projected listings…')).toBeTruthy();
+    expect(screen.queryByText('No projected listings.')).toBeNull();
+
+    rerender(
+      <MemoryRouter>
+        <Marketplace
+          sales={[]}
+          vehicles={[]}
+          account={buyer}
+          actions={undefined}
+          provenance={null}
+          currentTimestamp={undefined}
+          loading={false}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('No projected listings.')).toBeTruthy();
+  });
   it.each([
     ['1', '0.000000000000000001 ETH'],
     ['500000000000000', '0.0005 ETH'],

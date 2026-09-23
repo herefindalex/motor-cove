@@ -26,6 +26,7 @@ export function Marketplace({
   account,
   actions,
   pendingActionKeys,
+  loading = false,
   provenance,
   currentTimestamp,
 }: {
@@ -34,6 +35,7 @@ export function Marketplace({
   account: string | undefined;
   actions: MarketActions | undefined;
   pendingActionKeys?: ReadonlySet<string> | undefined;
+  loading?: boolean | undefined;
   provenance: ReactNode;
   currentTimestamp: number | undefined;
 }) {
@@ -47,7 +49,9 @@ export function Marketplace({
         </div>
         {provenance}
       </div>
-      {sales.length === 0 ? (
+      {loading ? (
+        <p role="status">Loading projected listings…</p>
+      ) : sales.length === 0 ? (
         <p className="empty">No projected listings.</p>
       ) : (
         <div className="cards">

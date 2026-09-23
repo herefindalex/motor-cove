@@ -158,10 +158,11 @@ test('lists, expires, refunds, and reclaims through distinct real transactions',
     ).__motorCoveTestWallet.select(1),
   );
   const asset = page.locator('.asset').filter({ hasText: 'Harbor RS' });
-  await asset.getByRole('button', { name: '1. Approve' }).click();
-  await expect(page.getByText(/Submitted 0x/)).toBeVisible();
-  await page.waitForTimeout(500);
-  await asset.getByRole('button', { name: '2. Create sale' }).click();
+  await expect(asset.getByRole('button', { name: 'Create sale' })).toBeDisabled();
+  await asset.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByText(/Transaction submitted\. Waiting for inclusion\./)).toBeVisible();
+  await expect(asset.getByText('Approved on-chain')).toBeVisible();
+  await asset.getByRole('button', { name: 'Create sale' }).click();
   const card = page.locator('.card').filter({ hasText: 'Harbor RS' });
   await expect(card.getByText('LISTED')).toBeVisible();
   await page.evaluate(async () =>
@@ -187,7 +188,7 @@ test('lists, expires, refunds, and reclaims through distinct real transactions',
   await card.getByRole('button', { name: 'Fund exactly' }).click();
   const nonDurableNotice = page.getByRole('alert');
   await expect(nonDurableNotice).toContainText('journal could not persist it');
-  await expect(nonDurableNotice).toContainText('reloading can lose recovery context');
+  await expect(nonDurableNotice).toContainText('Reloading may lose local tracking context');
   const submittedHash = await nonDurableNotice.locator('code').textContent();
   if (!submittedHash) throw new Error('Missing non-durable transaction hash');
   const submissionsBeforeNavigation = await page.evaluate(() =>
@@ -266,10 +267,11 @@ test('surfaces network and rejection states, then recovers a lost wallet respons
     ).__motorCoveTestWallet.select(1),
   );
   const asset = page.locator('.asset').filter({ hasText: 'Cinder XR' });
-  await asset.getByRole('button', { name: '1. Approve' }).click();
-  await expect(page.getByText(/Submitted 0x/)).toBeVisible();
-  await page.waitForTimeout(500);
-  await asset.getByRole('button', { name: '2. Create sale' }).click();
+  await expect(asset.getByRole('button', { name: 'Create sale' })).toBeDisabled();
+  await asset.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByText(/Transaction submitted\. Waiting for inclusion\./)).toBeVisible();
+  await expect(asset.getByText('Approved on-chain')).toBeVisible();
+  await asset.getByRole('button', { name: 'Create sale' }).click();
   const card = page.locator('.card').filter({ hasText: 'Cinder XR' });
   await expect(card.getByText('LISTED')).toBeVisible();
   await page.evaluate(async () =>
@@ -287,7 +289,9 @@ test('surfaces network and rejection states, then recovers a lost wallet respons
     ).__motorCoveTestWallet.rejectNext(),
   );
   await card.getByRole('button', { name: 'Fund exactly' }).click();
-  await expect(page.getByText('Wallet request rejected.')).toBeVisible();
+  await expect(
+    page.getByText(/Wallet request rejected\. No transaction submission was confirmed\./),
+  ).toBeVisible();
   await expect(
     page
       .getByRole('listitem')
@@ -442,10 +446,11 @@ test('keeps pending and included evidence across reload while projection catches
     ).__motorCoveTestWallet.select(1),
   );
   const asset = page.locator('.asset').filter({ hasText: 'Vale Touring' });
-  await asset.getByRole('button', { name: '1. Approve' }).click();
-  await expect(page.getByText(/Submitted 0x/)).toBeVisible();
-  await page.waitForTimeout(500);
-  await asset.getByRole('button', { name: '2. Create sale' }).click();
+  await expect(asset.getByRole('button', { name: 'Create sale' })).toBeDisabled();
+  await asset.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByText(/Transaction submitted\. Waiting for inclusion\./)).toBeVisible();
+  await expect(asset.getByText('Approved on-chain')).toBeVisible();
+  await asset.getByRole('button', { name: 'Create sale' }).click();
   const card = page.locator('.card').filter({ hasText: 'Vale Touring' });
   await expect(card.getByText('LISTED')).toBeVisible();
 

@@ -7,12 +7,17 @@ export function SubmissionNotice({
   result?: SubmissionResult | undefined;
   error?: string | undefined;
 }) {
-  if (error) return <output className="danger">{error}</output>;
+  if (error)
+    return (
+      <output className="danger" role="alert">
+        {error}
+      </output>
+    );
   if (!result) return null;
   if (result.kind === 'submitted' || result.kind === 'submitted-non-durable') {
     return (
-      <output role={result.kind === 'submitted-non-durable' ? 'alert' : undefined}>
-        <span>Submitted </span>
+      <output role={result.kind === 'submitted-non-durable' ? 'alert' : 'status'}>
+        <span>Transaction submitted. Waiting for inclusion. </span>
         <code>{result.hash}</code>{' '}
         <button
           type="button"
@@ -24,8 +29,8 @@ export function SubmissionNotice({
         {result.kind === 'submitted-non-durable' && (
           <span>
             {' '}
-            The wallet submission succeeded, but the journal could not persist it. Tracking will
-            continue in this tab; reloading can lose recovery context.
+            The transaction was submitted, but the journal could not persist it. Reloading may lose
+            local tracking context; tracking continues in this tab.
           </span>
         )}
       </output>
@@ -33,16 +38,21 @@ export function SubmissionNotice({
   }
   if (result.kind === 'rejected')
     return (
-      <output role={result.durable ? undefined : 'alert'}>
-        Wallet request rejected.
+      <output role={result.durable ? 'status' : 'alert'}>
+        Wallet request rejected. No transaction submission was confirmed.
         {!result.durable &&
           ' The wallet outcome is available only in this tab because journal storage failed.'}
       </output>
     );
-  if (result.kind === 'failed') return <output className="danger">{result.message}</output>;
+  if (result.kind === 'failed')
+    return (
+      <output className="danger" role="alert">
+        {result.message}
+      </output>
+    );
   return (
-    <output className="danger" role={result.durable ? undefined : 'alert'}>
-      Submission outcome is unknown. Check wallet activity before starting another transaction.
+    <output className="danger" role="alert">
+      Submission outcome is unknown. Check wallet activity before trying again.
       {!result.durable &&
         ' This outcome is available only in this tab because journal storage failed.'}
     </output>
