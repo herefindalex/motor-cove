@@ -22,3 +22,10 @@ export interface TransactionObservationCoordinator {
     operation: () => Promise<T>,
   ): Promise<{ readonly acquired: false } | { readonly acquired: true; readonly result: T }>;
 }
+
+export interface TransactionSubmissionCoordinator {
+  run<T>(
+    intentKey: string,
+    operation: () => Promise<T>,
+  ): Promise<{ readonly acquired: false } | { readonly acquired: true; readonly result: T }>;
+}

@@ -9,6 +9,7 @@ import {
   type TransactionJournal,
 } from '../../capabilities/transactions/index.js';
 import type { EscrowGateway } from '../../features/trading/index.js';
+import { BrowserTransactionSubmissionCoordinator } from '../persistence/browser-submission-coordinator.js';
 
 type Action = {
   name: string;
@@ -27,6 +28,7 @@ export function useEscrowGateway(
 ): EscrowGateway | null {
   const wallet = useWalletClient();
   const publicClient = usePublicClient();
+  const submissionCoordinator = useMemo(() => new BrowserTransactionSubmissionCoordinator(), []);
   const liveContext = useRef({
     account: wallet.data?.account.address,
     chainId: wallet.data?.chain.id,
@@ -71,6 +73,7 @@ export function useEscrowGateway(
           readNonce: async (hash) => (await publicClient.getTransaction({ hash })).nonce,
         },
         journal,
+        submissionCoordinator,
       );
 
     return {
@@ -293,5 +296,5 @@ export function useEscrowGateway(
             }),
         }),
     };
-  }, [config, journal, publicClient, wallet.data]);
+  }, [config, journal, publicClient, submissionCoordinator, wallet.data]);
 }

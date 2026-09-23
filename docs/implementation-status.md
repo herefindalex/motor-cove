@@ -6,27 +6,28 @@ verification JSON are the machine-readable sources; this page is the human summa
 | Area      | Required behavior                                                                                                                                                         | Implemented                                                                                                                                                                                     | Current local evidence                                                                                                                                                                                                                                                                                                    |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Contracts | ERC-721 custody, sale transitions, pull claims, refund, withdrawal, reclaim, independently calculated liability invariants                                                | `chain/src` and generated ABI                                                                                                                                                                   | Stateful Foundry checks independently sum funded Sales and claimable Claims before checking balance coverage; local EVM only.                                                                                                                                                                                             |
-| Frontend  | Feature/capability/adapter layers, exact bigint amount presentation, explicit injected local connector states, durable pre-submit journal, read-only transaction recovery | `apps/web` capability ports plus EVM, HTTP, Wagmi, localStorage, and operation-scoped observation coordination adapters                                                                         | Unit, component, and two-page Chromium coverage verifies one observer owner per operation, busy automatic skip, manual queueing, latest-revision reload, owner-close handoff, independent operation progress, and unrelated journal writes. Manual MetaMask was not run.                                                  |
+| Frontend  | Feature/capability/adapter layers, exact bigint amount presentation, explicit injected local connector states, durable pre-submit journal, read-only transaction recovery | `apps/web` capability ports plus EVM, HTTP, Wagmi, localStorage, operation-scoped observation, and immutable-intent submission coordination adapters                                            | Unit, component, and two-page Chromium coverage verifies one observer owner per operation and one submitter per immutable intent, owner-close handoff, independent work, and safe volatile-hash promotion. Manual MetaMask was not run.                                                                                   |
 | API       | Read-only query API with validated wire schemas, uint256 request boundaries, historical report scope, observation freshness, and per-event provenance                     | Database reader plus Zod and generated OpenAPI contracts                                                                                                                                        | Fastify and reader contracts distinguish raw canonical and orphan event rows through `canonical`, `scanComplete`, and `sourceLogScopeHash`.                                                                                                                                                                               |
 | Indexer   | Ordered source evidence, atomic commit, catch-up, replay, rebuild/reindex, version gates, and interpretable raw history                                                   | Pure projectors plus EVM and SQLite adapters; rebuild source preflight; fixed-target reindex resume; explicit failed-rebuild to full-reindex transition; verified pre-refresh evidence archives | SQLite and loopback Anvil tests cover replay, reorg, source reacquisition, long catch-up, and restart boundaries. Public archive-provider behavior remains unverified.                                                                                                                                                    |
 | Database  | Native migration history, operation markers, owned maintenance, seed/bootstrap lifecycle, backup/restore identity, and generation-safe recovery                           | `@motorcove/database`; unique marker publication temps; source-ready standard backups; operation-bound evidence archives; restore quarantine and verification                                   | A real child `SIGKILL` regression proves orphan marker temp bytes do not strand matching resume. Backup tests prove unfinished maintenance blocks standard backup, evidence archives retain operation and projection identity, and normal restore refuses them before quarantine. Hardware power loss remains unverified. |
 
 ## Current executed gates
 
-R18 hardening is implemented in the working source. Each deployment and client operation has one
-observation owner across tabs when Web Locks are available. Automatic polls skip a busy owner;
-manual checks wait and then reload the latest journal revision. Unrelated operations and the short
-deployment journal write lock remain independent. The fallback coordinates only one JavaScript
-realm and does not claim cross-tab ownership.
+R19 hardening is implemented in the working source. Each immutable intent has one submission owner
+across tabs when Web Locks are available, beginning before the durable intent write and ending after
+wallet and returned-hash handling. Different intents remain independent. A unique volatile hash may
+be promoted over a newer matching hashless durable revision, while existing durable transaction
+evidence is never overwritten. The fallback coordinates only one JavaScript realm and does not
+claim cross-tab ownership.
 
 - `pnpm verify`: generation, database contract, formatting, docs, architecture, type checking, lint,
-  13 Foundry tests, 46 unit/component/database files with 302 tests, 14 integration files with 58
+  13 Foundry tests, 47 unit/component/database files with 308 tests, 14 integration files with 58
   tests, and all 7 workspace builds passed.
-- `pnpm test:e2e`: 7 local Playwright scenarios passed against harness-owned Anvil, managed SQLite,
+- `pnpm test:e2e`: 8 local Playwright scenarios passed against harness-owned Anvil, managed SQLite,
   API, Indexer, and Web.
-- Focused R18 coverage passed coordinator, Observer, recovery, and real two-page Chromium paths.
-  The browser case holds an observation lock in one page, verifies a second page skips that operation
-  while progressing another operation and a journal write, then takes ownership after page close.
+- Focused R19 coverage passed submission coordinator, capability, journal rebase, and real
+  two-page Chromium paths. The browser case holds simulation in one page, rejects the same intent
+  before contender work, permits a different intent, and transfers ownership after page close.
 - Documentation checks generated 18 capabilities and 48 commands, validated database acceptance IDs
   through DB-70, and rejected all 8 negative fixtures.
 

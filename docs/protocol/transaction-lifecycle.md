@@ -173,11 +173,19 @@ path never opens a wallet request.
 
 ## Same-intent submission ownership
 
-The application acquires synchronous ownership for the complete immutable intent before simulation,
+The application acquires exclusive ownership for the complete immutable intent before simulation,
 journal persistence, or any other awaited step. The key binds deployment, chain, account, protocol,
-action, sale/token identity, contract, calldata, and value. A second activation of the same intent
-while the first is pending returns `OPERATION_ALREADY_IN_FLIGHT` before it can create another journal
-entry or wallet request. A different intent remains independent.
+action, sale/token identity, contract, calldata, and value. In browsers, a Web Lock carries that
+ownership across tabs through the returned-hash persistence path. A second activation of the same
+intent while the first is pending returns `OPERATION_ALREADY_IN_FLIGHT` before it can create another
+journal entry, simulate, or open a wallet request. A different intent remains independent. The
+module-level fallback covers one JavaScript realm only when Web Locks are unavailable.
+
+If a returned hash exists only in the volatile overlay and another tab advances the durable row
+without transaction evidence, durability retry may rebase that unique hash onto the newer revision.
+The operation ID, immutable intent, and wallet request must match. Any durable hash, receipt,
+association, event, or projection evidence makes the retry fail closed; no evidence is overwritten
+and no wallet request is repeated.
 
 The marketplace mirrors this capability rule with a per-action pending key. The matching control is
 disabled and exposes `aria-busy` until the operation settles; ownership is released on both success

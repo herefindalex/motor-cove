@@ -334,4 +334,85 @@ describe('LocalStorageJournal', () => {
       currentTxHash: transactionHash,
     });
   });
+
+  it('rebases a volatile returned hash over a concurrent hashless durable revision', async () => {
+    const first = new LocalStorageJournal();
+    const second = new LocalStorageJournal();
+    const prepared = await first.save(entry);
+    const awaiting = await first.save({
+      ...prepared,
+      updatedAt: '2026-09-21T00:00:01.000Z',
+      walletRequestStartedAt: '2026-09-21T00:00:01.000Z',
+      status: 'AWAITING_WALLET',
+    });
+    const transactionHash = `0x${'4'.repeat(64)}` as const;
+    const volatile = first.saveVolatile({
+      ...awaiting,
+      updatedAt: '2026-09-21T00:00:02.000Z',
+      originalTxHash: transactionHash,
+      currentTxHash: transactionHash,
+      evidenceSource: 'WALLET_RETURNED',
+      association: 'EXACT_SUBMISSION',
+      status: 'SUBMITTED',
+    });
+    const durableAwaiting = second.load(deploymentId)[0];
+    if (!durableAwaiting) throw new Error('durable awaiting-wallet entry missing');
+    await second.save({
+      ...durableAwaiting,
+      updatedAt: '2026-09-21T00:00:03.000Z',
+      status: 'UNKNOWN',
+      lastErrorCategory: 'HASH_REQUIRED_FROM_WALLET_ACTIVITY',
+    });
+
+    await expect(first.retryDurableSave(volatile)).resolves.toMatchObject({
+      revision: 4,
+      status: 'SUBMITTED',
+      currentTxHash: transactionHash,
+    });
+    const reloaded = new LocalStorageJournal().load(deploymentId)[0];
+    expect(reloaded).toMatchObject({
+      revision: 4,
+      status: 'SUBMITTED',
+      currentTxHash: transactionHash,
+    });
+    expect(reloaded).not.toHaveProperty('lastErrorCategory');
+  });
+
+  it('does not overwrite conflicting durable transaction evidence during volatile retry', async () => {
+    const first = new LocalStorageJournal();
+    const second = new LocalStorageJournal();
+    const prepared = await first.save(entry);
+    const awaiting = await first.save({
+      ...prepared,
+      updatedAt: '2026-09-21T00:00:01.000Z',
+      walletRequestStartedAt: '2026-09-21T00:00:01.000Z',
+      status: 'AWAITING_WALLET',
+    });
+    const volatileHash = `0x${'4'.repeat(64)}` as const;
+    const durableHash = `0x${'6'.repeat(64)}` as const;
+    const volatile = first.saveVolatile({
+      ...awaiting,
+      updatedAt: '2026-09-21T00:00:02.000Z',
+      originalTxHash: volatileHash,
+      currentTxHash: volatileHash,
+      evidenceSource: 'WALLET_RETURNED',
+      association: 'EXACT_SUBMISSION',
+      status: 'SUBMITTED',
+    });
+    const durableAwaiting = second.load(deploymentId)[0];
+    if (!durableAwaiting) throw new Error('durable awaiting-wallet entry missing');
+    await second.save({
+      ...durableAwaiting,
+      updatedAt: '2026-09-21T00:00:03.000Z',
+      originalTxHash: durableHash,
+      currentTxHash: durableHash,
+      evidenceSource: 'USER_SUPPLIED',
+      association: 'INTENT_MATCH',
+      status: 'SUBMITTED',
+    });
+
+    await expect(first.retryDurableSave(volatile)).rejects.toThrow('JOURNAL_REVISION_CONFLICT');
+    expect(first.load(deploymentId)[0]?.currentTxHash).toBe(volatileHash);
+    expect(new LocalStorageJournal().load(deploymentId)[0]?.currentTxHash).toBe(durableHash);
+  });
 });

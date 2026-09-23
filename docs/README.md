@@ -109,6 +109,7 @@ identity are recorded in
 - [In-flight intent and source identity decision](adr/0018-in-flight-intent-and-source-identity.md)
 - [Maintenance marker and snapshot readiness decision](adr/0019-maintenance-marker-and-snapshot-readiness.md)
 - [Cross-tab transaction observation ownership decision](adr/0020-cross-tab-transaction-observation-ownership.md)
+- [Cross-tab submission and volatile rebase decision](adr/0021-cross-tab-submission-and-volatile-rebase.md)
 - [Indexing and recovery flow](flows/indexing-and-recovery.md)
 - [API](reference/api.md), [protocol artifacts](reference/protocol-artifacts.md), and
   [database schema](reference/database-schema.md)

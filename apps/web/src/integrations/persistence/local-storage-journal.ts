@@ -9,6 +9,59 @@ const key = (deploymentId: string) => `motorcove:journal:v1:${deploymentId}`;
 const lockKey = (deploymentId: string) => `${key(deploymentId)}:write`;
 const fallbackQueues = new Map<string, Promise<void>>();
 
+function sameOperationIntent(left: JournalEntry, right: JournalEntry): boolean {
+  return (
+    left.clientOperationId === right.clientOperationId &&
+    left.deploymentId === right.deploymentId &&
+    left.chainId === right.chainId &&
+    left.account.toLowerCase() === right.account.toLowerCase() &&
+    left.protocolVersion === right.protocolVersion &&
+    left.action === right.action &&
+    left.saleId === right.saleId &&
+    left.tokenId === right.tokenId &&
+    left.intendedContract.toLowerCase() === right.intendedContract.toLowerCase() &&
+    left.intendedCalldata.toLowerCase() === right.intendedCalldata.toLowerCase() &&
+    left.valueWei === right.valueWei &&
+    left.walletRequestStartedAt === right.walletRequestStartedAt
+  );
+}
+
+function hasTransactionEvidence(entry: JournalEntry): boolean {
+  return (
+    Boolean(
+      entry.currentTxHash ??
+      entry.originalTxHash ??
+      entry.receiptStatus ??
+      entry.receiptBlockHash ??
+      entry.association ??
+      entry.projectionTransactionHash,
+    ) || entry.eventLogIndex !== undefined
+  );
+}
+
+function rebaseUniqueVolatileEvidence(
+  durable: JournalEntry | undefined,
+  volatile: JournalEntry,
+): JournalEntry | undefined {
+  if (
+    !durable ||
+    !sameOperationIntent(durable, volatile) ||
+    hasTransactionEvidence(durable) ||
+    !hasTransactionEvidence(volatile)
+  ) {
+    return undefined;
+  }
+
+  return {
+    ...durable,
+    ...volatile,
+    revision: durable.revision,
+    verificationRequestId: volatile.verificationRequestId,
+    verificationAvailability: volatile.verificationAvailability,
+    lastErrorCategory: volatile.lastErrorCategory,
+  };
+}
+
 async function withWriteLock<T>(deploymentId: string, operation: () => T | Promise<T>): Promise<T> {
   if (typeof navigator !== 'undefined' && navigator.locks) {
     return navigator.locks.request(lockKey(deploymentId), { mode: 'exclusive' }, operation);
@@ -196,11 +249,13 @@ export class LocalStorageJournal implements TransactionJournal {
         if (issues.length > 0) throw new Error('JOURNAL_STORAGE_INVALID');
 
         const current = loaded.find((item) => item.clientOperationId === parsed.clientOperationId);
-        const expectedRevision = this.volatileBaseRevisions.get(parsed.clientOperationId) ?? 0;
-        if ((current?.revision ?? 0) !== expectedRevision)
-          throw new Error('JOURNAL_REVISION_CONFLICT');
+        const baseRevision = this.volatileBaseRevisions.get(parsed.clientOperationId) ?? 0;
+        const currentRevision = current?.revision ?? 0;
+        const candidate =
+          currentRevision === baseRevision ? parsed : rebaseUniqueVolatileEvidence(current, parsed);
+        if (!candidate) throw new Error('JOURNAL_REVISION_CONFLICT');
 
-        const persisted = { ...parsed, revision: (parsed.revision ?? 0) + 1 };
+        const persisted = { ...candidate, revision: currentRevision + 1 };
         const entries = loaded.filter(
           (item) => item.clientOperationId !== parsed.clientOperationId,
         );

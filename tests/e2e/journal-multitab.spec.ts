@@ -89,6 +89,182 @@ async function holdObservation(page: Page, clientOperationId: string) {
   );
 }
 
+async function holdSubmission(page: Page) {
+  return page.evaluate(
+    async ({ currentDeploymentId }) => {
+      const [
+        { submitOperation },
+        { LocalStorageJournal },
+        { BrowserTransactionSubmissionCoordinator },
+      ] = (await Promise.all([
+        eval("import('/src/capabilities/transactions/submit-operation.ts')"),
+        eval("import('/src/integrations/persistence/local-storage-journal.ts')"),
+        eval("import('/src/integrations/persistence/browser-submission-coordinator.ts')"),
+      ])) as [
+        {
+          submitOperation: (...args: unknown[]) => Promise<unknown>;
+        },
+        {
+          LocalStorageJournal: new () => unknown;
+        },
+        {
+          BrowserTransactionSubmissionCoordinator: new () => unknown;
+        },
+      ];
+      const scope = window as typeof window & {
+        releaseSubmission?: () => void;
+        submissionSimulationCount?: number;
+        submissionWalletCount?: number;
+      };
+      scope.submissionSimulationCount = 0;
+      scope.submissionWalletCount = 0;
+      const pending = new Promise<void>((resolve) => {
+        scope.releaseSubmission = resolve;
+      });
+      return submitOperation(
+        {
+          deploymentId: currentDeploymentId,
+          chainId: 31_337,
+          account: `0x${'2'.repeat(40)}`,
+          protocolVersion: '1',
+          contextStillCurrent: () => true,
+        },
+        {
+          name: 'CREATE_SALE',
+          saleId: 1n,
+          value: 0n,
+          contract: `0x${'3'.repeat(40)}`,
+          calldata: '0x1234',
+          simulate: async () => {
+            scope.submissionSimulationCount = (scope.submissionSimulationCount ?? 0) + 1;
+            await pending;
+          },
+          submit: async () => {
+            scope.submissionWalletCount = (scope.submissionWalletCount ?? 0) + 1;
+            return `0x${'4'.repeat(64)}`;
+          },
+          readNonce: async () => 7,
+        },
+        new (LocalStorageJournal as new () => Parameters<typeof submitOperation>[2])(),
+        new (BrowserTransactionSubmissionCoordinator as new () => Parameters<
+          typeof submitOperation
+        >[3])(),
+      );
+    },
+    { currentDeploymentId: deploymentId },
+  );
+}
+
+async function contendForSubmission(page: Page) {
+  return page.evaluate(
+    async ({ currentDeploymentId }) => {
+      const [
+        { submitOperation },
+        { LocalStorageJournal },
+        { BrowserTransactionSubmissionCoordinator },
+      ] = (await Promise.all([
+        eval("import('/src/capabilities/transactions/submit-operation.ts')"),
+        eval("import('/src/integrations/persistence/local-storage-journal.ts')"),
+        eval("import('/src/integrations/persistence/browser-submission-coordinator.ts')"),
+      ])) as [
+        {
+          submitOperation: (...args: unknown[]) => Promise<unknown>;
+        },
+        {
+          LocalStorageJournal: new () => unknown;
+        },
+        {
+          BrowserTransactionSubmissionCoordinator: new () => unknown;
+        },
+      ];
+      const scope = window as typeof window & {
+        contenderSimulationCount?: number;
+        contenderWalletCount?: number;
+      };
+      scope.contenderSimulationCount = 0;
+      scope.contenderWalletCount = 0;
+      try {
+        await submitOperation(
+          {
+            deploymentId: currentDeploymentId,
+            chainId: 31_337,
+            account: `0x${'2'.repeat(40)}`,
+            protocolVersion: '1',
+            contextStillCurrent: () => true,
+          },
+          {
+            name: 'CREATE_SALE',
+            saleId: 1n,
+            value: 0n,
+            contract: `0x${'3'.repeat(40)}`,
+            calldata: '0x1234',
+            simulate: async () => {
+              scope.contenderSimulationCount = (scope.contenderSimulationCount ?? 0) + 1;
+            },
+            submit: async () => {
+              scope.contenderWalletCount = (scope.contenderWalletCount ?? 0) + 1;
+              return `0x${'5'.repeat(64)}`;
+            },
+            readNonce: async () => 8,
+          },
+          new (LocalStorageJournal as new () => Parameters<typeof submitOperation>[2])(),
+          new (BrowserTransactionSubmissionCoordinator as new () => Parameters<
+            typeof submitOperation
+          >[3])(),
+        );
+        return {
+          error: null,
+          simulations: scope.contenderSimulationCount,
+          wallets: scope.contenderWalletCount,
+        };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error.message : String(error),
+          simulations: scope.contenderSimulationCount,
+          wallets: scope.contenderWalletCount,
+        };
+      }
+    },
+    { currentDeploymentId: deploymentId },
+  );
+}
+
+async function holdSubmissionOwnership(page: Page, intentKey: string) {
+  await page.evaluate(async (key) => {
+    const module = (await eval(
+      "import('/src/integrations/persistence/browser-submission-coordinator.ts')",
+    )) as {
+      BrowserTransactionSubmissionCoordinator: new () => {
+        run<T>(
+          intentKey: string,
+          operation: () => Promise<T>,
+        ): Promise<{ acquired: boolean; result?: T }>;
+      };
+    };
+    const hold = new Promise<void>(() => undefined);
+    void new module.BrowserTransactionSubmissionCoordinator().run(key, async () => {
+      await hold;
+      return 'released';
+    });
+  }, intentKey);
+}
+
+async function runSubmissionOwnership(page: Page, intentKey: string) {
+  return page.evaluate(async (key) => {
+    const module = (await eval(
+      "import('/src/integrations/persistence/browser-submission-coordinator.ts')",
+    )) as {
+      BrowserTransactionSubmissionCoordinator: new () => {
+        run<T>(
+          intentKey: string,
+          operation: () => Promise<T>,
+        ): Promise<{ acquired: boolean; result?: T }>;
+      };
+    };
+    return new module.BrowserTransactionSubmissionCoordinator().run(key, async () => 'completed');
+  }, intentKey);
+}
+
 test('keeps different operations written concurrently by two tabs', async ({ browser }) => {
   const context = await browser.newContext();
   const first = await context.newPage();
@@ -226,6 +402,87 @@ test('coordinates observation ownership across tabs without blocking journal wri
   await owner.close();
   await expect
     .poll(() => runObservation(contender, operationId))
+    .toEqual({
+      acquired: true,
+      result: 'completed',
+    });
+  await context.close();
+});
+
+test('coordinates same-intent submission ownership across tabs before wallet work', async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const owner = await context.newPage();
+  const contender = await context.newPage();
+  await Promise.all([owner.goto('/'), contender.goto('/')]);
+  await owner.evaluate(() => localStorage.clear());
+
+  const ownerSubmission = holdSubmission(owner);
+  await expect
+    .poll(() =>
+      owner.evaluate(() =>
+        navigator.locks
+          .query()
+          .then((state) =>
+            state.held.some((lock) =>
+              lock.name?.startsWith('motorcove:transaction-submission:v1:'),
+            ),
+          ),
+      ),
+    )
+    .toBe(true);
+
+  await expect(contendForSubmission(contender)).resolves.toEqual({
+    error: 'OPERATION_ALREADY_IN_FLIGHT',
+    simulations: 0,
+    wallets: 0,
+  });
+  const beforeRelease = await contender.evaluate((key) => {
+    const parsed = JSON.parse(localStorage.getItem(key) ?? '[]') as Array<{
+      status: string;
+    }>;
+    return parsed.map((item) => item.status);
+  }, storageKey);
+  expect(beforeRelease).toEqual(['PREPARING']);
+
+  await owner.evaluate(() => {
+    const scope = window as typeof window & { releaseSubmission?: () => void };
+    scope.releaseSubmission?.();
+  });
+  await expect(ownerSubmission).resolves.toMatchObject({ kind: 'submitted' });
+  await expect(
+    owner.evaluate(() => ({
+      simulations: (window as typeof window & { submissionSimulationCount?: number })
+        .submissionSimulationCount,
+      wallets: (window as typeof window & { submissionWalletCount?: number }).submissionWalletCount,
+    })),
+  ).resolves.toEqual({ simulations: 1, wallets: 1 });
+
+  await holdSubmissionOwnership(owner, 'owner-close');
+  await expect
+    .poll(() =>
+      owner.evaluate(() =>
+        navigator.locks
+          .query()
+          .then((state) =>
+            state.held.some(
+              (lock) => lock.name === 'motorcove:transaction-submission:v1:owner-close',
+            ),
+          ),
+      ),
+    )
+    .toBe(true);
+  await expect(runSubmissionOwnership(contender, 'different-intent')).resolves.toEqual({
+    acquired: true,
+    result: 'completed',
+  });
+  await expect(runSubmissionOwnership(contender, 'owner-close')).resolves.toEqual({
+    acquired: false,
+  });
+  await owner.close();
+  await expect
+    .poll(() => runSubmissionOwnership(contender, 'owner-close'))
     .toEqual({
       acquired: true,
       result: 'completed',

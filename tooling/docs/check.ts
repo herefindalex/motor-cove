@@ -189,6 +189,7 @@ const requiredScenarios = [
   'TX-004',
   'TX-005',
   'TX-006',
+  'TX-007',
   'IDX-001',
   'IDX-002',
   'IDX-003',

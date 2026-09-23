@@ -1,5 +1,5 @@
 import type { JournalEntry, SubmissionResult } from './model.js';
-import type { TransactionJournal } from './ports.js';
+import type { TransactionJournal, TransactionSubmissionCoordinator } from './ports.js';
 
 export interface SubmissionContext {
   readonly deploymentId: `0x${string}`;
@@ -282,6 +282,17 @@ async function submitOwnedOperation(
 }
 
 const inFlightSubmissionIntents = new Set<string>();
+const inProcessSubmissionCoordinator: TransactionSubmissionCoordinator = {
+  async run<T>(intentKey: string, operation: () => Promise<T>) {
+    if (inFlightSubmissionIntents.has(intentKey)) return { acquired: false };
+    inFlightSubmissionIntents.add(intentKey);
+    try {
+      return { acquired: true, result: await operation() };
+    } finally {
+      inFlightSubmissionIntents.delete(intentKey);
+    }
+  },
+};
 
 function submissionIntentKey(context: SubmissionContext, action: SubmissionAction): string {
   return JSON.stringify([
@@ -302,13 +313,12 @@ export async function submitOperation(
   context: SubmissionContext,
   action: SubmissionAction,
   journal: TransactionJournal,
+  coordinator: TransactionSubmissionCoordinator = inProcessSubmissionCoordinator,
 ): Promise<SubmissionResult> {
   const intentKey = submissionIntentKey(context, action);
-  if (inFlightSubmissionIntents.has(intentKey)) throw new Error('OPERATION_ALREADY_IN_FLIGHT');
-  inFlightSubmissionIntents.add(intentKey);
-  try {
-    return await submitOwnedOperation(context, action, journal);
-  } finally {
-    inFlightSubmissionIntents.delete(intentKey);
-  }
+  const ownership = await coordinator.run(intentKey, () =>
+    submitOwnedOperation(context, action, journal),
+  );
+  if (!ownership.acquired) throw new Error('OPERATION_ALREADY_IN_FLIGHT');
+  return ownership.result;
 }

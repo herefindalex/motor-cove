@@ -8,6 +8,7 @@ export type {
   JournalLoadIssue,
   TransactionJournal,
   TransactionObservationCoordinator,
+  TransactionSubmissionCoordinator,
 } from './ports.js';
 export { submitOperation } from './submit-operation.js';
 export type { SubmissionAction, SubmissionContext } from './submit-operation.js';

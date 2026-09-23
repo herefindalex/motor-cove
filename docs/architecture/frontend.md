@@ -66,6 +66,9 @@ passed to `MarketActions.fund` remains the original decimal wei string. UI code 
   Its browser adapter uses Web Locks across tabs, skips busy automatic polls, queues explicit manual
   checks, and reloads the journal after ownership is acquired. The in-memory fallback is limited to
   one JavaScript realm.
+- The transaction submission port owns one workflow per immutable intent before the first durable
+  write. Its browser adapter uses Web Locks across tabs through wallet and returned-hash handling;
+  different intents remain concurrent and the fallback covers one JavaScript realm only.
 - Reload restores journal entries with enough evidence to query. Later account or chain changes do
   not rewrite the original operation's account, chain, contract, or hash.
 - `TransactionObserver` can record included success, included revert, replacement/cancellation, or
@@ -79,7 +82,8 @@ Library. `WalletPanel.test.tsx` covers missing-provider and connector-choice ren
 `tests/e2e/marketplace.spec.ts` uses the loopback demo connector for normal settlement and a
 controlled EIP-1193 provider for reload, account/network changes, and stale/catch-up behavior.
 `tests/e2e/journal-multitab.spec.ts` uses two Chromium pages to verify operation-scoped observation
-ownership and that unrelated journal writes remain available while an observation is pending.
+ownership, same-intent submission exclusion before wallet work, owner-close handoff, and that
+unrelated operations and journal writes remain available while ownership is pending.
 Manual MetaMask behavior has not been recorded.
 
 See [wallet and network flow](../flows/wallet-and-network.md),

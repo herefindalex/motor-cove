@@ -59,7 +59,12 @@ fixture when introducing a new dependency rule.
   latest-journal reload through the controlled result save. Do not hold the deployment journal write
   lock across RPC or HTTP work; the no-Web-Locks fallback is same-realm only.
 - Acquire same-intent submission ownership synchronously before simulation or persistence awaits;
-  keep unrelated action intents independent and preserve the durable pre-wallet write.
+  the browser adapter must hold cross-tab Web Lock ownership through returned-hash handling. Keep
+  unrelated action intents independent, preserve the durable pre-wallet write, and describe the
+  no-Web-Locks fallback as same-realm only.
+- Rebase volatile transaction evidence over a concurrent hashless durable revision only for the
+  same operation, immutable intent, and wallet request. Existing durable transaction evidence wins;
+  never resolve a conflict by resubmitting or silently overwriting it.
 - Preserve historical receipt and event evidence when a transaction becomes noncanonical; derive
   current success from current transaction, receipt, and projection evidence together.
 - Bind candidate-hash inspection to the saved descriptor, configured contracts, actual RPC chain,

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { JournalEntry } from './model.js';
-import type { TransactionJournal } from './ports.js';
+import type { TransactionJournal, TransactionSubmissionCoordinator } from './ports.js';
 import {
   submitOperation,
   type SubmissionAction,
@@ -106,6 +106,23 @@ describe('submitOperation', () => {
     await expect(first).resolves.toMatchObject({ kind: 'submitted', hash });
     expect(current.submit).toHaveBeenCalledOnce();
     expect(store.entries).toHaveLength(1);
+  });
+
+  it('honors shared ownership before creating a journal operation', async () => {
+    const store = journal();
+    const current = fixture({ simulate: vi.fn() });
+    const coordinator: TransactionSubmissionCoordinator = {
+      async run() {
+        return { acquired: false };
+      },
+    };
+
+    await expect(
+      submitOperation(current.context, current.action, store.port, coordinator),
+    ).rejects.toThrow('OPERATION_ALREADY_IN_FLIGHT');
+    expect(store.entries).toEqual([]);
+    expect(current.action.simulate).not.toHaveBeenCalled();
+    expect(current.submit).not.toHaveBeenCalled();
   });
 
   it('keeps a different immutable intent independent while the first is pending', async () => {
