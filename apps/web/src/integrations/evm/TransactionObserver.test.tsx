@@ -68,7 +68,12 @@ describe('TransactionObserver automatic receipt observation', () => {
     render(<TransactionObserver config={config} journal={journalWith([entry])} />);
 
     await waitFor(() =>
-      expect(resumeJournalEntry).toHaveBeenCalledWith(entry, expect.anything(), undefined),
+      expect(resumeJournalEntry).toHaveBeenCalledWith(
+        entry,
+        expect.anything(),
+        undefined,
+        'AUTOMATIC',
+      ),
     );
   });
 

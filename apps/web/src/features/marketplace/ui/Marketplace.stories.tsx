@@ -4,6 +4,7 @@ const sale = {
   saleId: '1',
   tokenId: '1',
   seller: '0x1111111111111111111111111111111111111111',
+  allowedBuyer: '0x2222222222222222222222222222222222222222',
   buyer: null,
   priceWei: '1000000000000000000',
   fundedAt: null,

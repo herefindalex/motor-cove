@@ -53,8 +53,43 @@ contract MotorCoveEscrowTest is TestBase {
     function _list() internal returns (uint256 saleId) {
         vm.startPrank(seller);
         nft.approve(address(escrow), tokenId);
-        saleId = escrow.createSale(tokenId, PRICE);
+        saleId = escrow.createSale(tokenId, PRICE, buyer);
         vm.stopPrank();
+    }
+
+    function testReservedBuyerOnlyCanFund() public {
+        vm.prank(seller);
+        nft.approve(address(escrow), tokenId);
+        vm.prank(seller);
+        uint256 saleId = escrow.createSale(tokenId, PRICE, buyer);
+
+        IMotorCoveEscrow.Sale memory sale = escrow.getSale(saleId);
+        assertEq(sale.allowedBuyer, buyer, "reservation recorded");
+        assertEq(sale.buyer, address(0), "actual buyer absent before funding");
+
+        vm.deal(outsider, PRICE);
+        vm.prank(outsider);
+        vm.expectRevert(abi.encodeWithSelector(MotorCoveEscrow.NotAllowedBuyer.selector, outsider, buyer));
+        escrow.fundSale{value: PRICE}(saleId);
+
+        vm.prank(buyer);
+        escrow.fundSale{value: PRICE}(saleId);
+        sale = escrow.getSale(saleId);
+        assertEq(sale.buyer, sale.allowedBuyer, "actual buyer matches reservation");
+    }
+
+    function testReservedBuyerMustBeNonzeroAndDifferentFromSeller() public {
+        vm.prank(seller);
+        nft.approve(address(escrow), tokenId);
+        vm.prank(seller);
+        vm.expectRevert(MotorCoveEscrow.ZeroAddress.selector);
+        escrow.createSale(tokenId, PRICE, address(0));
+
+        vm.prank(seller);
+        vm.expectRevert(MotorCoveEscrow.SellerCannotBuy.selector);
+        escrow.createSale(tokenId, PRICE, seller);
+        assertEq(escrow.saleCount(), 0, "invalid reservation cannot list");
+        assertEq(nft.ownerOf(tokenId), seller, "invalid reservation keeps seller custody");
     }
 
     function _fund(uint256 saleId) internal {
@@ -67,7 +102,7 @@ contract MotorCoveEscrowTest is TestBase {
         nft.approve(address(escrow), tokenId);
         assertEq(nft.ownerOf(tokenId), seller, "approval is not custody");
         vm.prank(seller);
-        uint256 saleId = escrow.createSale(tokenId, PRICE);
+        uint256 saleId = escrow.createSale(tokenId, PRICE, buyer);
         assertEq(nft.ownerOf(tokenId), address(escrow), "listing takes custody");
         assertEq(escrow.custodySaleId(tokenId), saleId, "custody lock");
     }
@@ -75,7 +110,7 @@ contract MotorCoveEscrowTest is TestBase {
     function testCannotListWithoutApproval() public {
         vm.prank(seller);
         vm.expectRevert();
-        escrow.createSale(tokenId, PRICE);
+        escrow.createSale(tokenId, PRICE, buyer);
     }
 
     function testCannotListZeroPrice() public {
@@ -83,7 +118,7 @@ contract MotorCoveEscrowTest is TestBase {
         nft.approve(address(escrow), tokenId);
         vm.prank(seller);
         vm.expectRevert(MotorCoveEscrow.InvalidPrice.selector);
-        escrow.createSale(tokenId, 0);
+        escrow.createSale(tokenId, 0, buyer);
     }
 
     function testSale002RequiresExactPaymentAndRejectsSeller() public {
@@ -185,8 +220,11 @@ contract MotorCoveEscrowTest is TestBase {
     }
 
     function testRejectingNftBuyerCanExpireAndRecoverFunds() public {
-        uint256 saleId = _list();
         RejectNftBuyer rejectingBuyer = new RejectNftBuyer();
+        vm.prank(seller);
+        nft.approve(address(escrow), tokenId);
+        vm.prank(seller);
+        uint256 saleId = escrow.createSale(tokenId, PRICE, address(rejectingBuyer));
         vm.deal(address(rejectingBuyer), PRICE);
         rejectingBuyer.fund{value: PRICE}(escrow, saleId);
 
@@ -243,7 +281,7 @@ contract MotorCoveEscrowTest is TestBase {
         uint256 price = uint256(rawPrice) + 1;
         vm.startPrank(seller);
         nft.approve(address(escrow), tokenId);
-        uint256 saleId = escrow.createSale(tokenId, price);
+        uint256 saleId = escrow.createSale(tokenId, price, buyer);
         vm.stopPrank();
         vm.deal(buyer, price);
         vm.prank(buyer);

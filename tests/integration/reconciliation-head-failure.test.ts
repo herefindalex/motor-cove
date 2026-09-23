@@ -76,6 +76,7 @@ function databaseFixture() {
       sale_id TEXT,
       token_id TEXT,
       seller TEXT,
+      allowed_buyer TEXT,
       buyer TEXT,
       price_wei TEXT,
       funded_at INTEGER,

@@ -1,7 +1,14 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { PROJECTOR_VERSION } from '@motorcove/database/types';
 import type { NormalizedEvent, OrderedEvent } from '../../domain/events.js';
+import {
+  DECODER_VERSION,
+  evidenceDigest as digest,
+  evidenceStringify as stringify,
+  eventEnvelope,
+  sourceRecordDigest,
+} from '../../domain/source-evidence.js';
 import { projectOwnership } from '../../domain/projectors/ownership-projector.js';
 import {
   projectPayment,
@@ -10,34 +17,6 @@ import {
 import { projectSale, type SaleProjection } from '../../domain/projectors/sale-projector.js';
 import { ProjectionIntegrityError } from '../../domain/projectors/projection-integrity-error.js';
 import type { BlockHeader, ProjectionUnitOfWork } from '../../ports/index.js';
-
-const DECODER_VERSION = 'motorcove-events-v1';
-
-const stringify = (value: unknown) =>
-  JSON.stringify(value, (_key, item: unknown) =>
-    typeof item === 'bigint' ? item.toString() : item,
-  );
-
-const digest = (value: unknown): `0x${string}` =>
-  `0x${createHash('sha256').update(stringify(value)).digest('hex')}`;
-
-const eventEnvelope = (ordered: OrderedEvent) => ({
-  blockNumber: ordered.blockNumber,
-  blockHash: ordered.blockHash.toLowerCase(),
-  transactionHash: ordered.transactionHash.toLowerCase(),
-  transactionIndex: ordered.transactionIndex,
-  logIndex: ordered.logIndex,
-  contractAddress: ordered.contractAddress.toLowerCase(),
-  topics: ordered.topics.map((topic) => topic.toLowerCase()),
-  data: ordered.data.toLowerCase(),
-});
-
-const sourceRecordDigest = (ordered: OrderedEvent) =>
-  digest({
-    envelope: eventEnvelope(ordered),
-    decoded: ordered.event,
-    decoderVersion: DECODER_VERSION,
-  });
 
 export interface ProjectionMaintenanceOptions {
   readonly supportedProjectorVersions?: readonly string[];
@@ -161,28 +140,30 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
       .run(reason, new Date().toISOString(), this.deploymentId);
   }
 
-  observe(head: bigint): void {
+  observe(head: bigint, eligibleHead: bigint = head): void {
     const now = new Date().toISOString();
     this.db
       .prepare(
         `UPDATE indexer_runtime_status
          SET projection_status=CASE WHEN projection_status IN ('UNINITIALIZED','STALE') THEN 'SYNCING' ELSE projection_status END,
-             last_observed_head=?,last_observed_at=?,last_rpc_success_at=?,worker_heartbeat_at=?
+          last_head_advanced_at=CASE WHEN last_observed_head IS NULL OR last_observed_head<?
+            THEN ? ELSE last_head_advanced_at END,
+          last_observed_head=?,last_eligible_head=?,last_observed_at=?,last_rpc_success_at=?,worker_heartbeat_at=?
          WHERE deployment_id=?`,
       )
-      .run(Number(head), now, now, now, this.deploymentId);
+      .run(Number(head), now, Number(head), Number(eligibleHead), now, now, now, this.deploymentId);
   }
 
-  async markCurrent(observedHead: bigint): Promise<void> {
+  async markCurrent(observedHead: bigint, eligibleHead: bigint = observedHead): Promise<void> {
     const now = new Date().toISOString();
     this.db
       .prepare(
         `UPDATE indexer_runtime_status
          SET projection_status='CURRENT',recovery_reason=NULL,last_observed_head=?,
-             last_observed_at=?,last_rpc_success_at=?,worker_heartbeat_at=?
+          last_eligible_head=?,last_observed_at=?,last_rpc_success_at=?,worker_heartbeat_at=?
          WHERE deployment_id=? AND projection_status IN ('CURRENT','STALE','SYNCING')`,
       )
-      .run(Number(observedHead), now, now, now, this.deploymentId);
+      .run(Number(observedHead), Number(eligibleHead), now, now, now, this.deploymentId);
   }
 
   completeReindexRecovery(targetNumber: bigint, targetHash: string): void {
@@ -833,7 +814,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
 
       const currentSale = this.db
         .prepare(
-          `SELECT sale_id AS saleId,token_id AS tokenId,seller,buyer,price_wei AS priceWei,
+          `SELECT sale_id AS saleId,token_id AS tokenId,seller,allowed_buyer AS allowedBuyer,buyer,price_wei AS priceWei,
                   CAST(funded_at AS TEXT) AS fundedAt,CAST(expires_at AS TEXT) AS expiresAt,
                   status,token_reclaimed AS tokenReclaimed,created_block AS createdBlock
            FROM sales WHERE deployment_id=? AND sale_id=?`,
@@ -856,10 +837,10 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
         this.db
           .prepare(
             `INSERT INTO sales(
-              deployment_id,sale_id,collection_address,token_id,seller,buyer,price_wei,
+            deployment_id,sale_id,collection_address,token_id,seller,allowed_buyer,buyer,price_wei,
               status,funded_at,expires_at,created_block,updated_block,last_event_block_hash,
               last_event_log_index,token_reclaimed
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(deployment_id,sale_id) DO UPDATE SET
               buyer=excluded.buyer,status=excluded.status,funded_at=excluded.funded_at,
               expires_at=excluded.expires_at,updated_block=excluded.updated_block,
@@ -873,6 +854,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
             this.collectionAddress.toLowerCase(),
             nextSale.tokenId,
             nextSale.seller.toLowerCase(),
+            nextSale.allowedBuyer.toLowerCase(),
             nextSale.buyer?.toLowerCase() ?? null,
             nextSale.priceWei,
             nextSale.status,

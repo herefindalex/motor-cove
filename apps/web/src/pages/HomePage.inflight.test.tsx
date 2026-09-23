@@ -29,6 +29,7 @@ vi.mock('@tanstack/react-query', () => ({
               saleId: '7',
               tokenId: '1',
               seller,
+              allowedBuyer: buyer,
               buyer: null,
               priceWei: '1000000000000000000',
               fundedAt: null,

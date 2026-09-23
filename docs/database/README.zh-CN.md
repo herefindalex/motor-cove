@@ -43,3 +43,7 @@ pnpm docs:check
 ## 变更规则
 
 物理架构更改从新的迁移和审查的架构合约开始。语义所有权或恢复更改会更新同一交付中的 `databaseModel` 和人类生命周期页面。切勿编辑已应用的迁移或生成的参考以使文档与未经审核的数据库一致。
+
+## 公链准备字段
+
+Migration `0003_public_chain_readiness` 新增可为 `NULL` 的 `sales.allowed_buyer`，以及 runtime 的 `last_eligible_head`／`last_head_advanced_at`。历史 Sale 保持 `NULL`：无法从旧合约事件推断预留买家。Runtime 字段区分最后观察的链头、投影可索引的 finalized 边界，以及链头何时推进。数据库 migration 不会升级已有不可升级的 escrow 部署；预留买家语义需要新合约部署与匹配 manifest。

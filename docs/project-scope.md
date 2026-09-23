@@ -4,6 +4,12 @@ This page defines what MotorCove demonstrates and where its claims stop.
 
 ## In scope
 
+The source defines Anvil (`31337`), Ethereum (`1`), and Polygon (`137`) chain profiles. Public
+profiles require a finalized-block capable provider, and operators can compare finalized source
+evidence against a separately configured provider. A seller reserves one buyer per escrow-custody
+sale. These are implementation contracts; no public-network deployment or RPC verification has
+been performed.
+
 MotorCove models a narrow ERC-721 marketplace for local test assets. The product surface includes
 an injected-wallet flow, approval and escrow listing, exact-price funding, completion or expiry,
 pull-based proceeds and refunds, NFT reclaim, event-derived read models, a readonly query API, and

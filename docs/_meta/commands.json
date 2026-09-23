@@ -186,6 +186,14 @@
       "runbook": "../runbooks/reconciliation.md"
     },
     {
+      "name": "ops:audit-source",
+      "command": "pnpm ops:audit-source -- --from <block> --to <block> --secondary-rpc-url <url>",
+      "status": "implemented",
+      "effect": "read-only finalized source comparison against an independently configured secondary RPC",
+      "prerequisite": "MOTORCOVE_ENV set; independent secondary RPC URL and finalized range; read-only local database",
+      "runbook": "../runbooks/reconciliation.md"
+    },
+    {
       "name": "ops:rebuild",
       "command": "pnpm ops:rebuild",
       "status": "implemented",

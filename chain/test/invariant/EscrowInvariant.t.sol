@@ -40,7 +40,7 @@ contract EscrowHandler {
         vm.prank(seller);
         nft.approve(address(escrow), tokenId);
         vm.prank(seller);
-        currentSaleId = escrow.createSale(tokenId, price);
+        currentSaleId = escrow.createSale(tokenId, price, buyer);
         successfulLists += 1;
     }
 
@@ -156,6 +156,22 @@ contract EscrowInvariantTest is TestBase {
 
         require(escrow.totalLiability() == expectedOutstanding, "recorded liability mismatch");
         require(address(escrow).balance >= expectedOutstanding, "outstanding liability uncovered");
+    }
+
+    function invariantFundedBuyerMatchesSellerReservation() public view {
+        for (uint256 saleId = 1; saleId <= escrow.saleCount(); ++saleId) {
+            IMotorCoveEscrow.Sale memory sale = escrow.getSale(saleId);
+            require(sale.allowedBuyer != address(0), "sale reservation absent");
+            if (sale.status == IMotorCoveEscrow.SaleStatus.LISTED) {
+                require(sale.buyer == address(0), "listed sale has actual buyer");
+            } else if (
+                sale.status == IMotorCoveEscrow.SaleStatus.FUNDED ||
+                sale.status == IMotorCoveEscrow.SaleStatus.COMPLETED ||
+                sale.status == IMotorCoveEscrow.SaleStatus.EXPIRED
+            ) {
+                require(sale.buyer == sale.allowedBuyer, "funded buyer differs from reservation");
+            }
+        }
     }
 
     function invariantSuccessfulTransitionsDoNotExceedCalls() public view {

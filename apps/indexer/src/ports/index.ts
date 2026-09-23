@@ -7,17 +7,18 @@ export interface BlockHeader {
 }
 export interface ChainReader {
   getHead(): Promise<BlockHeader>;
+  getFinalizedHead?(): Promise<BlockHeader>;
   getBlock(number: bigint): Promise<BlockHeader>;
   getEvents(headers: readonly BlockHeader[]): Promise<readonly OrderedEvent[]>;
 }
 export interface ProjectionUnitOfWork {
   checkpoint(): Promise<BlockHeader | null>;
-  observe?(head: bigint): void;
+  observe?(head: bigint, eligibleHead?: bigint): void;
   commit(
     headers: readonly BlockHeader[],
     events: readonly OrderedEvent[],
     checkpoint: BlockHeader,
   ): Promise<void>;
   markRecoveryRequired(reason: string): Promise<void>;
-  markCurrent?(observedHead: bigint): Promise<void>;
+  markCurrent?(observedHead: bigint, eligibleHead?: bigint): Promise<void>;
 }

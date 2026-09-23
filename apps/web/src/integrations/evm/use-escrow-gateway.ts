@@ -144,7 +144,7 @@ export function useEscrowGateway(
               args: [escrow, tokenId],
             }),
         }),
-      createSale: (tokenId, priceWei) =>
+      createSale: (tokenId, priceWei, allowedBuyer) =>
         run({
           name: 'CREATE_SALE',
           tokenId,
@@ -153,7 +153,7 @@ export function useEscrowGateway(
           calldata: encodeFunctionData({
             abi: motorCoveEscrowAbi,
             functionName: 'createSale',
-            args: [tokenId, priceWei],
+            args: [tokenId, priceWei, allowedBuyer],
           }),
           simulate: () =>
             publicClient.simulateContract({
@@ -161,14 +161,14 @@ export function useEscrowGateway(
               address: escrow,
               abi: motorCoveEscrowAbi,
               functionName: 'createSale',
-              args: [tokenId, priceWei],
+              args: [tokenId, priceWei, allowedBuyer],
             }),
           submit: () =>
             wallet.data.writeContract({
               address: escrow,
               abi: motorCoveEscrowAbi,
               functionName: 'createSale',
-              args: [tokenId, priceWei],
+              args: [tokenId, priceWei, allowedBuyer],
             }),
         }),
       fundSale: (saleId, priceWei) =>

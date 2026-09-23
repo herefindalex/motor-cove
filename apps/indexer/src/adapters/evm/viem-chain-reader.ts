@@ -39,6 +39,16 @@ export class ViemChainReader implements ChainReader {
   getHead() {
     return this.block();
   }
+
+  async getFinalizedHead(): Promise<BlockHeader> {
+    const block = await this.client.getBlock({ blockTag: 'finalized' });
+    return {
+      number: block.number,
+      hash: requiredHash(block.hash, 'finalized block hash'),
+      parentHash: block.parentHash,
+      timestamp: block.timestamp,
+    };
+  }
   getBlock(number: bigint) {
     return this.block(number);
   }
@@ -84,6 +94,7 @@ export class ViemChainReader implements ChainReader {
             saleId: asString(a.saleId),
             tokenId: asString(a.tokenId),
             seller: asAddress(a.seller),
+            allowedBuyer: asAddress(a.allowedBuyer),
             priceWei: asString(a.priceWei),
           };
           break;

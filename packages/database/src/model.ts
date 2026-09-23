@@ -393,6 +393,11 @@ export const databaseModel = {
         category: 'OBSERVATION_TIME',
         meaning: 'Time the recorded chain head was observed.',
       },
+      {
+        field: 'last_head_advanced_at',
+        category: 'OBSERVATION_TIME',
+        meaning: 'Last live observation when the eligible chain head advanced.',
+      },
     ],
     temporalNote:
       'projection_status and recovery_reason are durable state claims; CURRENT alone does not prove current freshness.',

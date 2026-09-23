@@ -43,6 +43,8 @@ export const indexerRuntimeStatus = sqliteTable(
     workerHeartbeatAt: text('worker_heartbeat_at'),
     lastRpcSuccessAt: text('last_rpc_success_at'),
     lastObservedHead: integer('last_observed_head'),
+    lastEligibleHead: integer('last_eligible_head'),
+    lastHeadAdvancedAt: text('last_head_advanced_at'),
     lastObservedAt: text('last_observed_at'),
   },
   (t) => [
@@ -53,6 +55,10 @@ export const indexerRuntimeStatus = sqliteTable(
     check(
       'runtime_head_check',
       sql`${t.lastObservedHead} IS NULL OR (${safeInteger('last_observed_head')})`,
+    ),
+    check(
+      'runtime_eligible_head_check',
+      sql`${t.lastEligibleHead} IS NULL OR (${safeInteger('last_eligible_head')})`,
     ),
   ],
 );

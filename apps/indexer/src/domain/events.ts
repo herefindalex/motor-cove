@@ -1,7 +1,14 @@
 export type Address = `0x${string}`;
 
 export type NormalizedEvent =
-  | { kind: 'SaleCreated'; saleId: string; tokenId: string; seller: Address; priceWei: string }
+  | {
+      kind: 'SaleCreated';
+      saleId: string;
+      tokenId: string;
+      seller: Address;
+      allowedBuyer: Address;
+      priceWei: string;
+    }
   | {
       kind: 'SaleFunded';
       saleId: string;

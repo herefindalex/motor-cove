@@ -29,6 +29,7 @@ in `_meta/commands.json` owns the table.
 | `pnpm release:metadata` | implemented | writes local release-readiness metadata without publishing | verification commands completed |
 | `pnpm verify` | implemented | local generated, docs, architecture, test, and build gate | Foundry and Node toolchain |
 | `pnpm ops:reconcile` | implemented | writes an anchored chain/projection comparison report | MOTORCOVE_ENV set; Indexer stopped |
+| `pnpm ops:audit-source -- --from <block> --to <block> --secondary-rpc-url <url>` | implemented | read-only finalized source comparison against an independently configured secondary RPC | MOTORCOVE_ENV set; independent secondary RPC URL and finalized range; read-only local database |
 | `pnpm ops:rebuild` | implemented | atomically rebuilds projections from verified local evidence | MOTORCOVE_ENV set; API and Indexer stopped |
 | `pnpm demo:advance-time --seconds <n>` | implemented | advances and mines time on verified loopback Anvil | local Anvil running on chain ID 31337 |
 | `pnpm demo:reset -- --yes` | implemented | resets loopback Anvil and removes generated state from the selected owned environment | MOTORCOVE_ENV set; stopped services; disposable environment only |

@@ -120,6 +120,7 @@ identity are recorded in
 - [Durable attempt ownership and escrow admission decision](adr/0024-durable-attempt-ownership-and-escrow-admission.md)
 - [Filesystem, transaction, and restore evidence decision](adr/0025-filesystem-transaction-and-restore-evidence.md)
 - [Pre-submit identity and live projection health decision](adr/0026-pre-submit-identity-and-live-projection-health.md)
+- [Public-chain finality, provider trust, and marketplace scope decision](adr/0028-public-chain-finality-provider-trust-and-marketplace-scope.md)
 - [Recovery barrier and bootstrap publication decision](adr/0027-recovery-barrier-and-bootstrap-publication.md)
 - [Indexing and recovery flow](flows/indexing-and-recovery.md)
 - [API](reference/api.md), [protocol artifacts](reference/protocol-artifacts.md), and

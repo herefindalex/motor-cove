@@ -25,6 +25,9 @@ export class UninitializedReader implements ReadModelReader {
   recentEvents() {
     return this.unavailable();
   }
+  sourceAuditRange() {
+    return this.unavailable();
+  }
   latestReconciliation() {
     return this.unavailable();
   }

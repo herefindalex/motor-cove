@@ -1,16 +1,28 @@
 import { motorCoveEscrowAbi } from '@motorcove/chain-artifacts';
+import { chainProfileForId } from '@motorcove/chain-artifacts/profiles';
 import { openProjectionWriter } from '@motorcove/database/projection-writer';
 import { verifyManagedNodeOwnership } from '@motorcove/database/maintenance';
 import { createPublicClient, http, keccak256, type Address } from 'viem';
 import { ViemChainReader } from './adapters/evm/viem-chain-reader.js';
+import {
+  assertProviderCapabilities,
+  probeProviderCapabilities,
+} from './adapters/evm/provider-capabilities.js';
 import { SqliteProjectionStore } from './adapters/sqlite/sqlite-projection-store.js';
 import { ingestRange } from './application/ingest-range.js';
 import { runIndexerLoop } from './application/run-indexer.js';
 import { loadConfig, logScopeHash } from './runtime/config.js';
 
 const config = loadConfig();
-await verifyManagedNodeOwnership(config.environment, config.rpcUrl);
+const profile = chainProfileForId(config.manifest.chainId);
+if (profile.finality.kind === 'RPC_FINALIZED' && config.indexingDepth !== 0n)
+  throw new Error('PUBLIC_INDEXING_DEPTH_UNSUPPORTED');
+if (profile.key === 'anvil') await verifyManagedNodeOwnership(config.environment, config.rpcUrl);
 const client = createPublicClient({ transport: http(config.rpcUrl, { batch: true }) });
+assertProviderCapabilities(
+  await probeProviderCapabilities(client, config.manifest, profile),
+  profile,
+);
 const chainId = await client.getChainId();
 if (String(chainId) !== config.manifest.chainId) {
   throw new Error('DEPLOYMENT_MISMATCH: chain id');
@@ -59,6 +71,8 @@ try {
         config.batchSize,
         BigInt(config.manifest.scanStartBlock),
         config.indexingDepth,
+        undefined,
+        profile,
       ),
     markStale: (reason) => store.markStale(reason),
     shouldStop: () => stopping,

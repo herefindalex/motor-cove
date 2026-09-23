@@ -69,6 +69,59 @@ function client(
 }
 
 describe('createTransactionChainReader', () => {
+  it('uses durable finality for automatic observation but rechecks RPC on manual inspection', async () => {
+    const finalizedEntry: JournalEntry = {
+      ...entry('COMPLETE_SALE'),
+      chainId: 1,
+      status: 'INCLUDED_SUCCESS',
+      receiptStatus: 'SUCCESS',
+      receiptBlockNumber: '105',
+      receiptBlockHash: blockHash,
+      finalityStatus: 'FINALIZED',
+      finalizedHeadNumber: '105',
+      finalizedHeadHash: blockHash,
+    };
+    const rpc = client(finalizedEntry, { chainId: 1 });
+    const reader = createTransactionChainReader(rpc, { ...verificationContext, chainId: 1 });
+    expect(
+      await reader.inspectTransaction(finalizedEntry, transactionHash, 'AUTOMATIC'),
+    ).toMatchObject({
+      kind: 'INCLUDED_SUCCESS',
+      blockNumber: 105n,
+      blockHash,
+    });
+    expect(rpc.getTransaction).not.toHaveBeenCalled();
+    await reader.inspectTransaction(finalizedEntry, transactionHash, 'MANUAL');
+    expect(rpc.getTransaction).toHaveBeenCalled();
+  });
+  it('requires a finalized head and matching receipt block on a public profile', async () => {
+    const publicEntry = { ...entry('COMPLETE_SALE'), chainId: 1 };
+    const context = { ...verificationContext, chainId: 1 };
+    const getBlock = vi.fn(async ({ blockTag }: { blockTag?: string }) =>
+      blockTag === 'finalized'
+        ? { number: 104n, hash: blockHash }
+        : { number: 105n, hash: blockHash },
+    );
+    const rpc = { ...client(publicEntry, { chainId: 1 }), getBlock } as unknown as PublicClient;
+    const reader = createTransactionChainReader(rpc, context);
+    expect(await reader.observeFinality!(publicEntry, 105n, blockHash)).toEqual({
+      status: 'UNFINALIZED',
+    });
+    getBlock.mockImplementation(async ({ blockTag }: { blockTag?: string }) =>
+      blockTag === 'finalized'
+        ? { number: 106n, hash: blockHash }
+        : { number: 105n, hash: blockHash },
+    );
+    expect(await reader.observeFinality!(publicEntry, 105n, blockHash)).toEqual({
+      status: 'FINALIZED',
+      headNumber: 106n,
+      headHash: blockHash,
+    });
+    getBlock.mockRejectedValueOnce(new Error('finalized tag unavailable'));
+    expect(await reader.observeFinality!(publicEntry, 105n, blockHash)).toEqual({
+      status: 'UNKNOWN',
+    });
+  });
   it.each([
     'APPROVE_TOKEN',
     'CREATE_SALE',

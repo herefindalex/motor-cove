@@ -1,4 +1,5 @@
 import { motorCoveEscrowAbi } from '@motorcove/chain-artifacts';
+import { chainProfileForId } from '@motorcove/chain-artifacts/profiles';
 import {
   backupEnvironment,
   runProjectionMaintenance,
@@ -20,6 +21,7 @@ const value = (name: string) => {
 };
 
 const config = loadConfig();
+const profile = chainProfileForId(config.manifest.chainId);
 const fromRaw = value('from') ?? config.manifest.scanStartBlock;
 if (!/^\d+$/.test(fromRaw)) throw new Error('INVALID_REINDEX_BLOCK');
 const fromBlock = BigInt(fromRaw);
@@ -68,6 +70,7 @@ const operation = await runProjectionMaintenance(config.environment, {
       config.indexingDepth,
       fromBlock,
       existing,
+      profile,
     );
     return completedRecovery;
   },
@@ -129,6 +132,7 @@ const operation = await runProjectionMaintenance(config.environment, {
           BigInt(config.manifest.scanStartBlock),
           config.indexingDepth,
           target.number,
+          profile,
         ),
       target,
     );

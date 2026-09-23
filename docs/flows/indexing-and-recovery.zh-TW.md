@@ -61,3 +61,9 @@ Reindex 在其現有維護標記中記錄了兩個投影階段：
 ## R25恢復屏障
 
 持久的 `RECOVERY_REQUIRED` 原因會停止正常的寫入器啟動，並且無法由普通的傳輸陳舊或當前轉換取代。重建符合經過驗證的本地來源和僅投影器完整性原因。確認的規範或來源懷疑需要重新索引。重新索引保留該原因，而其維護標記則擁有倒帶、重播和追趕；驗證目標向`SYNCING`發布原因。下一次現場投票決定 `CURRENT`。本地重建不會更新worker心跳或上次成功的RPC觀察時間。
+
+## 鏈 profile 的可索引範圍
+
+Anvil（31337）把最新的 loopback 區塊視為立即可索引。Ethereum（1）與 Polygon（137）要求供應商證實的 finalized 鏈頭；`indexingDepth` 不能取代這些 profile 的最終性。若供應商無法證明 finalized 目標，或既有 finalized 錨點發生變化，索引會拒絕繼續並保留恢復證據。執行時使用單一主要 RPC；`pnpm ops:audit-source` 以獨立次要來源比對有界 finalized 範圍，且不寫入投影。因此交易可能已包含，但市集投影仍在等待最終性。本專案對公鏈 profile 僅做過 loopback 與模擬驗證。
+
+Web 健康狀態選擇器依公鏈 profile 的鏈頭停滯門檻與持久化的 `lastHeadAdvancedAt`，在仍持續回報的 worker 長時間未觀察到鏈頭推進時顯示 `CHAIN_HEAD_STALLED`。這表示觀察進度，不證明鏈上資料錯誤。閒置的 Anvil 鏈頭不會被標為停滯。

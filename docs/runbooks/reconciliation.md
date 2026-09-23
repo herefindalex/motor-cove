@@ -44,3 +44,13 @@ current attempt as `UNVERIFIABLE` with `HEAD_UNKNOWN`, records the RPC cause, an
 does not reuse a previous report or head as evidence for the new run. Failure to open or write the
 database remains an external command failure because no durable report can be promised in that
 case.
+
+## Independent finalized source audit
+
+`pnpm ops:audit-source -- --from <block> --to <block> --secondary-rpc-url <url>` performs a
+read-only comparison of local retained block/log evidence against an independently configured
+secondary RPC. The bounded range must be finalized under the selected chain profile. The command
+returns `MATCH`, `MISMATCH`, or `UNVERIFIABLE`; either non-match exits nonzero. Check the secondary
+chain ID, deployment and runtime code identity before treating its data as independent evidence.
+The audit never repairs projections or submits transactions. Repository verification uses only
+loopback or mocked providers; no public RPC audit is claimed here.

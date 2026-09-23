@@ -43,3 +43,7 @@ pnpm docs:check
 ## 變更規則
 
 物理架構變更從新的遷移和審查的架構合約開始。語意所有權或復原變更會更新相同交付中的 `databaseModel` 和人類生命週期頁面。切勿編輯已套用的遷移或產生的參考以使文件與未經審核的資料庫一致。
+
+## 公鏈準備欄位
+
+Migration `0003_public_chain_readiness` 新增可為 `NULL` 的 `sales.allowed_buyer`，以及 runtime 的 `last_eligible_head`／`last_head_advanced_at`。歷史 Sale 保持 `NULL`：無法從舊合約事件推斷預留買家。Runtime 欄位區分最後觀察的鏈頭、投影可索引的 finalized 邊界，以及鏈頭何時推進。資料庫 migration 不會升級既有不可升級的 escrow 部署；預留買家語意需要新合約部署與相符 manifest。

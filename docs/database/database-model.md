@@ -378,11 +378,12 @@ Block hash and log index, not a local update time, establish transfer provenance
 
 #### Temporal semantics
 
-| Field                 | Time class              | Meaning                                                      |
-| --------------------- | ----------------------- | ------------------------------------------------------------ |
-| `worker_heartbeat_at` | `PROCESS_LIVENESS_TIME` | Last worker liveness write; local rebuild does not renew it. |
-| `last_rpc_success_at` | `OBSERVATION_TIME`      | Last successful live RPC observation by the worker.          |
-| `last_observed_at`    | `OBSERVATION_TIME`      | Time the recorded chain head was observed.                   |
+| Field                   | Time class              | Meaning                                                      |
+| ----------------------- | ----------------------- | ------------------------------------------------------------ |
+| `worker_heartbeat_at`   | `PROCESS_LIVENESS_TIME` | Last worker liveness write; local rebuild does not renew it. |
+| `last_rpc_success_at`   | `OBSERVATION_TIME`      | Last successful live RPC observation by the worker.          |
+| `last_observed_at`      | `OBSERVATION_TIME`      | Time the recorded chain head was observed.                   |
+| `last_head_advanced_at` | `OBSERVATION_TIME`      | Last live observation when the eligible chain head advanced. |
 
 projection_status and recovery_reason are durable state claims; CURRENT alone does not prove current freshness.
 

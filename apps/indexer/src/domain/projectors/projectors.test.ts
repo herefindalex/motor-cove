@@ -9,6 +9,7 @@ describe('pure projectors', () => {
       saleId: '1',
       tokenId: '9',
       seller: '0x0000000000000000000000000000000000000001',
+      allowedBuyer: '0x0000000000000000000000000000000000000002',
       priceWei: '10',
     });
     const funded = projectSale(listed, {
@@ -36,6 +37,7 @@ describe('pure projectors', () => {
       saleId: '1',
       tokenId: '9',
       seller: '0x0000000000000000000000000000000000000001',
+      allowedBuyer: '0x0000000000000000000000000000000000000002',
       priceWei: '10',
     });
     expect(() => projectSale(listed, { kind: 'SaleCompleted', saleId: '1' })).toThrow(

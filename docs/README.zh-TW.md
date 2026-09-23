@@ -96,6 +96,7 @@
 - [持久 attempt 權責與託管接納](adr/0024-durable-attempt-ownership-and-escrow-admission.zh-TW.md)
 - [檔案系統、交易與還原證據](adr/0025-filesystem-transaction-and-restore-evidence.zh-TW.md)
 - [提交前身份與投影健康](adr/0026-pre-submit-identity-and-live-projection-health.zh-TW.md)
+- [公鏈最終性、供應商信任與市集範圍決策](adr/0028-public-chain-finality-provider-trust-and-marketplace-scope.zh-TW.md)
 - [恢復屏障與 bootstrap 發布](adr/0027-recovery-barrier-and-bootstrap-publication.zh-TW.md)
 - [Indexer 與恢復流程](flows/indexing-and-recovery.zh-TW.md)
 - [API](reference/api.zh-TW.md)、[協定產物](reference/protocol-artifacts.zh-TW.md)與

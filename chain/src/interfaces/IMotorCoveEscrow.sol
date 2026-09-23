@@ -24,6 +24,7 @@ interface IMotorCoveEscrow {
     struct Sale {
         uint256 tokenId;
         address seller;
+        address allowedBuyer;
         address buyer;
         uint256 priceWei;
         uint64 fundedAt;
@@ -39,7 +40,13 @@ interface IMotorCoveEscrow {
         ClaimStatus status;
     }
 
-    event SaleCreated(uint256 indexed saleId, uint256 indexed tokenId, address indexed seller, uint256 priceWei);
+    event SaleCreated(
+        uint256 indexed saleId,
+        uint256 indexed tokenId,
+        address indexed seller,
+        address allowedBuyer,
+        uint256 priceWei
+    );
     event SaleFunded(
         uint256 indexed saleId, address indexed buyer, uint256 amountWei, uint64 fundedAt, uint64 expiresAt
     );
@@ -56,7 +63,7 @@ interface IMotorCoveEscrow {
     );
     event TokenReclaimed(uint256 indexed saleId, uint256 indexed tokenId, address indexed recipient);
 
-    function createSale(uint256 tokenId, uint256 priceWei) external returns (uint256 saleId);
+    function createSale(uint256 tokenId, uint256 priceWei, address allowedBuyer) external returns (uint256 saleId);
     function fundSale(uint256 saleId) external payable;
     function completeSale(uint256 saleId) external;
     function cancelSale(uint256 saleId) external;

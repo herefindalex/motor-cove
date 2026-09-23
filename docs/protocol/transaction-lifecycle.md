@@ -206,3 +206,12 @@ The marketplace mirrors this capability rule with a per-action pending key. The 
 disabled and exposes `aria-busy` until the gateway call settles. The durable journal guard continues
 after that UI pending state ends, so a returned hash cannot reopen a second wallet request. This UI
 state improves feedback but does not replace the capability-level invariant.
+
+## Included versus finalized on public profiles
+
+Ethereum and Polygon projection eligibility follows the chain profile's finalized RPC evidence.
+A successful included receipt remains transaction evidence; it does not by itself make the sale
+visible in the finalized application projection. Anvil is the loopback immediate-finality profile.
+A contradiction at a finalized anchor requires recovery rather than ordinary shallow-reorg retry.
+For a new listing, the immutable intent and contract call include the seller-selected
+`allowedBuyer`; `buyer` is populated only after that address successfully funds the sale.

@@ -40,7 +40,16 @@ export interface TransactionChainReader {
   inspectTransaction(
     entry: JournalEntry,
     transactionHash: `0x${string}`,
+    mode?: 'AUTOMATIC' | 'MANUAL',
   ): Promise<InspectedTransaction>;
+  observeFinality?(
+    entry: JournalEntry,
+    blockNumber: bigint,
+    blockHash: `0x${string}`,
+  ): Promise<
+    | { status: 'FINALIZED'; headNumber: bigint; headHash: `0x${string}` }
+    | { status: 'UNFINALIZED' | 'UNKNOWN' }
+  >;
 }
 
 export interface FundingObservationReader {
@@ -127,6 +136,7 @@ export async function resumeJournalEntry(
   requestedEntry: JournalEntry,
   ports: RecoveryPorts,
   candidateHash?: `0x${string}`,
+  mode: 'AUTOMATIC' | 'MANUAL' = 'MANUAL',
 ): Promise<RecoveryResult> {
   const entry = latestEntry(requestedEntry, ports.journal);
   const storedHash = entry.currentTxHash ?? entry.originalTxHash;
@@ -150,7 +160,7 @@ export async function resumeJournalEntry(
   ).entry;
   const apply = (values: Partial<JournalEntry>) =>
     update(verifying, ports, values, verificationRequestId);
-  const inspected = await ports.chain.inspectTransaction(verifying, verifiedHash);
+  const inspected = await ports.chain.inspectTransaction(verifying, verifiedHash, mode);
   if (inspected.kind === 'REPLACEMENT_HASH_REQUIRED') {
     const result = await apply({
       verificationAvailability: 'UNAVAILABLE',
@@ -224,6 +234,42 @@ export async function resumeJournalEntry(
     return { kind: 'PENDING' };
   }
 
+  let finalityFields: Partial<JournalEntry> = {};
+  if (ports.chain.observeFinality) {
+    const sameReceipt =
+      verifying.currentTxHash?.toLowerCase() === inspected.transactionHash.toLowerCase() &&
+      verifying.receiptBlockNumber === String(inspected.blockNumber) &&
+      verifying.receiptBlockHash?.toLowerCase() === inspected.blockHash.toLowerCase();
+    if (sameReceipt && verifying.finalityStatus === 'FINALIZED') {
+      finalityFields = { finalityStatus: 'FINALIZED' };
+    } else {
+      let proof: Awaited<ReturnType<NonNullable<TransactionChainReader['observeFinality']>>>;
+      try {
+        proof = await ports.chain.observeFinality(
+          verifying,
+          inspected.blockNumber,
+          inspected.blockHash,
+        );
+      } catch {
+        proof = { status: 'UNKNOWN' };
+      }
+      finalityFields =
+        proof.status === 'FINALIZED'
+          ? {
+              finalityStatus: 'FINALIZED',
+              finalizedHeadNumber: String(proof.headNumber),
+              finalizedHeadHash: proof.headHash,
+              finalizedAt: new Date().toISOString(),
+            }
+          : {
+              finalityStatus: proof.status,
+              finalizedHeadNumber: undefined,
+              finalizedHeadHash: undefined,
+              finalizedAt: undefined,
+            };
+    }
+  }
+
   if (inspected.kind === 'INCLUDED_REVERTED') {
     const result = await apply({
       currentTxHash: inspected.transactionHash,
@@ -233,6 +279,7 @@ export async function resumeJournalEntry(
       receiptStatus: 'REVERTED',
       receiptBlockNumber: String(inspected.blockNumber),
       receiptBlockHash: inspected.blockHash,
+      ...finalityFields,
       ...(inspected.replacementKind ? { replacementKind: inspected.replacementKind } : {}),
       status: 'INCLUDED_REVERTED',
       verificationAvailability: 'AVAILABLE',
@@ -252,6 +299,7 @@ export async function resumeJournalEntry(
       receiptStatus: 'SUCCESS',
       receiptBlockNumber: String(inspected.blockNumber),
       receiptBlockHash: inspected.blockHash,
+      ...finalityFields,
       ...(inspected.replacementKind ? { replacementKind: inspected.replacementKind } : {}),
       status: 'INCLUDED_SUCCESS',
       verificationAvailability: 'AVAILABLE',
@@ -291,6 +339,7 @@ export async function resumeJournalEntry(
     receiptBlockNumber: String(inspected.blockNumber),
     receiptBlockHash: inspected.blockHash,
     eventLogIndex: inspected.logIndex,
+    ...finalityFields,
     eventBuyer: inspected.buyer,
     eventAmountWei: String(inspected.amountWei),
     ...(inspected.replacementKind ? { replacementKind: inspected.replacementKind } : {}),
@@ -324,6 +373,14 @@ export async function resumeJournalEntry(
     );
     if (!result.applied) return { kind: 'SUPERSEDED' };
     return { kind: 'INCONSISTENT' };
+  }
+
+  if (
+    ports.chain.observeFinality &&
+    withChainEvidence.chainId !== 31337 &&
+    withChainEvidence.finalityStatus !== 'FINALIZED'
+  ) {
+    return { kind: 'INCLUDED' };
   }
 
   try {

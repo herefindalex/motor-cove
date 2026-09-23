@@ -80,3 +80,10 @@ coverage.
 See [indexing and recovery](../flows/indexing-and-recovery.md),
 [database ownership](database-ownership-and-dependencies.md), and
 [testing strategy](../testing/strategy.md).
+
+Chain profiles centralize finality and provider requirements: Anvil 31337 uses immediate loopback
+eligibility; Ethereum 1 and Polygon 137 require an RPC finalized head. Startup checks chain identity,
+block-hash log filtering, finality and historical-state capability before opening the writer.
+Only finalized blocks are projected for public profiles. A second provider is used only by the
+read-only bounded source audit, not the normal polling path. An observed finalized hash contradiction
+requires recovery. The supported profiles have not been exercised on public networks in this repo.

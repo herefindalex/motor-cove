@@ -13,6 +13,7 @@ const sale: SaleResponse = {
   saleId: '7',
   tokenId: '7',
   seller,
+  allowedBuyer: buyer,
   buyer: null,
   priceWei: '1',
   fundedAt: null,

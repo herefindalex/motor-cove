@@ -31,6 +31,48 @@ import {
 } from '@motorcove/database/maintenance';
 import { databaseFixture, hashes } from '../helpers/database.js';
 const roots: string[] = [];
+
+function downgradeToPriorMigration(db: Database.Database): void {
+  const prior = new Database(':memory:');
+  for (const name of [
+    '0000_initial.sql',
+    '0001_source-record-integrity.sql',
+    '0002_reconciliation_sequence.sql',
+  ]) {
+    prior.exec(
+      readFileSync(join(import.meta.dirname, '../../packages/database/drizzle', name), 'utf8'),
+    );
+  }
+  db.pragma('foreign_keys = OFF');
+  for (const table of ['sales', 'indexer_runtime_status']) {
+    const row = prior
+      .prepare("SELECT sql FROM sqlite_schema WHERE type='table' AND name=?")
+      .get(table) as { sql: string };
+    const columns = (prior.pragma(`table_info(${table})`) as Array<{ name: string }>)
+      .map(({ name }) => `"${name}"`)
+      .join(',');
+    db.exec(`CREATE TEMP TABLE __prior_rows AS SELECT ${columns} FROM ${table}`);
+    db.exec(`DROP TABLE ${table}`);
+    db.exec(row.sql);
+    db.exec(`INSERT INTO ${table}(${columns}) SELECT ${columns} FROM __prior_rows`);
+    db.exec('DROP TABLE __prior_rows');
+    for (const index of prior
+      .prepare(
+        "SELECT sql FROM sqlite_schema WHERE type='index' AND tbl_name=? AND sql IS NOT NULL",
+      )
+      .all(table) as Array<{ sql: string }>) {
+      db.exec(index.sql);
+    }
+  }
+  prior.close();
+  db.prepare(
+    'DELETE FROM __drizzle_migrations WHERE created_at=(SELECT MAX(created_at) FROM __drizzle_migrations)',
+  ).run();
+  db.prepare(
+    'UPDATE db_contract SET migration_bundle_digest=?,schema_fingerprint=? WHERE id=1',
+  ).run(migrationBundleDigest(migrationBundle().slice(0, 3)), schemaFingerprint(db));
+  db.pragma('foreign_keys = ON');
+}
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -72,6 +114,7 @@ function removeReconciliationSequence(db: Database.Database): void {
 
 function downgradeToFirstMigration(databasePath: string): void {
   const db = new Database(databasePath);
+  downgradeToPriorMigration(db);
   removeReconciliationSequence(db);
   db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
   db.prepare(
@@ -138,6 +181,7 @@ describe('native migration path', () => {
       null,
       '2026-09-21T00:00:00.000Z',
     );
+    downgradeToPriorMigration(db);
     removeReconciliationSequence(db);
     db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
     db.prepare(
@@ -165,7 +209,7 @@ describe('native migration path', () => {
           count: number;
         }
       ).count,
-    ).toBe(3);
+    ).toBe(4);
     upgraded.close();
   });
 
@@ -173,6 +217,7 @@ describe('native migration path', () => {
     const { root, paths } = await databaseFixture('r27-sequence-backfill');
     roots.push(root);
     const db = new Database(paths.databasePath);
+    downgradeToPriorMigration(db);
     removeReconciliationSequence(db);
     db.prepare(
       'UPDATE db_contract SET migration_bundle_digest=?,schema_fingerprint=? WHERE id=1',
@@ -423,6 +468,7 @@ describe('native migration path', () => {
     db.prepare(
       `INSERT INTO catalog_vehicles VALUES ('predeploy','Predeploy','kept','M','2026','/p.svg','MANUAL',NULL,NULL,'x','x')`,
     ).run();
+    downgradeToPriorMigration(db);
     removeReconciliationSequence(db);
     db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
     db.prepare(

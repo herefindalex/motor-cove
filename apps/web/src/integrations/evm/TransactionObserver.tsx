@@ -86,6 +86,7 @@ export function TransactionObserver({
                 journal,
               },
               candidateHash,
+              mode,
             );
           },
         );
@@ -100,18 +101,23 @@ export function TransactionObserver({
     if (!chain) return;
     let stopped = false;
     const observe = async () => {
-      const recoverable = journal
-        .load(deploymentId)
-        .filter((entry) =>
-          [
-            'AWAITING_WALLET',
-            'SUBMITTED',
-            'INCLUDED_SUCCESS',
-            'INCLUDED_REVERTED',
-            'UNKNOWN',
-            'ORPHANED',
-          ].includes(entry.status),
-        );
+      const recoverable = journal.load(deploymentId).filter((entry) => {
+        if (
+          entry.finalityStatus === 'FINALIZED' &&
+          (entry.status === 'INCLUDED_REVERTED' ||
+            (entry.status === 'INCLUDED_SUCCESS' &&
+              (entry.action !== 'FUND_SALE' || isProjectionCurrentlyReflected(entry))))
+        )
+          return false;
+        return [
+          'AWAITING_WALLET',
+          'SUBMITTED',
+          'INCLUDED_SUCCESS',
+          'INCLUDED_REVERTED',
+          'UNKNOWN',
+          'ORPHANED',
+        ].includes(entry.status);
+      });
       for (const entry of recoverable) {
         if (stopped) return;
         if (entry.status === 'UNKNOWN' && !entry.currentTxHash && !entry.originalTxHash) continue;
@@ -160,7 +166,11 @@ export function TransactionObserver({
               always uses this saved operation context.
             </p>
             {entry.projectionObservation === 'NOT_REACHED' && (
-              <p>Payment executed on-chain. Marketplace data is syncing.</p>
+              <p>
+                {entry.chainId !== 31337 && entry.finalityStatus !== 'FINALIZED'
+                  ? 'Payment included on-chain. Waiting for finality before projection convergence.'
+                  : 'Payment executed on-chain. Marketplace data is syncing.'}
+              </p>
             )}
             {entry.action === 'FUND_SALE' && isProjectionCurrentlyReflected(entry) && (
               <p>This funding payment is reflected in the marketplace projection.</p>

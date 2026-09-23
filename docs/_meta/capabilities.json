@@ -55,20 +55,21 @@
     {
       "id": "CAP-05",
       "name": "Smart-contract interaction",
-      "behavior": "Uses generated ABIs, simulates writes, and keeps approval separate from listing.",
+      "behavior": "Uses generated ABIs, simulates writes, and keeps approval separate from listing. Binds a seller-selected reserved buyer before funding.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/integrations/evm/use-escrow-gateway.ts",
-        "packages/chain-artifacts/src/generated"
+        "packages/chain-artifacts/src/generated",
+        "apps/web/src/features/trading/model/reserved-buyer.ts"
       ],
       "scenarios": ["SALE-001", "SALE-002"],
-      "verification": ["RUN-CONTRACTS", "RUN-E2E"],
+      "verification": ["RUN-CONTRACTS", "RUN-E2E", "RUN-PUBLIC-CHAIN-READINESS"],
       "limits": "No public-chain deployment or external wallet-provider compatibility claim."
     },
     {
       "id": "CAP-06",
       "name": "Transaction lifecycle",
-      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, serializes same-profile browser writes, assigns operation-scoped cross-tab observation ownership, and preserves tab-local evidence when durable storage reads are unavailable. Assigns cross-tab submission ownership to one in-flight immutable intent before any await and exposes matching per-action pending state. Volatile transaction evidence can rebase only over a matching hashless durable revision. Candidate inspection validates the saved descriptor against configured contracts, the actual RPC chain, and the on-chain deployment getter before transaction lookup. Known-hash verification continues in the volatile overlay when a durable update fails. Immediately before wallet submission, the gateway proves the immutable deployment identity through both the public RPC and wallet provider.",
+      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, serializes same-profile browser writes, assigns operation-scoped cross-tab observation ownership, and preserves tab-local evidence when durable storage reads are unavailable. Assigns cross-tab submission ownership to one in-flight immutable intent before any await and exposes matching per-action pending state. Volatile transaction evidence can rebase only over a matching hashless durable revision. Candidate inspection validates the saved descriptor against configured contracts, the actual RPC chain, and the on-chain deployment getter before transaction lookup. Known-hash verification continues in the volatile overlay when a durable update fails. Immediately before wallet submission, the gateway proves the immutable deployment identity through both the public RPC and wallet provider. Models receipt inclusion and chain finality as separate evidence.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/capabilities/transactions",
@@ -84,7 +85,8 @@
         "apps/web/src/integrations/persistence/browser-submission-coordinator.ts",
         "docs/adr/0021-cross-tab-submission-and-volatile-rebase.md",
         "docs/adr/0025-filesystem-transaction-and-restore-evidence.md",
-        "apps/web/src/integrations/evm/use-escrow-gateway.r24.test.tsx"
+        "apps/web/src/integrations/evm/use-escrow-gateway.r24.test.tsx",
+        "apps/web/src/capabilities/transactions/ui/TransactionTimeline.tsx"
       ],
       "scenarios": [
         "TX-001",
@@ -104,7 +106,8 @@
         "RUN-R23-FOCUSED",
         "RUN-R24-FOCUSED",
         "RUN-R24-VERIFY",
-        "RUN-R24-E2E"
+        "RUN-R24-E2E",
+        "RUN-PUBLIC-CHAIN-READINESS"
       ],
       "limits": "Non-durable known-hash tracking survives client-side route changes and storage read denial only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-tab observation and submission ownership require Web Locks; their fallbacks coordinate one JavaScript realm only. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
     },
@@ -125,11 +128,11 @@
     {
       "id": "CAP-08",
       "name": "Digital-asset escrow",
-      "behavior": "Escrows ERC-721 assets, separates completion, pull claims, refunds, withdrawal, and token reclaim, and checks recorded liability against independently summed outstanding obligations.",
+      "behavior": "Escrows ERC-721 assets, separates completion, pull claims, refunds, withdrawal, and token reclaim, and checks recorded liability against independently summed outstanding obligations. Each escrow sale reserves one buyer and rejects outsider funding on-chain.",
       "implementation": "implemented",
       "code": ["chain/src/MotorCoveEscrow.sol", "chain/src/VehicleNFT.sol"],
       "scenarios": ["SALE-001", "SALE-002", "SALE-003", "SALE-004", "SALE-005", "SALE-006"],
-      "verification": ["RUN-CONTRACTS"],
+      "verification": ["RUN-CONTRACTS", "RUN-PUBLIC-CHAIN-READINESS"],
       "limits": "Local test assets and test ETH only; contracts have not received an external security audit."
     },
     {
@@ -149,7 +152,7 @@
     {
       "id": "CAP-10",
       "name": "Event-driven backend",
-      "behavior": "Observes headers before requesting logs by exact block hash, orders events, applies pure projectors, and atomically advances source and checkpoint state. Verifies bound raw and decoded source evidence before rebuild and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse their verified captured target and durable catch-up checkpoint without repeating the source rewind. Source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert. Reconciliation refreshes the latest head after anchored comparison so publication freshness cannot reuse a stale pre-comparison sample. A checkpoint above the current indexing-depth eligible target fails closed until explicit reindex convergence. Live CURRENT requires convergence to the current depth-adjusted eligible target, not merely a fixed maintenance target. Persisted recovery-required evidence blocks ordinary writes; maintenance reindex releases it only after target proof.",
+      "behavior": "Observes headers before requesting logs by exact block hash, orders events, applies pure projectors, and atomically advances source and checkpoint state. Verifies bound raw and decoded source evidence before rebuild and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse their verified captured target and durable catch-up checkpoint without repeating the source rewind. Source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert. Reconciliation refreshes the latest head after anchored comparison so publication freshness cannot reuse a stale pre-comparison sample. A checkpoint above the current indexing-depth eligible target fails closed until explicit reindex convergence. Live CURRENT requires convergence to the current depth-adjusted eligible target, not merely a fixed maintenance target. Persisted recovery-required evidence blocks ordinary writes; maintenance reindex releases it only after target proof. Public profiles project finalized blocks only and support a read-only secondary source audit.",
       "implementation": "implemented",
       "code": [
         "apps/indexer/src/application/ingest-range.ts",
@@ -166,7 +169,10 @@
         "docs/adr/0023-reset-intent-and-indexing-depth-convergence.md",
         "tests/integration/indexer-currentness.r24.test.ts",
         "tests/integration/recovery-required-barrier.r25.test.ts",
-        "apps/indexer/src/cli/reindex.ts"
+        "apps/indexer/src/cli/reindex.ts",
+        "apps/indexer/src/application/finality-target.ts",
+        "apps/indexer/src/adapters/evm/run-source-audit.ts",
+        "tests/integration/source-audit-reader.test.ts"
       ],
       "scenarios": [
         "IDX-001",
@@ -187,9 +193,10 @@
         "RUN-R24-E2E",
         "RUN-R25-FOCUSED",
         "RUN-R25-VERIFY",
-        "RUN-R25-E2E"
+        "RUN-R25-E2E",
+        "RUN-PUBLIC-CHAIN-READINESS"
       ],
-      "limits": "Automatic recovery across arbitrary canonical branch changes remains outside scope; incomplete rebuild source requires explicit reindex."
+      "limits": "Automatic recovery across arbitrary canonical branch changes remains outside scope; incomplete rebuild source requires explicit reindex. Public finalized-provider and archive behavior remains unverified; secondary endpoint configuration alone does not prove organizational independence."
     },
     {
       "id": "CAP-11",
@@ -287,14 +294,16 @@
     {
       "id": "CAP-12",
       "name": "Cross-team interface contracts",
-      "behavior": "Publishes ABI, deployment, HTTP wire, database, and package export contracts for consumers. API CORS accepts one configured canonical frontend origin.",
+      "behavior": "Publishes ABI, deployment, HTTP wire, database, and package export contracts for consumers. API CORS accepts one configured canonical frontend origin. Shared contracts include explicit Anvil, Ethereum, and Polygon profiles and the reserved-buyer field.",
       "implementation": "implemented",
       "code": [
         "packages/chain-artifacts",
         "packages/api-contracts",
         "packages/database/package.json",
         "tooling/scripts/generate.ts",
-        "apps/api/src/app/create-app.r24.test.ts"
+        "apps/api/src/app/create-app.r24.test.ts",
+        "packages/chain-artifacts/src/chain-profile.ts",
+        "packages/api-contracts/src/index.ts"
       ],
       "scenarios": ["ARCH-001", "REL-001"],
       "verification": [
@@ -302,7 +311,8 @@
         "RUN-API-CONTRACT",
         "RUN-R24-FOCUSED",
         "RUN-R24-VERIFY",
-        "RUN-R24-E2E"
+        "RUN-R24-E2E",
+        "RUN-PUBLIC-CHAIN-READINESS"
       ],
       "limits": "Generated artifacts require a current drift check after provider changes."
     },

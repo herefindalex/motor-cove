@@ -76,3 +76,12 @@ Database acceptance IDs `DB-01` through `DB-75` are maintained in the
   validate receipt content.
 - **IDX-001:** local-only journal rebuild leaves the last successful RPC and worker heartbeat times
   untouched, so observation freshness can remain stale despite successful projection replay.
+
+## Public-chain readiness local coverage
+
+- **SALE-001 / SALE-002:** Foundry and local browser scenarios cover reserved-buyer listing, outsider rejection, and exact-value funding by the selected buyer.
+- **TX-001:** Browser tests keep receipt inclusion and finality separate; automatic observation may reuse durable finality proof, while manual recheck reads the RPC.
+- **IDX-001 / IDX-003:** Profile, provider-capability, and finality tests keep unfinalized public blocks outside the projection. A real SQLite source snapshot is compared with a controlled secondary provider, and the audit CLI reports non-match outcomes with a nonzero exit.
+- **REL-001:** Generated ABI, API, and database contracts carry the reserved-buyer field separately from the actual funding buyer.
+
+All public-profile checks use mocked or loopback providers. No public RPC or deployment was tested.

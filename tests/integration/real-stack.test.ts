@@ -176,7 +176,7 @@ describe('real Anvil → indexer → SQLite flow', () => {
         address: escrow,
         abi: motorCoveEscrowAbi,
         functionName: 'createSale',
-        args: [2n, parseEther('2')],
+        args: [2n, parseEther('2'), manifest.demoAccounts.buyer],
       }),
     );
     await send(

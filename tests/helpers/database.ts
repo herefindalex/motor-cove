@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { environmentPaths, migrateEnvironment } from '@motorcove/database/maintenance';
+import { PROJECTOR_VERSION } from '@motorcove/database/types';
 
 export const hashes = {
   deployment: `0x${'1'.repeat(64)}`,
@@ -78,7 +79,7 @@ export async function databaseFixture(environmentId = 'test') {
     hashes.deployment,
     1,
     hashes.block,
-    '1',
+    PROJECTOR_VERSION,
     'build-test',
     hashes.scope,
     new Date(0).toISOString(),

@@ -53,8 +53,21 @@ export function TransactionTimeline({
               <span>{statusLabel[entry.status]}</span>
               {entry.currentTxHash && <code>{entry.currentTxHash}</code>}
               {entry.receiptBlockNumber && <span>Receipt block {entry.receiptBlockNumber}</span>}
+              {entry.receiptBlockNumber && entry.chainId !== 31337 && (
+                <span>
+                  {entry.finalityStatus === 'FINALIZED'
+                    ? 'Chain finality confirmed.'
+                    : entry.finalityStatus === 'UNFINALIZED'
+                      ? 'Included; waiting for chain finality.'
+                      : 'Included; chain finality currently unknown.'}
+                </span>
+              )}
               {entry.projectionObservation === 'NOT_REACHED' && (
-                <span>Transaction included; marketplace data is still syncing.</span>
+                <span>
+                  {entry.chainId !== 31337 && entry.finalityStatus !== 'FINALIZED'
+                    ? 'Finalized marketplace projection is not expected yet.'
+                    : 'Transaction included; marketplace data is still syncing.'}
+                </span>
               )}
               {entry.projectionObservation === 'UNVERIFIABLE' && (
                 <span>Projection verification unavailable.</span>

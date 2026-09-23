@@ -47,9 +47,10 @@ export function MyAssets({
   approvalStates: ReadonlyMap<string, ApprovalState>;
   pendingActionKeys?: ReadonlySet<string>;
   onApprove(tokenId: string): Promise<void>;
-  onCreate(tokenId: string, priceEth: string): Promise<void>;
+  onCreate(tokenId: string, priceEth: string, allowedBuyer: string): Promise<void>;
 }) {
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [buyerDrafts, setBuyerDrafts] = useState<Record<string, string>>({});
 
   return (
     <section>
@@ -69,7 +70,13 @@ export function MyAssets({
             const approving = pendingActionKeys?.has(`APPROVE_TOKEN:${asset.tokenId}`) ?? false;
             const creating = pendingActionKeys?.has(`CREATE_SALE:${asset.tokenId}`) ?? false;
             const canApprove = enabled && approval === 'not-approved' && !approving && !creating;
-            const canCreate = enabled && approval === 'approved' && !approving && !creating;
+            const buyer = buyerDrafts[asset.tokenId] ?? '';
+            const validBuyer =
+              /^0x[0-9a-fA-F]{40}$/.test(buyer.trim()) &&
+              !/^0x0{40}$/.test(buyer.trim()) &&
+              buyer.trim().toLowerCase() !== asset.currentOwner?.toLowerCase();
+            const canCreate =
+              enabled && approval === 'approved' && !approving && !creating && validBuyer;
             const price = priceDrafts[asset.tokenId] ?? '1';
 
             return (
@@ -95,6 +102,21 @@ export function MyAssets({
                     inputMode="decimal"
                   />
                 </label>
+                <label>
+                  Reserved buyer for token #{asset.tokenId}
+                  <input
+                    value={buyer}
+                    disabled={creating}
+                    onChange={(event) =>
+                      setBuyerDrafts((current) => ({
+                        ...current,
+                        [asset.tokenId]: event.target.value,
+                      }))
+                    }
+                    placeholder="0x…"
+                    spellCheck={false}
+                  />
+                </label>
                 <div className="asset-actions">
                   <button
                     type="button"
@@ -108,7 +130,7 @@ export function MyAssets({
                     type="button"
                     disabled={!canCreate}
                     aria-busy={creating}
-                    onClick={() => void onCreate(asset.tokenId, price)}
+                    onClick={() => void onCreate(asset.tokenId, price, buyer)}
                   >
                     {creating ? 'Creating…' : 'Create sale'}
                   </button>

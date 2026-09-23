@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { chainProfileForId } from '@motorcove/chain-artifacts/profiles';
 import type { BlockHeader } from '../ports/index.js';
 import { resolveEligibleReindexTarget, resolveReindexOperationRecovery } from './reindex-target.js';
 
@@ -12,6 +13,20 @@ const block = (number: bigint): BlockHeader => ({
 });
 
 describe('resolveEligibleReindexTarget', () => {
+  it('captures only the public finalized block as its fixed maintenance target', async () => {
+    await expect(
+      resolveEligibleReindexTarget(
+        {
+          getHead: async () => block(110n),
+          getFinalizedHead: async () => block(100n),
+          getBlock: async (number) => block(number),
+        },
+        0n,
+        chainProfileForId(1),
+      ),
+    ).resolves.toEqual(block(100n));
+  });
+
   it('uses the observed head when indexing depth is zero', async () => {
     await expect(
       resolveEligibleReindexTarget(

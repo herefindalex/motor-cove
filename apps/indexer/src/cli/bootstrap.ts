@@ -347,13 +347,14 @@ async function bootstrap(): Promise<void> {
       seller: seller.toLowerCase(),
       tokenId: '1',
       priceWei: parseEther('1').toString(),
+      allowedBuyer: buyer.toLowerCase(),
     }),
     () =>
       sellerWallet.writeContract({
         address: escrowAddress,
         abi: motorCoveEscrowAbi,
         functionName: 'createSale',
-        args: [1n, parseEther('1')],
+        args: [1n, parseEther('1'), buyer],
       }),
     waitForJournalReceipt,
   );

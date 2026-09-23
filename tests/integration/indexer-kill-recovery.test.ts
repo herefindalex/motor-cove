@@ -61,6 +61,7 @@ const events: OrderedEvent[] = [
       saleId: '1',
       tokenId: '1',
       seller,
+      allowedBuyer: hex('e', 20),
       priceWei: '1000000000000000000',
     },
   },

@@ -16,6 +16,7 @@ contract MotorCoveEscrow is IMotorCoveEscrow, IERC721Receiver, ReentrancyGuard {
     error InvalidPrice();
     error TokenAlreadyInCustody(uint256 tokenId, uint256 saleId);
     error SellerCannotBuy();
+    error NotAllowedBuyer(address caller, address allowedBuyer);
     error IncorrectPayment(uint256 expected, uint256 actual);
     error Unauthorized(address caller);
     error DeadlinePassed(uint64 expiresAt);
@@ -52,8 +53,14 @@ contract MotorCoveEscrow is IMotorCoveEscrow, IERC721Receiver, ReentrancyGuard {
         deploymentId = identity;
     }
 
-    function createSale(uint256 tokenId, uint256 priceWei) external nonReentrant returns (uint256 saleId) {
+    function createSale(uint256 tokenId, uint256 priceWei, address allowedBuyer)
+        external
+        nonReentrant
+        returns (uint256 saleId)
+    {
         if (priceWei == 0) revert InvalidPrice();
+        if (allowedBuyer == address(0)) revert ZeroAddress();
+        if (allowedBuyer == msg.sender) revert SellerCannotBuy();
         if (nft.ownerOf(tokenId) != msg.sender) revert NotTokenOwner(tokenId, msg.sender);
         uint256 existing = custodySaleId[tokenId];
         if (existing != 0) revert TokenAlreadyInCustody(tokenId, existing);
@@ -63,15 +70,16 @@ contract MotorCoveEscrow is IMotorCoveEscrow, IERC721Receiver, ReentrancyGuard {
         if (_pendingReceipt.active) revert UnexpectedNftTransfer();
 
         saleId = ++saleCount;
-        _sales[saleId] = Sale(tokenId, msg.sender, address(0), priceWei, 0, 0, SaleStatus.LISTED, false);
+        _sales[saleId] = Sale(tokenId, msg.sender, allowedBuyer, address(0), priceWei, 0, 0, SaleStatus.LISTED, false);
         custodySaleId[tokenId] = saleId;
-        emit SaleCreated(saleId, tokenId, msg.sender, priceWei);
+        emit SaleCreated(saleId, tokenId, msg.sender, allowedBuyer, priceWei);
     }
 
     function fundSale(uint256 saleId) external payable nonReentrant {
         Sale storage sale = _requireSale(saleId);
         _requireState(saleId, sale, SaleStatus.LISTED);
         if (msg.sender == sale.seller) revert SellerCannotBuy();
+        if (msg.sender != sale.allowedBuyer) revert NotAllowedBuyer(msg.sender, sale.allowedBuyer);
         if (msg.value != sale.priceWei) revert IncorrectPayment(sale.priceWei, msg.value);
         uint64 fundedAt = uint64(block.timestamp);
         uint64 expiresAt = fundedAt + fundingPeriodSeconds;

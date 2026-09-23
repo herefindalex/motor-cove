@@ -12,6 +12,7 @@ const sale = (priceWei: string): SaleResponse => ({
   saleId: priceWei,
   tokenId: priceWei,
   seller,
+  allowedBuyer: buyer,
   buyer: null,
   priceWei,
   fundedAt: null,
@@ -26,6 +27,35 @@ const sale = (priceWei: string): SaleResponse => ({
 afterEach(cleanup);
 
 describe('Marketplace exact price presentation', () => {
+  it('shows the reservation and prevents an outsider from funding', () => {
+    const fund = vi.fn();
+    const selected = sale('7');
+    render(
+      <MemoryRouter>
+        <Marketplace
+          sales={[selected]}
+          vehicles={[]}
+          account={`0x${'3'.repeat(40)}`}
+          actions={{
+            fund,
+            complete: vi.fn(),
+            cancel: vi.fn(),
+            expire: vi.fn(),
+            withdraw: vi.fn(),
+            reclaim: vi.fn(),
+          }}
+          provenance={null}
+          currentTimestamp={undefined}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(buyer)).toBeTruthy();
+    const button = screen.getByRole('button', { name: 'Fund exactly' });
+    expect(button.hasAttribute('disabled')).toBe(true);
+    expect(screen.getByText('Only the reserved buyer can fund this sale.')).toBeTruthy();
+    fireEvent.click(button);
+    expect(fund).not.toHaveBeenCalled();
+  });
   it('shows initial loading separately from a successfully empty result', () => {
     const { rerender } = render(
       <MemoryRouter>

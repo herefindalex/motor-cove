@@ -14,6 +14,8 @@ import type {
   ReconciliationRecord,
   ReadSnapshot,
   SaleRecord,
+  SourceAuditBlock,
+  SourceAuditEvent,
   SystemRecord,
   VehicleRecord,
 } from './types.js';
@@ -89,7 +91,9 @@ function readSystemRecord(
   const status = db
     .prepare(
       `SELECT projection_status AS projectionStatus,
-              CAST(last_observed_head AS TEXT) AS lastObservedHead,
+      CAST(last_observed_head AS TEXT) AS lastObservedHead,
+      CAST(last_eligible_head AS TEXT) AS lastEligibleHead,
+      last_head_advanced_at AS lastHeadAdvancedAt,
               last_observed_at AS lastObservedAt,last_rpc_success_at AS lastRpcSuccessAt,
               worker_heartbeat_at AS workerHeartbeatAt,recovery_reason AS recoveryReason
        FROM indexer_runtime_status WHERE deployment_id=?`,
@@ -110,11 +114,11 @@ function readSystemRecord(
         ? 'STALE'
         : 'FRESH';
   const lagBlocks =
-    observationFreshness !== 'FRESH' || status.lastObservedHead === null
+    observationFreshness !== 'FRESH' || status.lastEligibleHead === null
       ? null
       : String(
-          BigInt(status.lastObservedHead) > BigInt(provenance.indexedBlockNumber)
-            ? BigInt(status.lastObservedHead) - BigInt(provenance.indexedBlockNumber)
+          BigInt(status.lastEligibleHead) > BigInt(provenance.indexedBlockNumber)
+            ? BigInt(status.lastEligibleHead) - BigInt(provenance.indexedBlockNumber)
             : 0n,
         );
   return {
@@ -195,7 +199,8 @@ export async function createReadOnlyReader(
 
     const snapshot = <T>(query: () => T): ReadSnapshot<T> =>
       db.transaction(() => ({ data: query(), provenance: readProvenance(db, deploymentId) }))();
-    const selectSales = `SELECT s.sale_id AS saleId,s.token_id AS tokenId,s.seller,s.buyer,
+    const selectSales = `SELECT s.sale_id AS saleId,s.token_id AS tokenId,s.seller,
+    s.allowed_buyer AS allowedBuyer,s.buyer,
       s.price_wei AS priceWei,CAST(s.funded_at AS TEXT) AS fundedAt,
       CAST(s.expires_at AS TEXT) AS expiresAt,s.status,s.token_reclaimed AS tokenReclaimed,
       p.beneficiary AS claimBeneficiary,p.amount_wei AS claimAmountWei,p.kind AS claimKind,
@@ -209,6 +214,7 @@ export async function createReadOnlyReader(
       saleId: row.saleId,
       tokenId: row.tokenId,
       seller: row.seller,
+      allowedBuyer: row.allowedBuyer,
       buyer: row.buyer,
       priceWei: row.priceWei,
       fundedAt: row.fundedAt,
@@ -439,6 +445,50 @@ export async function createReadOnlyReader(
               scanComplete: row.scanComplete === 1,
               eventName: decoded.kind ?? 'Unknown',
               decoded,
+            };
+          });
+        }),
+      sourceAuditRange: (fromBlock, toBlock) =>
+        snapshot(() => {
+          if (!/^\d+$/.test(fromBlock) || !/^\d+$/.test(toBlock))
+            throw new Error('SOURCE_AUDIT_RANGE_INVALID');
+          const from = BigInt(fromBlock);
+          const to = BigInt(toBlock);
+          if (from > to || to > BigInt(Number.MAX_SAFE_INTEGER))
+            throw new Error('SOURCE_AUDIT_RANGE_INVALID');
+          if (to - from > 1_000n) throw new Error('SOURCE_AUDIT_RANGE_TOO_LARGE');
+          const blocks = db
+            .prepare(
+              `SELECT CAST(block_number AS TEXT) AS blockNumber,block_hash AS blockHash,
+              parent_hash AS parentHash,scan_complete AS scanComplete,
+              log_scope_hash AS logScopeHash,observed_log_count AS observedLogCount,
+              observed_log_digest AS observedLogDigest
+             FROM indexed_blocks
+             WHERE deployment_id=? AND is_canonical=1 AND block_number BETWEEN ? AND ?
+             ORDER BY block_number`,
+            )
+            .all(deploymentId, Number(from), Number(to)) as Array<
+            Omit<SourceAuditBlock, 'scanComplete' | 'events'> & { scanComplete: number }
+          >;
+          const eventsForBlock = db.prepare(
+            `SELECT CAST(block_number AS TEXT) AS blockNumber,block_hash AS blockHash,
+            tx_hash AS transactionHash,transaction_index AS transactionIndex,
+            log_index AS logIndex,contract_address AS contractAddress,
+            topics_json AS topicsJson,data
+           FROM chain_events WHERE deployment_id=? AND block_hash=?
+           ORDER BY transaction_index,log_index`,
+          );
+          return blocks.map((block): SourceAuditBlock => {
+            const events = eventsForBlock.all(deploymentId, block.blockHash) as Array<
+              Omit<SourceAuditEvent, 'topics'> & { topicsJson: string }
+            >;
+            return {
+              ...block,
+              scanComplete: block.scanComplete === 1,
+              events: events.map(({ topicsJson, ...event }) => ({
+                ...event,
+                topics: JSON.parse(topicsJson) as string[],
+              })),
             };
           });
         }),

@@ -1,7 +1,10 @@
+import { chainProfileForId, type ChainProfile } from '@motorcove/chain-artifacts/profiles';
 import type { BlockHeader } from '../ports/index.js';
+import { readProjectionTarget } from './finality-target.js';
 
 export interface ReindexTargetReader {
   getHead(): Promise<BlockHeader>;
+  getFinalizedHead?(): Promise<BlockHeader>;
   getBlock(number: bigint): Promise<BlockHeader>;
 }
 
@@ -20,11 +23,11 @@ export interface ReindexOperationRecovery {
 export async function resolveEligibleReindexTarget(
   chain: ReindexTargetReader,
   indexingDepth: bigint,
+  profile: ChainProfile = chainProfileForId(31337),
 ): Promise<BlockHeader | null> {
-  if (indexingDepth < 0n) throw new Error('INDEXING_DEPTH_INVALID');
-  const head = await chain.getHead();
-  if (head.number < indexingDepth) return null;
-  const targetNumber = head.number - indexingDepth;
+  const observation = await readProjectionTarget(chain, profile, indexingDepth);
+  if (!observation.eligibleHead) return null;
+  const targetNumber = observation.eligibleHead.number;
   const first = await chain.getBlock(targetNumber);
   const confirmation = await chain.getBlock(targetNumber);
   if (first.hash !== confirmation.hash || first.number !== confirmation.number)
@@ -37,6 +40,7 @@ export async function resolveReindexOperationRecovery(
   indexingDepth: bigint,
   fromBlock: bigint,
   existing?: ReindexResumeMarker,
+  profile: ChainProfile = chainProfileForId(31337),
 ): Promise<ReindexOperationRecovery> {
   if (existing) {
     if (
@@ -63,7 +67,7 @@ export async function resolveReindexOperationRecovery(
     };
   }
 
-  const target = await resolveEligibleReindexTarget(chain, indexingDepth);
+  const target = await resolveEligibleReindexTarget(chain, indexingDepth, profile);
   if (!target) throw new Error('REINDEX_TARGET_NOT_AVAILABLE');
   return {
     reindexFromBlock: fromBlock.toString(),

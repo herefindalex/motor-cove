@@ -133,6 +133,7 @@ describe('Indexer store', () => {
         saleId: '1',
         tokenId: '1',
         seller,
+        allowedBuyer: buyer,
         priceWei: '1000000000000000000',
       }),
       event(second, 0, {
@@ -281,6 +282,7 @@ describe('Indexer store', () => {
       saleId: '1',
       tokenId: '1',
       seller,
+      allowedBuyer: buyer,
       priceWei: '1',
     });
     const writer = await openProjectionWriter(paths);
@@ -317,6 +319,7 @@ describe('Indexer store', () => {
           saleId: '1',
           tokenId: '1',
           seller,
+          allowedBuyer: buyer,
           priceWei: '100',
         }),
       ],
@@ -358,6 +361,7 @@ describe('Indexer store', () => {
           saleId: '1',
           tokenId: '1',
           seller,
+          allowedBuyer: buyer,
           priceWei: '100',
         }),
       ],
@@ -371,6 +375,7 @@ describe('Indexer store', () => {
           saleId: '1',
           tokenId: '1',
           seller,
+          allowedBuyer: buyer,
           priceWei: '999',
         }),
         deploymentId,
@@ -394,6 +399,7 @@ describe('Indexer store', () => {
       saleId: '1',
       tokenId: '1',
       seller,
+      allowedBuyer: buyer,
       priceWei: '100',
     });
     const writer = await openProjectionWriter(paths);
@@ -432,6 +438,7 @@ describe('Indexer store', () => {
       saleId: '1',
       tokenId: '1',
       seller,
+      allowedBuyer: buyer,
       priceWei: '100',
     });
     const writer = await openProjectionWriter(paths);
@@ -460,6 +467,7 @@ describe('Indexer store', () => {
       saleId: '1',
       tokenId: '1',
       seller,
+      allowedBuyer: buyer,
       priceWei: '100',
     });
     const writer = await openProjectionWriter(paths);
@@ -512,7 +520,7 @@ describe('Indexer store', () => {
           'SELECT projector_version AS projectorVersion FROM indexer_checkpoint WHERE deployment_id=?',
         )
         .get(deploymentId),
-    ).toEqual({ projectorVersion: '1' });
+    ).toEqual({ projectorVersion: '2' });
     await writer.close();
   });
 
@@ -580,6 +588,7 @@ describe('Indexer store', () => {
       saleId: '1',
       tokenId: '1',
       seller,
+      allowedBuyer: buyer,
       priceWei: '100',
     });
     const writer = await openProjectionWriter(paths);
@@ -620,6 +629,7 @@ describe('Indexer store', () => {
       saleId: '1',
       tokenId: '1',
       seller,
+      allowedBuyer: buyer,
       priceWei: '100',
     });
     const writer = await openProjectionWriter(paths);

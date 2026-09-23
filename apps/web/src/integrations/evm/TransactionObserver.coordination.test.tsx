@@ -169,6 +169,7 @@ describe('TransactionObserver coordination', () => {
       expect.objectContaining({ revision: 2, verificationRequestId: 'latest-generation' }),
       expect.anything(),
       undefined,
+      'AUTOMATIC',
     );
   });
 
@@ -200,6 +201,7 @@ describe('TransactionObserver coordination', () => {
       expect.anything(),
       expect.anything(),
       alternativeHash,
+      'MANUAL',
     );
   });
 });

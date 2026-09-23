@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
 const rpcUrl = 'http://127.0.0.1:19545';
@@ -11,6 +11,12 @@ async function anvilRpc(request: APIRequestContext, method: string, params: unkn
   const body = (await response.json()) as { result?: unknown; error?: { message: string } };
   if (body.error) throw new Error(`${method}: ${body.error.message}`);
   return body.result;
+}
+
+async function reserveBuyer(page: Page, asset: Locator): Promise<void> {
+  const accounts = (await anvilRpc(page.request, 'eth_accounts')) as string[];
+  if (!accounts[2]) throw new Error('LOCAL_BUYER_UNAVAILABLE');
+  await asset.getByPlaceholder('0x…').fill(accounts[2]);
 }
 
 function approvalReadRequest(payload: unknown): boolean {
@@ -221,9 +227,17 @@ test('lists, expires, refunds, and reclaims through distinct real transactions',
     page.getByText(/Transaction submitted\. Check the timeline for its latest status\./),
   ).toBeVisible();
   await expect(asset.getByText('Approved on-chain')).toBeVisible();
+  await reserveBuyer(page, asset);
   await asset.getByRole('button', { name: 'Create sale' }).click();
   const card = page.locator('.card').filter({ hasText: 'Harbor RS' });
   await expect(card.getByText('LISTED')).toBeVisible();
+  await page.evaluate(async () =>
+    (
+      window as unknown as { __motorCoveTestWallet: { select(index: number): Promise<void> } }
+    ).__motorCoveTestWallet.select(3),
+  );
+  await expect(card.getByRole('button', { name: 'Fund exactly' })).toBeDisabled();
+  await expect(card.getByText('Only the reserved buyer can fund this sale.')).toBeVisible();
   await page.evaluate(async () =>
     (
       window as unknown as { __motorCoveTestWallet: { select(index: number): Promise<void> } }
@@ -332,6 +346,7 @@ test('surfaces network and rejection states, then recovers a lost wallet respons
     page.getByText(/Transaction submitted\. Check the timeline for its latest status\./),
   ).toBeVisible();
   await expect(asset.getByText('Approved on-chain')).toBeVisible();
+  await reserveBuyer(page, asset);
   await asset.getByRole('button', { name: 'Create sale' }).click();
   const card = page.locator('.card').filter({ hasText: 'Cinder XR' });
   await expect(card.getByText('LISTED')).toBeVisible();
@@ -520,6 +535,7 @@ test('keeps pending and included evidence across reload while projection catches
     page.getByText(/Transaction submitted\. Check the timeline for its latest status\./),
   ).toBeVisible();
   await expect(asset.getByText('Approved on-chain')).toBeVisible();
+  await reserveBuyer(page, asset);
   await asset.getByRole('button', { name: 'Create sale' }).click();
   const card = page.locator('.card').filter({ hasText: 'Vale Touring' });
   await expect(card.getByText('LISTED')).toBeVisible();
@@ -889,6 +905,7 @@ test('keeps listing gated through wallet, pending, and included approval stages'
 
     releaseApprovalReads();
     await expect(asset.getByText('Approved on-chain')).toBeVisible();
+    await reserveBuyer(page, asset);
     await expect(create).toBeEnabled();
     await anvilRpc(request, 'anvil_setAutomine', [true]);
     await create.click();

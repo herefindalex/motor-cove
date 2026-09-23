@@ -95,6 +95,7 @@ describe('same-history reindex', () => {
         saleId: '1',
         tokenId: '1',
         seller,
+        allowedBuyer: buyer,
         priceWei: '1000000000000000000',
       }),
       event(second, 0, {

@@ -41,7 +41,7 @@ export function paths() {
 
 export function logScopeHash(manifest: DeploymentManifest): `0x${string}` {
   const scope = JSON.stringify({
-    version: 'motorcove-v1',
+    version: 'motorcove-v2',
     deploymentId: manifest.deploymentId.toLowerCase(),
     scanStartBlock: manifest.scanStartBlock,
     addresses: [manifest.nft.address.toLowerCase(), manifest.escrow.address.toLowerCase()].sort(),

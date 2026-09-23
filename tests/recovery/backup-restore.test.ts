@@ -172,6 +172,39 @@ describe('backup, restore, recovery', () => {
     ).toEqual({ name: 'WAL row' });
     snapshot.close();
   });
+  it('preserves the reserved buyer separately from the funding buyer across backup and restore', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const allowedBuyer = `0x${'a'.repeat(40)}`;
+    const otherBuyer = `0x${'b'.repeat(40)}`;
+    const before = new Database(paths.databasePath);
+    before
+      .prepare(
+        `INSERT INTO sales
+          (deployment_id, sale_id, collection_address, token_id, seller, allowed_buyer,
+           buyer, price_wei, status, created_block, updated_block,
+           last_event_block_hash, last_event_log_index)
+         VALUES (?, '1', ?, '1', ?, ?, NULL, '100', 'LISTED', 1, 1, ?, 0)`,
+      )
+      .run(hashes.deployment, hashes.address, hashes.address, allowedBuyer, hashes.block);
+    before.close();
+
+    writeBootstrapEvidence(paths);
+    const backup = await backupEnvironment(paths);
+    const changed = new Database(paths.databasePath);
+    changed.prepare(`UPDATE sales SET allowed_buyer = ? WHERE sale_id = '1'`).run(otherBuyer);
+    changed.close();
+
+    await restoreEnvironment(paths, backup.backupId, true);
+    const restored = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
+    expect(
+      restored
+        .prepare(`SELECT allowed_buyer AS allowedBuyer, buyer FROM sales WHERE sale_id = '1'`)
+        .get(),
+    ).toEqual({ allowedBuyer, buyer: null });
+    restored.close();
+  });
+
   it('DB-48 rejects a corrupted backup without changing active data', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);

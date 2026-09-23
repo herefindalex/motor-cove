@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./manifest": "./src/manifest.ts"
+    "./manifest": "./src/manifest.ts",
+    "./profiles": "./src/chain-profile.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

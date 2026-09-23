@@ -25,3 +25,7 @@ RPC 的历史状态可能不可用。在这种情况下报告 `UNVERIFIABLE`；�
 ## 不可用的最新头部观察
 
 如果在检查点可用后最新磁头读取失败，该命令仍将当前尝试保留为 `UNVERIFIABLE` 和 `HEAD_UNKNOWN`，记录 RPC 原因，并以非零值退出。它不会重复使用以前的报告或标题作为新运行的证据。打开或写入数据库失败仍然是外部命令失败，因为在这种情况下不能保证持久的报告。
+
+## 独立 finalized 来源审计
+
+`pnpm ops:audit-source -- --from <block> --to <block> --secondary-rpc-url <url>` 只读比对本地保留的区块／log 证据与独立配置的次要 RPC。范围必须符合所选链 profile 的 finalized 边界。命令返回 `MATCH`、`MISMATCH` 或 `UNVERIFIABLE`；非匹配结果以非零码退出。将次要来源视为独立证据前，须核对 chain ID、部署与运行时合约代码身份。审计不修复投影，也不发送交易。本项目验证只使用 loopback 或模拟服务商；未宣称执行公网 RPC 审计。

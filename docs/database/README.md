@@ -53,3 +53,12 @@ A physical schema change starts with a new migration and reviewed schema contrac
 ownership or recovery change updates `databaseModel` and the human lifecycle pages in the same
 delivery. Never edit an applied migration or the generated reference to make documentation agree
 with an unreviewed database.
+
+## Public-chain readiness fields
+
+Migration `0003_public_chain_readiness` adds nullable `sales.allowed_buyer` and runtime
+`last_eligible_head`/`last_head_advanced_at`. Historical sales remain `NULL`: their reservation
+cannot be inferred from a prior contract event. The runtime fields distinguish the last observed
+head from the projection's eligible finalized boundary and when that head advanced. A database
+migration does not upgrade an existing non-upgradeable escrow deployment; a new contract deployment
+and matching manifest are required for reserved-buyer semantics.
