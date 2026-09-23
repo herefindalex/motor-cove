@@ -20,7 +20,19 @@ export async function openProjectionWriter(
   try {
     if (existsSync(paths.maintenancePath)) throw new Error('MAINTENANCE_INCOMPLETE');
     const database = openProjectionDatabase(paths.databasePath);
-    verifyDatabase(database);
+    try {
+      verifyDatabase(database);
+      const recovery = database
+        .prepare(
+          'SELECT recovery_reason AS reason FROM indexer_runtime_status WHERE projection_status=? LIMIT 1',
+        )
+        .get('RECOVERY_REQUIRED') as { reason: string | null } | undefined;
+      if (recovery)
+        throw new Error(`PROJECTION_RECOVERY_REQUIRED: ${recovery.reason ?? 'UNKNOWN'}`);
+    } catch (error) {
+      database.close();
+      throw error;
+    }
     return {
       database,
       async close() {

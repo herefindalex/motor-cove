@@ -27,7 +27,7 @@ import {
   verifyBackup,
 } from '@motorcove/database/maintenance';
 import { environmentPaths } from '@motorcove/database/environment';
-import { databaseFixture, hashes } from '../helpers/database.js';
+import { databaseFixture, hashes, writeBootstrapEvidence } from '../helpers/database.js';
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -60,8 +60,7 @@ describe('backup, restore, recovery', () => {
   it('rejects a legacy backup whose recorded bootstrap sidecars are incomplete', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);
-    writeFileSync(paths.seedJournalPath, '{"state":"verified"}\n');
-    writeFileSync(paths.bootstrapReceiptPath, '{"generation":"a"}\n');
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
     unlinkSync(resolve(backup.path, 'bootstrap-receipt.json'));
     const manifestPath = resolve(backup.path, 'backup-manifest.json');
@@ -79,10 +78,9 @@ describe('backup, restore, recovery', () => {
   it('rejects restore when bootstrap sidecars advanced after the snapshot', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);
-    writeFileSync(paths.seedJournalPath, '{"state":"verified"}\n');
-    writeFileSync(paths.bootstrapReceiptPath, '{"generation":"a"}\n');
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
-    writeFileSync(paths.bootstrapReceiptPath, '{"generation":"b"}\n');
+    writeBootstrapEvidence(paths, '2026-09-23T01:00:00.000Z');
     const entriesBefore = readdirSync(paths.environmentDir).sort();
 
     await expect(restoreEnvironment(paths, backup.backupId, true)).rejects.toThrow(
@@ -100,6 +98,7 @@ describe('backup, restore, recovery', () => {
   it('rejects restore while bootstrap owns the environment lifecycle', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
     const ownership = await acquireBootstrapOwnership(paths);
     try {
@@ -155,6 +154,7 @@ describe('backup, restore, recovery', () => {
         `INSERT INTO catalog_vehicles VALUES ('wal','WAL row','committed','M','2026','/wal.svg','MANUAL',NULL,NULL,'x','x')`,
       )
       .run();
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
     expect(backup.manifest).toMatchObject({
       migrationCount: backup.verification.historyCount,
@@ -175,6 +175,7 @@ describe('backup, restore, recovery', () => {
   it('DB-48 rejects a corrupted backup without changing active data', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
     writeFileSync(resolve(backup.path, 'database.sqlite'), 'corrupt');
     await expect(restoreEnvironment(paths, backup.backupId, true)).rejects.toThrow(
@@ -290,6 +291,7 @@ describe('backup, restore, recovery', () => {
     database.prepare('DELETE FROM indexer_checkpoint').run();
     database.close();
 
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
 
     expect(backup.manifest).toMatchObject({
@@ -338,6 +340,7 @@ describe('backup, restore, recovery', () => {
       )
       .run();
     before.close();
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
     const changed = new Database(paths.databasePath);
     changed.prepare(`UPDATE catalog_vehicles SET name='After' WHERE catalog_id='kept'`).run();
@@ -361,6 +364,7 @@ describe('backup, restore, recovery', () => {
       )
       .run();
     original.close();
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
     const active = new Database(paths.databasePath);
     active.prepare(`UPDATE catalog_vehicles SET name='ACTIVE' WHERE catalog_id='toctou'`).run();
@@ -396,6 +400,7 @@ describe('backup, restore, recovery', () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);
     writeFileSync(paths.deploymentPath, `${JSON.stringify({ deploymentId: hashes.deployment })}\n`);
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
     const otherDeployment = `0x${'f'.repeat(64)}`;
     const current = new Database(paths.databasePath);
@@ -423,6 +428,7 @@ describe('backup, restore, recovery', () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);
     writeFileSync(paths.deploymentPath, `${JSON.stringify({ deploymentId: hashes.deployment })}\n`);
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
     writeFileSync(
       resolve(backup.path, 'deployment.json'),
@@ -438,6 +444,7 @@ describe('backup, restore, recovery', () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);
     writeFileSync(paths.deploymentPath, `${JSON.stringify({ deploymentId: hashes.deployment })}\n`);
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
     rmSync(resolve(backup.path, 'deployment.json'));
 
@@ -470,6 +477,7 @@ describe('backup, restore, recovery', () => {
   it('rejects restore when the active deployment manifest is missing before quarantine', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
     unlinkSync(paths.deploymentPath);
 
@@ -517,6 +525,7 @@ describe('backup, restore, recovery', () => {
       )
       .run();
     original.close();
+    writeBootstrapEvidence(paths);
     const backup = await backupEnvironment(paths);
 
     const ready = resolve(root, 'hot-wal-ready');

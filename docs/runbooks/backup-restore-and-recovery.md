@@ -122,3 +122,12 @@ deployed environment.
 Restore does not install sidecars, reset Anvil, deploy contracts, or replay seed transactions. Moving
 an entire environment requires a separate, explicit workflow; database restore is for the same
 deployment identity and may be followed by normal Indexer catch-up.
+
+## Bootstrap receipt evidence
+
+A standard snapshot of a deployed environment requires the paired seed journal and a parseable,
+identity-bound bootstrap receipt. Backup validates the copied receipt before publication, and backup
+verification checks its schema and identity again even when the recorded checksum matches. A
+missing or malformed receipt is not repaired by editing the backup or copying a receipt from another
+deployment. Resolve the incomplete bootstrap through its owned workflow before taking a standard
+backup.

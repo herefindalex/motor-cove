@@ -11,8 +11,8 @@ const state = vi.hoisted(() => ({
   readContract: vi.fn(),
 }));
 
-vi.mock('@motorcove/database/projection-writer', () => ({
-  openProjectionWriter: async () => ({
+vi.mock('@motorcove/database/maintenance', () => ({
+  openReconciliationDatabase: async () => ({
     database: state.database,
     close: async () => {
       state.closeCalls += 1;

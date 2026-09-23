@@ -15,6 +15,37 @@ export const hashes = {
   address: `0x${'8'.repeat(40)}`,
   escrow: `0x${'9'.repeat(40)}`,
 };
+
+export function writeBootstrapEvidence(
+  paths: ReturnType<typeof environmentPaths>,
+  completedAt = '2026-09-23T00:00:00.000Z',
+): void {
+  writeFileSync(
+    paths.seedJournalPath,
+    `${JSON.stringify({
+      formatVersion: 1,
+      environmentId: paths.environmentId,
+      chainId: 31_337,
+      account: hashes.address,
+      deploymentId: hashes.deployment,
+      createdAt: completedAt,
+      updatedAt: completedAt,
+      steps: {},
+    })}\n`,
+  );
+  writeFileSync(
+    paths.bootstrapReceiptPath,
+    `${JSON.stringify({
+      formatVersion: 1,
+      environmentId: paths.environmentId,
+      deploymentId: hashes.deployment,
+      targetBlock: '1',
+      targetHash: hashes.block,
+      projectionBuildId: 'build-test',
+      completedAt,
+    })}\n`,
+  );
+}
 export async function databaseFixture(environmentId = 'test') {
   const root = mkdtempSync(join(tmpdir(), 'motorcove-db-'));
   const paths = environmentPaths(root, environmentId);

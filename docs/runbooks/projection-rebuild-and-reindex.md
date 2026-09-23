@@ -119,3 +119,13 @@ The marker's `projectionPhase` determines safe recovery:
 `REINDEX_CATCHUP_NO_PROGRESS` means the adapter returned successfully but did not advance durable
 state. Keep the marker, inspect the checkpoint and provider response, then resume only after correcting
 the cause. Do not clear the marker or start a new target to bypass this error.
+
+## Persisted recovery reasons
+
+Do not use rebuild to clear a canonical or source integrity reason such as a checkpoint hash change,
+parent discontinuity, log block-hash mismatch, or checkpoint above the eligible indexing target.
+The maintenance command rejects that operation before changing its marker. Use the explicit reindex
+path. Projector-only integrity may use rebuild after the local raw source passes verification. A
+failed reindex keeps its marker and recovery requirement; resume the matching operation rather than
+starting the runtime writer. A completed fixed reindex target enters `SYNCING` until live eligible
+head observation supports `CURRENT`.

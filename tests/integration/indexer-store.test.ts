@@ -635,6 +635,31 @@ describe('Indexer store', () => {
       .prepare('UPDATE indexer_checkpoint SET projector_version=? WHERE deployment_id=?')
       .run('0', deploymentId);
     writeFileSync(paths.deploymentPath, `${JSON.stringify({ deploymentId })}\n`);
+    writeFileSync(
+      paths.seedJournalPath,
+      `${JSON.stringify({
+        formatVersion: 1,
+        environmentId: paths.environmentId,
+        chainId: 31_337,
+        account: seller,
+        deploymentId,
+        createdAt: '2026-09-23T00:00:00.000Z',
+        updatedAt: '2026-09-23T00:00:00.000Z',
+        steps: {},
+      })}\n`,
+    );
+    writeFileSync(
+      paths.bootstrapReceiptPath,
+      `${JSON.stringify({
+        formatVersion: 1,
+        environmentId: paths.environmentId,
+        deploymentId,
+        targetBlock: '1',
+        targetHash: first.hash,
+        projectionBuildId: 'build-test',
+        completedAt: '2026-09-23T00:00:00.000Z',
+      })}\n`,
+    );
     const backup = await backupEnvironment(paths, {
       locksAlreadyHeld: true,
       reason: 'test-pre-source-refresh',

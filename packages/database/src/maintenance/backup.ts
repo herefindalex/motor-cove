@@ -19,6 +19,7 @@ import {
 import { verifyOwnedEnvironment } from '../connection/environment.js';
 import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
 import { verifyKnownSourceDatabase } from './migrations.js';
+import { readBootstrapReceipt } from './immutable-sidecar.js';
 
 const fileHash = (path: string) => createHash('sha256').update(readFileSync(path)).digest('hex');
 
@@ -256,6 +257,27 @@ export async function backupEnvironment(
         existsSync(resolve(staging, 'bootstrap-receipt.json'))
     )
       throw new Error('BACKUP_INVALID: bootstrap lifecycle incomplete');
+    const bootstrapEvidencePresent =
+      snapshotDeployment.state === 'DEPLOYED' &&
+      existsSync(resolve(staging, 'bootstrap-receipt.json'));
+    if (
+      snapshotDeployment.state === 'DEPLOYED' &&
+      sourceCondition.state === 'READY' &&
+      !bootstrapEvidencePresent
+    ) {
+      throw new Error('BACKUP_INVALID: bootstrap lifecycle incomplete');
+    }
+    if (bootstrapEvidencePresent) {
+      try {
+        readBootstrapReceipt(
+          resolve(staging, 'bootstrap-receipt.json'),
+          paths.environmentId,
+          snapshotDeployment.deploymentId,
+        );
+      } catch {
+        throw new Error('BACKUP_INVALID: bootstrap receipt');
+      }
+    }
     const engineDb = new Database(':memory:');
     const sqliteEngine = engineDb.prepare('select sqlite_version() version').get();
     engineDb.close();
@@ -385,6 +407,23 @@ export function verifyBackup(paths: EnvironmentPaths, backupId: string) {
       evidence.seedJournal?.present !== evidence.bootstrapReceipt?.present
     )
       throw new Error('BACKUP_INVALID: bootstrap lifecycle incomplete');
+    if (
+      snapshotDeployment.state === 'DEPLOYED' &&
+      manifest.restorePolicy === 'STANDARD' &&
+      evidence.bootstrapReceipt?.present !== true
+    )
+      throw new Error('BACKUP_INVALID: bootstrap lifecycle incomplete');
+    if (snapshotDeployment.state === 'DEPLOYED' && evidence.bootstrapReceipt?.present === true) {
+      try {
+        readBootstrapReceipt(
+          resolve(directory, 'bootstrap-receipt.json'),
+          paths.environmentId,
+          snapshotDeployment.deploymentId,
+        );
+      } catch {
+        throw new Error('BACKUP_INVALID: bootstrap receipt');
+      }
+    }
     if (
       snapshotDeployment.state === 'PREDEPLOYMENT' &&
       Object.values(evidence).some((entry) => entry?.present === true)

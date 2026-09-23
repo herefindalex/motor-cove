@@ -85,6 +85,7 @@ const operation = await runProjectionMaintenance(config.environment, {
       {
         supportedProjectorVersions: ['0'],
         allowLogScopeChange: fromBlock === BigInt(config.manifest.scanStartBlock),
+        allowReindexRecovery: true,
       },
     );
     const resumesCatchup = maintenance.marker.projectionPhase === 'CATCHING_UP';
@@ -138,6 +139,7 @@ const operation = await runProjectionMaintenance(config.environment, {
       !store.hasCanonicalBlock(target.number, target.hash)
     )
       throw new Error('REINDEX_CATCHUP_INCOMPLETE');
+    store.completeReindexRecovery(target.number, target.hash);
     return rebuild;
   },
 });

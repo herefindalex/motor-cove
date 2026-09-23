@@ -1,10 +1,12 @@
 import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   claimManagedNode,
   migrateEnvironment,
+  parseBootstrapReceipt,
+  publishImmutableJson,
   registerDeployment,
   seedCatalog,
 } from '@motorcove/database/maintenance';
@@ -151,28 +153,26 @@ async function bootstrap(): Promise<void> {
       const sale = reader.getSale('1');
       if (vehicles.data.length !== 4 || !sale.data)
         throw new Error('BOOTSTRAP_SCENARIO_INCOMPLETE');
-      if (!existsSync(config.environment.bootstrapReceiptPath))
-        writeFileSync(
-          config.environment.bootstrapReceiptPath,
-          `${JSON.stringify(
-            {
-              formatVersion: 1,
-              environmentId: config.environment.environmentId,
-              deploymentId: manifest.deploymentId,
-              targetBlock: target.number.toString(),
-              targetHash: target.hash,
-              projectionBuildId: sale.provenance.projectionBuildId,
-              completedAt: new Date().toISOString(),
-            },
-            null,
-            2,
-          )}\n`,
-          { flag: 'wx' },
-        );
+      const receipt = publishImmutableJson(
+        config.environment.bootstrapReceiptPath,
+        {
+          formatVersion: 1 as const,
+          environmentId: config.environment.environmentId,
+          deploymentId: manifest.deploymentId,
+          targetBlock: target.number.toString(),
+          targetHash: target.hash,
+          projectionBuildId: sale.provenance.projectionBuildId,
+          completedAt: new Date().toISOString(),
+        },
+        (value) =>
+          parseBootstrapReceipt(value, config.environment.environmentId, manifest.deploymentId),
+        // A completed receipt keeps its original target and build when a later rerun observes more blocks.
+        (existing) => existing.deploymentId.toLowerCase() === manifest.deploymentId.toLowerCase(),
+      );
       return {
-        targetBlock: target.number.toString(),
-        targetHash: target.hash,
-        projectionBuildId: sale.provenance.projectionBuildId,
+        targetBlock: receipt.targetBlock,
+        targetHash: receipt.targetHash,
+        projectionBuildId: receipt.projectionBuildId,
       };
     } finally {
       await reader.close();
@@ -392,9 +392,12 @@ async function bootstrap(): Promise<void> {
     },
     demoAccounts: { deployer, seller, buyer, outsider },
   };
-  deploymentManifestSchema.parse(manifest);
-  mkdirSync(dirname(config.manifestPath), { recursive: true });
-  writeFileSync(config.manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx' });
+  publishImmutableJson(
+    config.manifestPath,
+    manifest,
+    (value) => deploymentManifestSchema.parse(value),
+    (existing, proposed) => JSON.stringify(existing) === JSON.stringify(proposed),
+  );
 
   const bootstrapResult = await completeDatabaseBootstrap(manifest);
   console.log(

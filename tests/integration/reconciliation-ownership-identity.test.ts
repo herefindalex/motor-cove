@@ -13,8 +13,8 @@ const state = vi.hoisted(() => ({
   database: undefined as unknown as Database.Database,
 }));
 
-vi.mock('@motorcove/database/projection-writer', () => ({
-  openProjectionWriter: async () => ({
+vi.mock('@motorcove/database/maintenance', () => ({
+  openReconciliationDatabase: async () => ({
     database: state.database,
     close: async () => undefined,
   }),

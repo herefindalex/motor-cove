@@ -63,3 +63,16 @@ Database acceptance IDs `DB-01` through `DB-75` are maintained in the
   head from publishing `CURRENT` and permit `CURRENT` only after live eligible convergence.
 - **REL-001:** API tests allow the one configured frontend origin and reject a different local
   hostname under the default CORS policy.
+
+## R25 recovery and bootstrap evidence coverage
+
+- **IDX-003 / IDX-004:** persisted `RECOVERY_REQUIRED` survives normal writer startup, stale/current
+  transitions, and ordinary commit attempts. Canonical/source reasons reject rebuild before marker
+  publication; reindex retains the reason through replay and releases it only after target proof.
+  Projector-only rebuild remains eligible after local source verification.
+- **DB-30 / DB-71:** receipt JSON must have the expected schema and environment/deployment identity.
+  Publication preserves a validated historical final receipt, rejects malformed or conflicting
+  finals, and leaves no temporary file after success. Standard backup and later verification both
+  validate receipt content.
+- **IDX-001:** local-only journal rebuild leaves the last successful RPC and worker heartbeat times
+  untouched, so observation freshness can remain stale despite successful projection replay.

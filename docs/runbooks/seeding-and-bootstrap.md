@@ -104,3 +104,13 @@ An environment created with contract bytecode from before this binding cannot be
 the contracts are non-upgradeable. Keep that environment for inspection or run the explicit local
 reset workflow before bootstrapping a fresh deployment. Bootstrap never resets or replaces an
 existing environment implicitly.
+
+## Bootstrap completion sidecars
+
+Bootstrap publishes `deployment.json` and `bootstrap-receipt.json` as complete immutable JSON
+sidecars: validate, write and flush an operation-unique temporary file, rename into place, and sync
+the containing directory. On resume, an existing final file must parse and match its environment
+and deployment. The receipt also validates its target block/hash, projection build ID, and completion
+time. Its target and build ID are historical completion evidence; later transactions may advance
+the chain head, and a valid rebuild may use a different current projection build. A deployed standard backup requires this receipt and the paired seed
+journal. Malformed or conflicting final content stops the operation for explicit recovery.

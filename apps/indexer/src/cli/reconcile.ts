@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { openProjectionWriter } from '@motorcove/database/projection-writer';
+import { openReconciliationDatabase } from '@motorcove/database/maintenance';
 import { motorCoveEscrowAbi, vehicleNftAbi } from '@motorcove/chain-artifacts';
 import { createPublicClient, http, type Address } from 'viem';
 import { loadConfig } from '../runtime/config.js';
@@ -8,7 +8,7 @@ const statuses = ['NONE', 'LISTED', 'FUNDED', 'COMPLETED', 'CANCELLED', 'EXPIRED
 const claimKinds = ['NONE', 'SELLER_PROCEEDS', 'BUYER_REFUND'];
 const claimStatuses = ['NONE', 'CLAIMABLE', 'WITHDRAWN'];
 const config = loadConfig();
-const writer = await openProjectionWriter(config.environment);
+const writer = await openReconciliationDatabase(config.environment);
 try {
   const db = writer.database;
   const checkpoint = db

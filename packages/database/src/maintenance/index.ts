@@ -9,6 +9,12 @@ export {
   acquireMaintenanceLocks,
 } from '../connection/flock.js';
 export { backupEnvironment, verifyBackup, verifyMaintenanceBackup } from './backup.js';
+export {
+  parseBootstrapReceipt,
+  readBootstrapReceipt,
+  publishImmutableJson,
+  type BootstrapReceipt,
+} from './immutable-sidecar.js';
 export { restoreEnvironment } from './restore.js';
 export { resetEnvironment } from './reset.js';
 export {
@@ -24,6 +30,7 @@ export {
   runProjectionMaintenance,
   type ProjectionMaintenanceOptions,
 } from './projection-operation.js';
+export { openReconciliationDatabase } from './reconciliation-database.js';
 export {
   inspectEnvironment,
   verifyDatabase,

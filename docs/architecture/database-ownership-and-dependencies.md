@@ -17,3 +17,11 @@ and compatible data. The current schema, reader, writer, API, and Indexer consum
 future schema changes must preserve that same provider-consumer gate.
 
 See [dependency rules](dependency-rules.md) and [change recipes](../onboarding/change-recipes.md).
+
+## Reconciliation diagnostic database access
+
+`@motorcove/database/maintenance` exposes `openReconciliationDatabase` for the Indexer reconciliation
+CLI only. It takes the exclusive maintenance gate, checks the owned environment and schema, and
+permits a diagnostic report while projection status is `RECOVERY_REQUIRED`. It cannot be used by
+normal ingestion or the readonly API. A maintenance marker still blocks this report writer; the
+ordinary `projection-writer` port remains closed until recovery finishes.

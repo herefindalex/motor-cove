@@ -42,6 +42,7 @@ const sourceRecordDigest = (ordered: OrderedEvent) =>
 export interface ProjectionMaintenanceOptions {
   readonly supportedProjectorVersions?: readonly string[];
   readonly allowLogScopeChange?: boolean;
+  readonly allowReindexRecovery?: boolean;
 }
 
 type SaleRow = SaleProjection & { readonly createdBlock: number };
@@ -71,6 +72,7 @@ class ProjectionCommitIntegrityError extends Error {
 
 export class SqliteProjectionStore implements ProjectionUnitOfWork {
   private readonly sourceScopeChanged: boolean;
+  private readonly allowReindexRecovery: boolean;
 
   static forMaintenance(
     db: Database.Database,
@@ -97,6 +99,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
     private readonly commitFaultHook?: (point: CommitFaultPoint) => void,
     maintenance?: ProjectionMaintenanceOptions,
   ) {
+    this.allowReindexRecovery = maintenance?.allowReindexRecovery === true;
     const checkpoint = this.db
       .prepare(
         'SELECT projector_version AS projectorVersion,log_scope_hash AS logScopeHash FROM indexer_checkpoint WHERE deployment_id=?',
@@ -153,7 +156,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
   async markStale(reason: string): Promise<void> {
     this.db
       .prepare(
-        "UPDATE indexer_runtime_status SET projection_status='STALE',recovery_reason=?,worker_heartbeat_at=? WHERE deployment_id=?",
+        "UPDATE indexer_runtime_status SET projection_status='STALE',recovery_reason=?,worker_heartbeat_at=? WHERE deployment_id=? AND projection_status<>'RECOVERY_REQUIRED'",
       )
       .run(reason, new Date().toISOString(), this.deploymentId);
   }
@@ -182,6 +185,28 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
       .run(Number(observedHead), now, now, now, this.deploymentId);
   }
 
+  completeReindexRecovery(targetNumber: bigint, targetHash: string): void {
+    if (!this.allowReindexRecovery) throw new Error('REINDEX_MAINTENANCE_REQUIRED');
+    const checkpoint = this.db
+      .prepare(
+        'SELECT last_scanned_block AS blockNumber FROM indexer_checkpoint WHERE deployment_id=?',
+      )
+      .get(this.deploymentId) as { blockNumber: number | null } | undefined;
+    if (
+      checkpoint?.blockNumber === null ||
+      checkpoint?.blockNumber === undefined ||
+      BigInt(checkpoint.blockNumber) < targetNumber ||
+      !this.hasCanonicalBlock(targetNumber, targetHash)
+    ) {
+      throw new Error('REINDEX_CATCHUP_INCOMPLETE');
+    }
+    this.db
+      .prepare(
+        "UPDATE indexer_runtime_status SET projection_status='SYNCING',recovery_reason=NULL WHERE deployment_id=?",
+      )
+      .run(this.deploymentId);
+  }
+
   async commit(
     headers: readonly BlockHeader[],
     events: readonly OrderedEvent[],
@@ -189,6 +214,14 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
   ): Promise<void> {
     this.commitFaultHook?.('BEFORE_BEGIN');
     const commit = this.db.transaction(() => {
+      const recovery = this.db
+        .prepare(
+          'SELECT projection_status AS status,recovery_reason AS reason FROM indexer_runtime_status WHERE deployment_id=?',
+        )
+        .get(this.deploymentId) as { status: string; reason: string | null } | undefined;
+      if (recovery?.status === 'RECOVERY_REQUIRED' && !this.allowReindexRecovery) {
+        throw new Error(`PROJECTION_RECOVERY_REQUIRED: ${recovery.reason ?? 'UNKNOWN'}`);
+      }
       const recanonicalizedBlocks = new Set<string>();
       for (const header of headers) {
         const blockEvents = events
@@ -292,14 +325,24 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
 
   rebuildFromJournal(): { projectionBuildId: string; events: number } {
     const projectionBuildId = randomUUID();
+    const preserveRecoveryBarrier =
+      this.allowReindexRecovery &&
+      Boolean(
+        this.db
+          .prepare(
+            "SELECT 1 FROM indexer_runtime_status WHERE deployment_id=? AND projection_status='RECOVERY_REQUIRED'",
+          )
+          .get(this.deploymentId),
+      );
     try {
       this.verifyRebuildSource();
       return this.db.transaction(() => {
-        this.db
-          .prepare(
-            "UPDATE indexer_runtime_status SET projection_status='REBUILDING',recovery_reason=NULL WHERE deployment_id=?",
-          )
-          .run(this.deploymentId);
+        if (!preserveRecoveryBarrier)
+          this.db
+            .prepare(
+              "UPDATE indexer_runtime_status SET projection_status='REBUILDING',recovery_reason=NULL WHERE deployment_id=?",
+            )
+            .run(this.deploymentId);
         this.db.prepare('DELETE FROM payment_claims WHERE deployment_id=?').run(this.deploymentId);
         this.db.prepare('DELETE FROM sales WHERE deployment_id=?').run(this.deploymentId);
         this.db.prepare('DELETE FROM token_ownership WHERE deployment_id=?').run(this.deploymentId);
@@ -351,11 +394,12 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
             new Date().toISOString(),
             this.deploymentId,
           );
-        this.db
-          .prepare(
-            "UPDATE indexer_runtime_status SET projection_status='CURRENT',worker_heartbeat_at=? WHERE deployment_id=?",
-          )
-          .run(new Date().toISOString(), this.deploymentId);
+        if (!preserveRecoveryBarrier)
+          this.db
+            .prepare(
+              "UPDATE indexer_runtime_status SET projection_status='CURRENT' WHERE deployment_id=?",
+            )
+            .run(this.deploymentId);
         return { projectionBuildId, events: rows.length };
       })();
     } catch (error) {
@@ -380,6 +424,24 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
         )
         .get(this.deploymentId, Number(number), hash.toLowerCase()),
     );
+  }
+
+  private markReindexStarted(reason: string): void {
+    this.db
+      .prepare(
+        `UPDATE indexer_runtime_status SET
+           projection_status=CASE WHEN ?=1 AND projection_status='RECOVERY_REQUIRED'
+             THEN projection_status ELSE 'REBUILD_REQUIRED' END,
+           recovery_reason=CASE WHEN ?=1 AND projection_status='RECOVERY_REQUIRED'
+             THEN recovery_reason ELSE ? END
+         WHERE deployment_id=?`,
+      )
+      .run(
+        this.allowReindexRecovery ? 1 : 0,
+        this.allowReindexRecovery ? 1 : 0,
+        reason,
+        this.deploymentId,
+      );
   }
 
   rewindFrom(blockNumber: bigint): void {
@@ -411,11 +473,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
           new Date().toISOString(),
           this.deploymentId,
         );
-      this.db
-        .prepare(
-          "UPDATE indexer_runtime_status SET projection_status='REBUILD_REQUIRED',recovery_reason='REINDEX_REQUESTED' WHERE deployment_id=?",
-        )
-        .run(this.deploymentId);
+      this.markReindexStarted('REINDEX_REQUESTED');
     })();
   }
 
@@ -447,11 +505,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
            WHERE deployment_id=?`,
         )
         .run(new Date().toISOString(), this.deploymentId);
-      this.db
-        .prepare(
-          "UPDATE indexer_runtime_status SET projection_status='REBUILD_REQUIRED',recovery_reason='SOURCE_REFRESH_REINDEX_REQUESTED' WHERE deployment_id=?",
-        )
-        .run(this.deploymentId);
+      this.markReindexStarted('SOURCE_REFRESH_REINDEX_REQUESTED');
     })();
   }
 

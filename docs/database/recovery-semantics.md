@@ -75,3 +75,19 @@ Use rebuild when verified local source evidence is complete and only derived sta
 reindex when local source completeness, canonical identity, decoder compatibility, or source digest
 cannot be trusted. Use restore for a verified compatible snapshot. Use reset only for an explicitly
 disposable owned local environment. None of these paths authorizes resubmitting a wallet operation.
+
+## Recovery status and observation time
+
+`RECOVERY_REQUIRED` is durable integrity evidence. Ordinary Indexer startup, commit, stale, and
+current transitions cannot clear it. Maintenance selects rebuild only for supported projector-only
+reasons; canonical or source suspicion requires reindex. Reindex keeps the reason through rewind,
+replay, and catch-up, then releases it to `SYNCING` only after its target anchor is verified. A
+failed operation retains its marker and recovery requirement.
+
+Reconciliation can still save a diagnostic `UNVERIFIABLE` report through its maintenance-owned
+database connection. This report path does not clear the barrier or admit ordinary Indexer writes.
+
+Local journal rebuild may change the projection build and status, but it does not advance
+`worker_heartbeat_at` or prove a fresh RPC observation. Reader freshness remains based on actual
+worker observation evidence. A deployed standard backup requires a validated bootstrap receipt
+paired with its seed journal; verification rechecks the copied receipt's identity and schema.

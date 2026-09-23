@@ -59,3 +59,23 @@ Exact commands, timestamps, environment, source fingerprint, and limitations are
 
 Remote CI evidence is added to the machine-readable verification record only after the corresponding
 commit completes; this pre-commit status does not reuse a prior commit's CI result.
+
+## R25 incremental result
+
+The persisted projection recovery barrier now blocks ordinary Indexer writer startup and commits.
+Canonical or source integrity evidence selects reindex; projector-only integrity may select rebuild
+after raw-source verification. Reindex retains its recovery reason through replay and catch-up, and
+releases it only after the canonical target proof. Reconciliation retains a maintenance-owned
+diagnostic report path while ordinary writes are blocked.
+
+Bootstrap publishes immutable sidecars through validated, flushed temporary files and atomic
+rename. A deployed standard backup requires a valid historical bootstrap receipt paired with its
+seed journal; backup verification checks receipt schema and identity again. Local-only projection
+rebuild does not renew worker heartbeat or live RPC freshness.
+
+For this pre-commit R25 workspace, `pnpm verify` passed 58 unit/component files (394 tests),
+17 integration files (73 tests), and the production build. `pnpm test:e2e` passed 8 Playwright
+scenarios on a harness-owned loopback Anvil stack. The temporary provider and filesystem fixtures
+do not constitute real wallet, public-chain, or hardware power-loss evidence. The source revision
+and fingerprint are in `docs/evidence/verification.json`; remote CI remains pending until the R25
+commit is pushed.

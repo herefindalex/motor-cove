@@ -109,3 +109,12 @@ If ingestion reports success without advancing the checkpoint, reindex stops wit
 `REINDEX_CATCHUP_NO_PROGRESS`. A process restart in `CATCHING_UP` rebuilds the derived projection from
 the retained source journal and continues from that checkpoint; it does not rewind the source again or
 move the captured target.
+
+## R25 recovery barrier
+
+A persisted `RECOVERY_REQUIRED` reason stops normal writer startup and cannot be replaced by an
+ordinary transport-stale or current transition. Rebuild is eligible for verified local source and a
+projector-only integrity reason. Confirmed canonical or source suspicion requires reindex. A reindex
+keeps that reason while its maintenance marker owns rewind, replay, and catch-up; the verified target
+releases the reason to `SYNCING`. The next live poll determines `CURRENT`. Local rebuild does not
+renew the worker heartbeat or the last successful RPC observation time.

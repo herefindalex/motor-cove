@@ -95,6 +95,7 @@ export async function runProjectionMaintenance<T>(
   const locks = await acquireMaintenanceLocks(paths);
   let database: Database.Database | undefined;
   let currentMarker: MaintenanceMarker | undefined;
+  let recoveryBarrierReason: string | null | undefined;
   try {
     const existing = existingMarker(paths.maintenancePath);
     const transition = existing
@@ -113,6 +114,26 @@ export async function runProjectionMaintenance<T>(
     )
       throw new Error('MAINTENANCE_INCOMPLETE');
     if (existing && !transition) assertMarkerRecovery(existing, recovery);
+    const policyDatabase = openProjectionDatabase(paths.databasePath);
+    try {
+      const persisted = policyDatabase
+        .prepare(
+          'SELECT projection_status AS status,recovery_reason AS reason FROM indexer_runtime_status WHERE deployment_id=?',
+        )
+        .get(options.expectedDeploymentId) as { status: string; reason: string | null } | undefined;
+      if (persisted?.status === 'RECOVERY_REQUIRED') {
+        recoveryBarrierReason = persisted.reason;
+      }
+      if (
+        persisted?.status === 'RECOVERY_REQUIRED' &&
+        options.operationType === 'REBUILD_PROJECTION' &&
+        persisted.reason !== 'PROJECTOR_INTEGRITY'
+      ) {
+        throw new Error(`RECOVERY_OPERATION_NOT_ALLOWED: ${persisted.reason ?? 'UNKNOWN'}`);
+      }
+    } finally {
+      policyDatabase.close();
+    }
     const operationId = transition ? randomUUID() : (existing?.operationId ?? randomUUID());
     const transitionEvidence: Partial<MaintenanceMarker> =
       transition && existing
@@ -172,11 +193,32 @@ export async function runProjectionMaintenance<T>(
       },
     };
     const result = await options.run(database, context);
+    if (recoveryBarrierReason !== undefined) {
+      const finalStatus = database
+        .prepare(
+          'SELECT projection_status AS status,recovery_reason AS reason FROM indexer_runtime_status WHERE deployment_id=?',
+        )
+        .get(options.expectedDeploymentId) as { status: string; reason: string | null } | undefined;
+      if (
+        !finalStatus ||
+        !['CURRENT', 'SYNCING'].includes(finalStatus.status) ||
+        finalStatus.reason !== null
+      ) {
+        throw new Error('RECOVERY_POSTCONDITION_INCOMPLETE');
+      }
+    }
     database.close();
     database = undefined;
     clearMaintenanceMarker(paths.maintenancePath);
     return { operationId, result };
   } catch (error) {
+    if (database && recoveryBarrierReason !== undefined) {
+      database
+        .prepare(
+          "UPDATE indexer_runtime_status SET projection_status='RECOVERY_REQUIRED',recovery_reason=? WHERE deployment_id=? AND projection_status<>'RECOVERY_REQUIRED'",
+        )
+        .run(recoveryBarrierReason, options.expectedDeploymentId);
+    }
     if (currentMarker && existsSync(paths.maintenancePath))
       writeMaintenanceMarker(paths.maintenancePath, {
         ...currentMarker,

@@ -149,7 +149,7 @@
     {
       "id": "CAP-10",
       "name": "Event-driven backend",
-      "behavior": "Observes headers before requesting logs by exact block hash, orders events, applies pure projectors, and atomically advances source and checkpoint state. Verifies bound raw and decoded source evidence before rebuild and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse their verified captured target and durable catch-up checkpoint without repeating the source rewind. Source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert. Reconciliation refreshes the latest head after anchored comparison so publication freshness cannot reuse a stale pre-comparison sample. A checkpoint above the current indexing-depth eligible target fails closed until explicit reindex convergence. Live CURRENT requires convergence to the current depth-adjusted eligible target, not merely a fixed maintenance target.",
+      "behavior": "Observes headers before requesting logs by exact block hash, orders events, applies pure projectors, and atomically advances source and checkpoint state. Verifies bound raw and decoded source evidence before rebuild and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse their verified captured target and durable catch-up checkpoint without repeating the source rewind. Source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert. Reconciliation refreshes the latest head after anchored comparison so publication freshness cannot reuse a stale pre-comparison sample. A checkpoint above the current indexing-depth eligible target fails closed until explicit reindex convergence. Live CURRENT requires convergence to the current depth-adjusted eligible target, not merely a fixed maintenance target. Persisted recovery-required evidence blocks ordinary writes; maintenance reindex releases it only after target proof.",
       "implementation": "implemented",
       "code": [
         "apps/indexer/src/application/ingest-range.ts",
@@ -164,7 +164,9 @@
         "tests/integration/reconciliation-head-failure.test.ts",
         "docs/adr/0022-bootstrap-snapshots-and-reconciliation-publication.md",
         "docs/adr/0023-reset-intent-and-indexing-depth-convergence.md",
-        "tests/integration/indexer-currentness.r24.test.ts"
+        "tests/integration/indexer-currentness.r24.test.ts",
+        "tests/integration/recovery-required-barrier.r25.test.ts",
+        "apps/indexer/src/cli/reindex.ts"
       ],
       "scenarios": [
         "IDX-001",
@@ -182,14 +184,17 @@
         "RUN-INTEGRATION",
         "RUN-R24-FOCUSED",
         "RUN-R24-VERIFY",
-        "RUN-R24-E2E"
+        "RUN-R24-E2E",
+        "RUN-R25-FOCUSED",
+        "RUN-R25-VERIFY",
+        "RUN-R25-E2E"
       ],
       "limits": "Automatic recovery across arbitrary canonical branch changes remains outside scope; incomplete rebuild source requires explicit reindex."
     },
     {
       "id": "CAP-11",
       "name": "Database lifecycle",
-      "behavior": "Uses native Drizzle history, bundle-bound resumable migration markers, verified pre-migration backup proof, fresh-only environment ownership, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, explicit deployed or predeployment backup identity, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership. Recovery completion acquires maintenance ownership and rereads the current operation marker before choosing or mutating recovery state. Marker updates use unique temporary files so unpublished crash residue cannot strand a matching resume. Backup records source readiness and projection evidence; maintenance archives are evidence-only and normal restore accepts only ready snapshots. Standard snapshots share bootstrap lifecycle ownership, restore owns it exclusively, and database-only restore rejects incomplete or changed bootstrap sidecars before quarantine. Reset persists intent before chain mutation and recovers only from explicit reset phase evidence. The database model classifies authority and recovery semantics for every migrated table, while documentation generation executes current migrations and rejects physical/model/reference drift.",
+      "behavior": "Uses native Drizzle history, bundle-bound resumable migration markers, verified pre-migration backup proof, fresh-only environment ownership, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, explicit deployed or predeployment backup identity, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership. Recovery completion acquires maintenance ownership and rereads the current operation marker before choosing or mutating recovery state. Marker updates use unique temporary files so unpublished crash residue cannot strand a matching resume. Backup records source readiness and projection evidence; maintenance archives are evidence-only and normal restore accepts only ready snapshots. Standard snapshots share bootstrap lifecycle ownership, restore owns it exclusively, and database-only restore rejects incomplete or changed bootstrap sidecars before quarantine. Reset persists intent before chain mutation and recovers only from explicit reset phase evidence. The database model classifies authority and recovery semantics for every migrated table, while documentation generation executes current migrations and rejects physical/model/reference drift. Standard deployed backups validate immutable bootstrap receipt schema and identity before publication and during verification.",
       "implementation": "partial",
       "code": [
         "packages/database",
@@ -214,7 +219,9 @@
         "packages/database/src/model.ts",
         "tooling/docs/generate-database.ts",
         "docs/database/README.md",
-        "docs/adr/0025-filesystem-transaction-and-restore-evidence.md"
+        "docs/adr/0025-filesystem-transaction-and-restore-evidence.md",
+        "tests/recovery/bootstrap-evidence.r25.test.ts",
+        "packages/database/src/maintenance/immutable-sidecar.ts"
       ],
       "scenarios": [
         "DB-01",
@@ -270,7 +277,10 @@
         "RUN-INTEGRATION",
         "RUN-MANAGED-NODE-OWNERSHIP",
         "RUN-DB-DOCUMENTATION",
-        "RUN-R23-FOCUSED"
+        "RUN-R23-FOCUSED",
+        "RUN-R25-FOCUSED",
+        "RUN-R25-VERIFY",
+        "RUN-R25-E2E"
       ],
       "limits": "A real process kill in the broadcast-to-hash persistence window and other listed database fault-injection cases remain incomplete."
     },
@@ -299,7 +309,7 @@
     {
       "id": "CAP-13",
       "name": "Failure diagnosis and recovery",
-      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, alternative-hash read-only recovery, per-event canonical source evidence, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands. Seed persistence and reconciliation head failures preserve explicit recoverable or unverifiable evidence. Reconciliation preserves NFT collection identity, and source maintenance archives contradictory evidence before reacquisition. Transaction recovery rejects saved, configured, RPC-chain, or on-chain deployment identity mismatch before transaction lookup and preserves tab-local verification evidence when durable storage writes fail. Published maintenance markers remain authoritative across temporary-file crashes, and restore refuses archives captured during unfinished maintenance. Backup and restore preserve one bootstrap generation, while reconciliation distinguishes anchored comparison from publication-time head freshness.",
+      "behavior": "Exposes projection status, action-wide receipt evidence, funding-specific projection proof, alternative-hash read-only recovery, per-event canonical source evidence, cross-tab journal serialization, anchored reconciliation, and operation-specific recovery commands. Seed persistence and reconciliation head failures preserve explicit recoverable or unverifiable evidence. Reconciliation preserves NFT collection identity, and source maintenance archives contradictory evidence before reacquisition. Transaction recovery rejects saved, configured, RPC-chain, or on-chain deployment identity mismatch before transaction lookup and preserves tab-local verification evidence when durable storage writes fail. Published maintenance markers remain authoritative across temporary-file crashes, and restore refuses archives captured during unfinished maintenance. Backup and restore preserve one bootstrap generation, while reconciliation distinguishes anchored comparison from publication-time head freshness. Local-only rebuild does not renew live RPC observation timestamps.",
       "implementation": "partial",
       "code": [
         "apps/web/src/pages/InspectorPage.tsx",
@@ -315,7 +325,9 @@
         "docs/adr/0018-in-flight-intent-and-source-identity.md",
         "docs/adr/0019-maintenance-marker-and-snapshot-readiness.md",
         "tests/integration/reconciliation-head-failure.test.ts",
-        "docs/adr/0022-bootstrap-snapshots-and-reconciliation-publication.md"
+        "docs/adr/0022-bootstrap-snapshots-and-reconciliation-publication.md",
+        "tests/integration/rebuild-freshness.r25.test.ts",
+        "packages/database/src/maintenance/reconciliation-database.ts"
       ],
       "scenarios": [
         "TX-001",
@@ -346,7 +358,10 @@
         "RUN-INTEGRATION",
         "RUN-DB-RECOVERY",
         "RUN-MANAGED-NODE-OWNERSHIP",
-        "RUN-E2E"
+        "RUN-E2E",
+        "RUN-R25-FOCUSED",
+        "RUN-R25-VERIFY",
+        "RUN-R25-E2E"
       ],
       "limits": "Hardware power loss, cross-device journal recovery, and some filesystem fault cases remain unverified."
     },
