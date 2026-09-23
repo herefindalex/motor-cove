@@ -17,31 +17,41 @@ export function resolveAssetApprovalStates(
   const states = new Map<string, ApprovalState>();
   for (const tokenId of tokenIds) {
     const chainState = chainApprovals.get(tokenId) ?? 'checking';
-    const latestApproval = entries
-      .filter(
-        (entry) =>
-          entry.action === 'APPROVE_TOKEN' &&
-          entry.tokenId === tokenId &&
-          entry.deploymentId === deploymentId &&
-          entry.account.toLowerCase() === account?.toLowerCase(),
-      )
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
-    const unknown =
-      latestApproval &&
-      ['UNKNOWN', 'ORPHANED', 'REPLACED_OR_CANCELLED'].includes(latestApproval.status);
+    const matchingApprovals = entries.filter(
+      (entry) =>
+        entry.action === 'APPROVE_TOKEN' &&
+        entry.tokenId === tokenId &&
+        entry.deploymentId === deploymentId &&
+        entry.account.toLowerCase() === account?.toLowerCase(),
+    );
+    // An independent attempt has no monotonic ordering relative to another one.
+    // A terminal entry must never hide an unresolved approval attempt.
+    const unresolvedStatus = (
+      [
+        'UNKNOWN',
+        'ORPHANED',
+        'REPLACED_OR_CANCELLED',
+        'INCLUDED_SUCCESS',
+        'SUBMITTED',
+        'AWAITING_WALLET',
+        'PREPARING',
+      ] as const
+    ).find((status) => matchingApprovals.some((entry) => entry.status === status));
     states.set(
       tokenId,
       chainState === 'approved'
         ? 'approved'
-        : latestApproval?.status === 'PREPARING'
+        : unresolvedStatus === 'PREPARING'
           ? 'preparing'
-          : latestApproval?.status === 'AWAITING_WALLET'
+          : unresolvedStatus === 'AWAITING_WALLET'
             ? 'awaiting-wallet'
-            : latestApproval?.status === 'SUBMITTED'
+            : unresolvedStatus === 'SUBMITTED'
               ? 'pending'
-              : unknown
+              : unresolvedStatus === 'UNKNOWN' ||
+                  unresolvedStatus === 'ORPHANED' ||
+                  unresolvedStatus === 'REPLACED_OR_CANCELLED'
                 ? 'unknown'
-                : latestApproval?.status === 'INCLUDED_SUCCESS' && chainState === 'checking'
+                : unresolvedStatus === 'INCLUDED_SUCCESS'
                   ? 'included'
                   : chainState,
     );

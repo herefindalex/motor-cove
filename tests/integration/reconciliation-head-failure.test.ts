@@ -59,6 +59,7 @@ function databaseFixture() {
     CREATE TABLE reconciliation_runs(
       id TEXT PRIMARY KEY,
       deployment_id TEXT,
+      run_sequence INTEGER,
       comparison TEXT,
       freshness TEXT,
       block_number INTEGER,
@@ -101,10 +102,11 @@ function databaseFixture() {
     .prepare('INSERT INTO indexer_checkpoint VALUES (?,?,?,?,?,?)')
     .run(deploymentId, 5, blockHash, '1', 'fixture-build', blockHash);
   database
-    .prepare('INSERT INTO reconciliation_runs VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+    .prepare('INSERT INTO reconciliation_runs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
     .run(
       'prior-match',
       deploymentId,
+      1,
       'MATCH',
       'CURRENT',
       5,

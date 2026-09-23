@@ -40,12 +40,13 @@ describe('API with the real SQLite reader', () => {
       const db = new Database(paths.databasePath);
       db.prepare(
         `INSERT INTO reconciliation_runs(
-          id,deployment_id,comparison,freshness,block_number,block_hash,projector_version,
+        id,deployment_id,run_sequence,comparison,freshness,block_number,block_hash,projector_version,
           projection_build_id,log_scope_hash,scope_json,differences_json,created_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       ).run(
         `report-${comparison}`,
         hashes.deployment,
+        1,
         comparison,
         'CURRENT',
         1,

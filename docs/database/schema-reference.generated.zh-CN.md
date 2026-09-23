@@ -7,9 +7,9 @@
 ## 模式合约
 
 - 合约版本：`1`
-- 迁移包摘要：`499e8645adc299e7ccf58cc3dd2bc2c6eb7b61a09127f41d58e4eb6a9004aa12`
-- 架构指纹：`55da2994016edf47d7184d0c705a744b201b40927b4f6d58d5495ea7c6061790`
-- 架构源摘要：`b581099c00964620f99ee6b88f1b55ed749bf22b5d389a73acd82a9b18700c9f`
+- 迁移包摘要：`f8e66eb86ab23d0d723ce0137bb07b7f004f0764e968db57efa2ef1075e311cd`
+- 架构指纹：`d1e8b464adc8e505e654a0f16b6519bc370d126a5808bcb088a80726706c442d`
+- 架构源摘要：`566b94074412bb9090debbeddc96f6b83dd92cfca44d49e7801f59c6789331e8`
 - 所需的投影器版本：`1`
 - 存储库管理的表：13
 
@@ -505,41 +505,44 @@ CREATE TABLE `payment_claims` (
 
 ## `reconciliation_runs`
 
-### 专栏
+### 列
 
-| 名称                  | 声明类型  | 必填 | 默认 | 主键位置 |
-| --------------------- | --------- | ---- | ---- | -------- |
-| `id`                  | `TEXT`    | 是的 | —    | 1        |
-| `deployment_id`       | `TEXT`    | 是的 | —    | —        |
-| `comparison`          | `TEXT`    | 是的 | —    | —        |
-| `freshness`           | `TEXT`    | 是的 | —    | —        |
-| `block_number`        | `INTEGER` | 不   | —    | —        |
-| `block_hash`          | `TEXT`    | 不   | —    | —        |
-| `projector_version`   | `TEXT`    | 是的 | —    | —        |
-| `projection_build_id` | `TEXT`    | 是的 | —    | —        |
-| `log_scope_hash`      | `TEXT`    | 是的 | —    | —        |
-| `scope_json`          | `TEXT`    | 是的 | —    | —        |
-| `differences_json`    | `TEXT`    | 是的 | —    | —        |
-| `created_at`          | `TEXT`    | 是的 | —    | —        |
+| Name                  | Declared type | Required | Default | Primary-key position |
+| --------------------- | ------------- | -------- | ------- | -------------------- |
+| `id`                  | `TEXT`        | yes      | —       | 1                    |
+| `deployment_id`       | `TEXT`        | yes      | —       | —                    |
+| `run_sequence`        | `INTEGER`     | yes      | —       | —                    |
+| `comparison`          | `TEXT`        | yes      | —       | —                    |
+| `freshness`           | `TEXT`        | yes      | —       | —                    |
+| `block_number`        | `INTEGER`     | no       | —       | —                    |
+| `block_hash`          | `TEXT`        | no       | —       | —                    |
+| `projector_version`   | `TEXT`        | yes      | —       | —                    |
+| `projection_build_id` | `TEXT`        | yes      | —       | —                    |
+| `log_scope_hash`      | `TEXT`        | yes      | —       | —                    |
+| `scope_json`          | `TEXT`        | yes      | —       | —                    |
+| `differences_json`    | `TEXT`        | yes      | —       | —                    |
+| `created_at`          | `TEXT`        | yes      | —       | —                    |
 
 ### 外键
 
-| 来自            | 参考文献                    | 更新时      | 删除时      |
+| From            | References                  | On update   | On delete   |
 | --------------- | --------------------------- | ----------- | ----------- |
 | `deployment_id` | `deployments.deployment_id` | `NO ACTION` | `NO ACTION` |
 
 ### 索引
 
-| 名称                                     | 专栏 | 独特 | 部分 | 产地 |
-| ---------------------------------------- | ---- | ---- | ---- | ---- |
-| `sqlite_autoindex_reconciliation_runs_1` | `id` | 是的 | 不   | `pk` |
+| Name                                        | Columns                         | Unique | Partial | Origin |
+| ------------------------------------------- | ------------------------------- | ------ | ------- | ------ |
+| `reconciliation_deployment_sequence_unique` | `deployment_id`, `run_sequence` | yes    | no      | `c`    |
+| `sqlite_autoindex_reconciliation_runs_1`    | `id`                            | yes    | no      | `pk`   |
 
 ### 执行表定义
 
 ```sql
-CREATE TABLE `reconciliation_runs` (
+CREATE TABLE "reconciliation_runs" (
 	`id` text PRIMARY KEY NOT NULL,
 	`deployment_id` text NOT NULL,
+	`run_sequence` integer NOT NULL,
 	`comparison` text NOT NULL,
 	`freshness` text NOT NULL,
 	`block_number` integer,
@@ -551,6 +554,7 @@ CREATE TABLE `reconciliation_runs` (
 	`differences_json` text NOT NULL,
 	`created_at` text NOT NULL,
 	FOREIGN KEY (`deployment_id`) REFERENCES `deployments`(`deployment_id`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "reconciliation_run_sequence_positive" CHECK("reconciliation_runs"."run_sequence" > 0),
 	CONSTRAINT "reconciliation_comparison_check" CHECK("reconciliation_runs"."comparison" IN ('MATCH','MISMATCH','UNVERIFIABLE')),
 	CONSTRAINT "reconciliation_freshness_check" CHECK("reconciliation_runs"."freshness" IN ('CURRENT','PROJECTION_LAGGING','HEAD_UNKNOWN'))
 )

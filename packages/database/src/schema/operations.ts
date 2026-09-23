@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { check, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { deployments } from './deployments.js';
 import { hexLength, safeInteger } from './shared.js';
 
@@ -76,6 +76,7 @@ export const reconciliationRuns = sqliteTable(
     deploymentId: text('deployment_id')
       .notNull()
       .references(() => deployments.deploymentId),
+    runSequence: integer('run_sequence').notNull(),
     comparison: text('comparison').notNull(),
     freshness: text('freshness').notNull(),
     blockNumber: integer('block_number'),
@@ -88,6 +89,8 @@ export const reconciliationRuns = sqliteTable(
     createdAt: text('created_at').notNull(),
   },
   (t) => [
+    uniqueIndex('reconciliation_deployment_sequence_unique').on(t.deploymentId, t.runSequence),
+    check('reconciliation_run_sequence_positive', sql`${t.runSequence} > 0`),
     check(
       'reconciliation_comparison_check',
       sql`${t.comparison} IN ('MATCH','MISMATCH','UNVERIFIABLE')`,

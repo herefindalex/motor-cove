@@ -19,21 +19,23 @@
 
 ## 表和字段含義
 
-| 表                       | 現有時間或位置字段                                               | 解讀                                                                                                       |
-| ------------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `__drizzle_migrations`   | `created_at`                                                     | 本地遷移分類帳寫入時間。有序遷移哈希和模式契約建立有效性。                                                 |
-| `db_contract`            | `verified_at`                                                    | 遷移完成發布了經過驗證的架構合約。只讀驗證不推進；新的值無法彌補錯誤的指紋。                               |
-| `deployments`            | `registered_at`;部署區塊/哈希字段                                | 本地註冊時間與綁定鏈身分的NFT和託管部署區塊不同。                                                          |
-| `catalog_vehicles`       | `created_at`, `updated_at`                                       | 本地目錄寫入。目錄權威來源來自核准的種子/輸入，而不是時鐘。                                                |
-| `catalog_asset_bindings` | 沒有掛鐘柱                                                       | 部署、集合、令牌和目錄身分定義了綁定。鏈重播無法重新建立目錄意圖。                                         |
-| `indexed_blocks`         | `block_timestamp`;數字/哈希/父哈希                               | 標頭提供鏈時間和分支標識。 `is_canonical` 並掃描證據確定該行是否屬於目前分支。                             |
-| `chain_events`           | `first_seen_at`;區塊/哈希/交易/日誌位置                          | 首次當地目擊事件為觀察時間；區塊和日誌身分錨定事件。保留下來的孤兒證據並不會僅僅隨著時間的推移而成為規範。 |
-| `indexer_checkpoint`     | `updated_at`; `last_scanned_block`/`last_scanned_hash`           | 本地原子遊標更新及其鏈錨。時間戳記無法建立最新的live head。                                                |
-| `sales`                  | `funded_at`、`expires_at`；建立/更新區塊和最後事件哈希           | 合約業務時間和規範事件來源。訂購銷售轉換不需要本地行更新時間戳記。                                         |
-| `payment_claims`         | 創建/撤回區塊哈希和日誌索引                                      | 規範聲明事件對狀態進行排序；缺少本地時間戳並不意味著該聲明是永恆的。                                       |
-| `token_ownership`        | `updated_block`，最後傳輸區塊雜湊/日誌索引                       | 最後反映的規範轉移，與歷史銷售買家身分分開。                                                               |
-| `indexer_runtime_status` | `worker_heartbeat_at`, `last_rpc_success_at`, `last_observed_at` | 三個不同的主張：工人活躍度、RPC 成功以及觀察到的工作時間。當地重建不得更新它們。                           |
-| `reconciliation_runs`    | `created_at`;比較區塊/雜湊和記錄頭                               | 歷史發佈時間和固定比較錨點。該報告永遠不會繼承後來的檢查點或範圍。                                         |
+| 表                       | 現有時間或位置字段                                               | 解讀                                                                                                                       |
+| ------------------------ | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `__drizzle_migrations`   | `created_at`                                                     | 本地遷移分類帳寫入時間。有序遷移哈希和模式契約建立有效性。                                                                 |
+| `db_contract`            | `verified_at`                                                    | 遷移完成發布了經過驗證的架構合約。只讀驗證不推進；新的值無法彌補錯誤的指紋。                                               |
+| `deployments`            | `registered_at`;部署區塊/哈希字段                                | 本地註冊時間與綁定鏈身分的NFT和託管部署區塊不同。                                                                          |
+| `catalog_vehicles`       | `created_at`, `updated_at`                                       | 本地目錄寫入。目錄權威來源來自核准的種子/輸入，而不是時鐘。                                                                |
+| `catalog_asset_bindings` | 沒有掛鐘柱                                                       | 部署、集合、令牌和目錄身分定義了綁定。鏈重播無法重新建立目錄意圖。                                                         |
+| `indexed_blocks`         | `block_timestamp`;數字/哈希/父哈希                               | 標頭提供鏈時間和分支標識。 `is_canonical` 並掃描證據確定該行是否屬於目前分支。                                             |
+| `chain_events`           | `first_seen_at`;區塊/哈希/交易/日誌位置                          | 首次當地目擊事件為觀察時間；區塊和日誌身分錨定事件。保留下來的孤兒證據並不會僅僅隨著時間的推移而成為規範。                 |
+| `indexer_checkpoint`     | `updated_at`; `last_scanned_block`/`last_scanned_hash`           | 本地原子遊標更新及其鏈錨。時間戳記無法建立最新的live head。                                                                |
+| `sales`                  | `funded_at`、`expires_at`；建立/更新區塊和最後事件哈希           | 合約業務時間和規範事件來源。訂購銷售轉換不需要本地行更新時間戳記。                                                         |
+| `payment_claims`         | 創建/撤回區塊哈希和日誌索引                                      | 規範聲明事件對狀態進行排序；缺少本地時間戳並不意味著該聲明是永恆的。                                                       |
+| `token_ownership`        | `updated_block`，最後傳輸區塊雜湊/日誌索引                       | 最後反映的規範轉移，與歷史銷售買家身分分開。                                                                               |
+| `indexer_runtime_status` | `worker_heartbeat_at`, `last_rpc_success_at`, `last_observed_at` | 三個不同的主張：工人活躍度、RPC 成功以及觀察到的工作時間。當地重建不得更新它們。                                           |
+| `reconciliation_runs`    | `created_at`；`run_sequence`；比對區塊／雜湊與記錄的鏈頭         | `run_sequence` 是同一部署內的發布順序。`created_at` 只表示人類可讀的發布時間，不能用來選最新報告；錨點與範圍仍屬歷史證據。 |
+
+Migration `0002_reconciliation_sequence` 依同一部署內可取得的 SQLite 資料列順序，為舊報告一次性補上序號。舊版 schema 沒有獨立記錄發布順序，先前的資料庫重寫也可能改變 rowid，因此這只是舊資料的最佳可得依據。新報告在對帳 maintenance ownership 下以交易方式配置 `run_sequence`；reader 依序號選最新報告。
 
 ## 新鮮感和復原力
 

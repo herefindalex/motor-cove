@@ -98,6 +98,7 @@ function databaseFixture(rows: OwnershipRow[]) {
     CREATE TABLE reconciliation_runs(
       id TEXT PRIMARY KEY,
       deployment_id TEXT,
+      run_sequence INTEGER,
       comparison TEXT,
       freshness TEXT,
       block_number INTEGER,

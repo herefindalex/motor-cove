@@ -5,9 +5,9 @@
 ## Schema contract
 
 - Contract version: `1`
-- Migration bundle digest: `499e8645adc299e7ccf58cc3dd2bc2c6eb7b61a09127f41d58e4eb6a9004aa12`
-- Schema fingerprint: `55da2994016edf47d7184d0c705a744b201b40927b4f6d58d5495ea7c6061790`
-- Schema source digest: `b581099c00964620f99ee6b88f1b55ed749bf22b5d389a73acd82a9b18700c9f`
+- Migration bundle digest: `f8e66eb86ab23d0d723ce0137bb07b7f004f0764e968db57efa2ef1075e311cd`
+- Schema fingerprint: `d1e8b464adc8e505e654a0f16b6519bc370d126a5808bcb088a80726706c442d`
+- Schema source digest: `566b94074412bb9090debbeddc96f6b83dd92cfca44d49e7801f59c6789331e8`
 - Required projector version: `1`
 - Repository-managed tables: 13
 
@@ -509,6 +509,7 @@ CREATE TABLE `payment_claims` (
 | --------------------- | ------------- | -------- | ------- | -------------------- |
 | `id`                  | `TEXT`        | yes      | —       | 1                    |
 | `deployment_id`       | `TEXT`        | yes      | —       | —                    |
+| `run_sequence`        | `INTEGER`     | yes      | —       | —                    |
 | `comparison`          | `TEXT`        | yes      | —       | —                    |
 | `freshness`           | `TEXT`        | yes      | —       | —                    |
 | `block_number`        | `INTEGER`     | no       | —       | —                    |
@@ -528,16 +529,18 @@ CREATE TABLE `payment_claims` (
 
 ### Indexes
 
-| Name                                     | Columns | Unique | Partial | Origin |
-| ---------------------------------------- | ------- | ------ | ------- | ------ |
-| `sqlite_autoindex_reconciliation_runs_1` | `id`    | yes    | no      | `pk`   |
+| Name                                        | Columns                         | Unique | Partial | Origin |
+| ------------------------------------------- | ------------------------------- | ------ | ------- | ------ |
+| `reconciliation_deployment_sequence_unique` | `deployment_id`, `run_sequence` | yes    | no      | `c`    |
+| `sqlite_autoindex_reconciliation_runs_1`    | `id`                            | yes    | no      | `pk`   |
 
 ### Executed table definition
 
 ```sql
-CREATE TABLE `reconciliation_runs` (
+CREATE TABLE "reconciliation_runs" (
 	`id` text PRIMARY KEY NOT NULL,
 	`deployment_id` text NOT NULL,
+	`run_sequence` integer NOT NULL,
 	`comparison` text NOT NULL,
 	`freshness` text NOT NULL,
 	`block_number` integer,
@@ -549,6 +552,7 @@ CREATE TABLE `reconciliation_runs` (
 	`differences_json` text NOT NULL,
 	`created_at` text NOT NULL,
 	FOREIGN KEY (`deployment_id`) REFERENCES `deployments`(`deployment_id`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "reconciliation_run_sequence_positive" CHECK("reconciliation_runs"."run_sequence" > 0),
 	CONSTRAINT "reconciliation_comparison_check" CHECK("reconciliation_runs"."comparison" IN ('MATCH','MISMATCH','UNVERIFIABLE')),
 	CONSTRAINT "reconciliation_freshness_check" CHECK("reconciliation_runs"."freshness" IN ('CURRENT','PROJECTION_LAGGING','HEAD_UNKNOWN'))
 )

@@ -52,7 +52,7 @@ describe('asset approval presentation', () => {
     ).toBe('unknown');
   });
 
-  it('requires the chain read after inclusion and ignores other deployment evidence', () => {
+  it('keeps inclusion gated until chain approval is confirmed and ignores other deployments', () => {
     const entries = [
       entry('INCLUDED_SUCCESS'),
       entry('SUBMITTED', { deploymentId: `0x${'9'.repeat(64)}` }),
@@ -74,7 +74,7 @@ describe('asset approval presentation', () => {
         deploymentId,
         account,
       ).get('1'),
-    ).toBe('not-approved');
+    ).toBe('included');
     expect(
       resolveAssetApprovalStates(
         ['1'],
@@ -86,10 +86,9 @@ describe('asset approval presentation', () => {
     ).toBe('approved');
   });
 
-  it('does not use another account or older attempt to claim the current one is pending', () => {
+  it('does not use another account to claim the current approval is pending', () => {
     const entries = [
       entry('SUBMITTED', { account: `0x${'8'.repeat(40)}` }),
-      entry('SUBMITTED', { updatedAt: '2026-09-20T00:00:00.000Z' }),
       entry('REJECTED', { updatedAt: '2026-09-22T00:00:01.000Z' }),
     ];
     expect(

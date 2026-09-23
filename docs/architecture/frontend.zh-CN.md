@@ -65,3 +65,7 @@ sequenceDiagram
 `apps/web/src/features/trading/model/amount.test.ts` 涵盖纯金额规则。 `TransactionTimeline.test.tsx` 使用 React 测试库涵盖渲染的钱包拒绝语义。 `WalletPanel.test.tsx` 涵盖了缺失的提供者和连接器选择渲染。 `tests/e2e/marketplace.spec.ts` 使用环回演示连接器进行正常结算，并使用受控 EIP-1193 提供程序进行重新加载、帐户/网络更改和过时/追赶行为。 `tests/e2e/journal-multitab.spec.ts` 使用两个 Chromium 页面来验证操作范围的观察所有权、钱包工作之前的相同意图提交排除、所有者关闭切换，以及在所有权挂起时不相关的操作和日志写入仍然可用。手动 MetaMask 行为尚未被记录。
 
 看 [钱包和网络流量](../flows/wallet-and-network.zh-CN.md), [交易生命周期](../protocol/transaction-lifecycle.zh-CN.md)， 和 [依赖规则](dependency-rules.zh-CN.md).
+
+## 公共链读取的部署身份
+
+核准权限与合约时间，必须先确认公共 RPC 的 chain ID 及 escrow `deploymentId()` 与当前 API 配置一致，才会显示为已验证的链上状态。核准读取共用捕获时的区块高度；若观察期间该区块被替换，就拒绝结果。身份验证失败时，核准状态为不可用，合约时间为未知。这项读取侧检查与钱包请求前的独立验证并行。

@@ -38,7 +38,7 @@ export function SaleDetailPage() {
   const wallet = useWalletState(Number(config.data?.chainId ?? 31337));
   const journal = useTransactionJournal();
   const gateway = useEscrowGateway(config.data, journal);
-  const currentTimestamp = useChainTime(config.data?.deploymentId);
+  const currentTimestamp = useChainTime(config.data);
   const [submissionResult, setSubmissionResult] = useState<SubmissionResult>();
   const [submissionError, setSubmissionError] = useState<string>();
   const account = wallet.state.kind === 'connected' ? wallet.state.account : undefined;

@@ -409,8 +409,9 @@ export const databaseModel = {
     backupRequirement: 'PREFER',
     reorgSemantics:
       'A report remains tied to its historical anchors and never inherits current canonicality.',
-    lifecycle: 'Append-only report publication after the comparison result is fully determined.',
-    identity: 'id; each report also binds deployment and comparison anchor',
+    lifecycle:
+      'Append-only report publication after comparison result is fully determined; run_sequence is allocated transactionally under reconciliation maintenance ownership.',
+    identity: 'id; deployment_id plus run_sequence orders reports for that deployment',
     restoreRequirement:
       'Preserve each historical report with its original scope, block/hash, and projection build.',
     temporalSemantics: [
@@ -425,7 +426,8 @@ export const databaseModel = {
         meaning: 'Chain anchor against which this report compared projections.',
       },
     ],
-    temporalNote: 'A report never inherits a later checkpoint, scope, or chain head.',
+    temporalNote:
+      'created_at is human publication time; run_sequence, not wall time, selects the latest report. A report never inherits a later checkpoint, scope, or chain head.',
   },
 } as const satisfies Record<string, DatabaseTableModel>;
 

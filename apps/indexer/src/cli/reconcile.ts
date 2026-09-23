@@ -31,6 +31,7 @@ try {
   let head: Awaited<ReturnType<typeof client.getBlock>> | undefined;
   let comparison: 'MATCH' | 'MISMATCH' | 'UNVERIFIABLE' = 'MATCH';
   const differences: Array<Record<string, unknown>> = [];
+  const hasKnownMismatch = () => differences.some((difference) => !('error' in difference));
   let lastSaleId: string | null = null;
   let lastTokenId: string | null = null;
   let paymentClaimsScope: {
@@ -66,7 +67,7 @@ try {
     });
     if (saleCount > BigInt(Number.MAX_SAFE_INTEGER))
       throw new Error('RECONCILIATION_SCOPE_TOO_LARGE');
-    lastSaleId = String(saleCount);
+    lastSaleId = saleCount === 0n ? null : String(saleCount);
     paymentClaimsScope = {
       firstSaleId: saleCount === 0n ? null : '1',
       lastSaleId,
@@ -84,7 +85,23 @@ try {
           chain: 'PRESENT',
         });
     }
+    // Classify impossible local rows before any per-sale RPC read can fail.
+    const canonicalProjectedSales: typeof sales = [];
     for (const projected of sales) {
+      const saleId = BigInt(String(projected.saleId));
+      if (saleId < 1n || saleId > saleCount) {
+        differences.push({
+          saleId: String(saleId),
+          field: 'sale',
+          difference: 'EXTRA_PROJECTED_ROW',
+          projected,
+          chain: null,
+        });
+      } else {
+        canonicalProjectedSales.push(projected);
+      }
+    }
+    for (const projected of canonicalProjectedSales) {
       const saleId = BigInt(String(projected.saleId));
       const chainSale = await client.readContract({
         address: config.manifest.escrow.address as Address,
@@ -231,9 +248,9 @@ try {
     }
     const after = await client.getBlock({ blockNumber });
     if (after.hash !== checkpoint.blockHash) throw new Error('ANCHOR_CHANGED_DURING_READ');
-    if (differences.length) comparison = 'MISMATCH';
+    if (hasKnownMismatch()) comparison = 'MISMATCH';
   } catch (error) {
-    comparison = 'UNVERIFIABLE';
+    comparison = hasKnownMismatch() ? 'MISMATCH' : 'UNVERIFIABLE';
     differences.push({ error: error instanceof Error ? error.message : String(error) });
   }
   let publicationHead = head;
@@ -242,7 +259,7 @@ try {
       publicationHead = await client.getBlock();
     } catch (error) {
       publicationHead = undefined;
-      comparison = 'UNVERIFIABLE';
+      comparison = hasKnownMismatch() ? 'MISMATCH' : 'UNVERIFIABLE';
       differences.push({ error: error instanceof Error ? error.message : String(error) });
     }
   }
@@ -262,29 +279,39 @@ try {
     projectionBuildId: checkpoint.projectionBuildId,
     logScopeHash: checkpoint.logScopeHash,
     scope: {
-      sales: { firstSaleId: '1', lastSaleId },
+      sales: { firstSaleId: lastSaleId === null ? null : '1', lastSaleId },
       paymentClaims: paymentClaimsScope,
       tokenOwnership: { firstTokenId: '1', lastTokenId },
     },
     differences,
     createdAt: new Date().toISOString(),
   };
-  db.prepare(
-    'INSERT INTO reconciliation_runs(id,deployment_id,comparison,freshness,block_number,block_hash,projector_version,projection_build_id,log_scope_hash,scope_json,differences_json,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-  ).run(
-    report.id,
-    report.deploymentId,
-    report.comparison,
-    report.freshness,
-    report.blockNumber,
-    report.blockHash,
-    report.projectorVersion,
-    report.projectionBuildId,
-    report.logScopeHash,
-    JSON.stringify(report.scope),
-    JSON.stringify(report.differences),
-    report.createdAt,
-  );
+  db.transaction(() => {
+    const previous = db
+      .prepare(
+        'SELECT MAX(run_sequence) AS runSequence FROM reconciliation_runs WHERE deployment_id=?',
+      )
+      .get(report.deploymentId) as { runSequence: number | null };
+    const runSequence = (previous.runSequence ?? 0) + 1;
+    if (!Number.isSafeInteger(runSequence)) throw new Error('RECONCILIATION_SEQUENCE_EXHAUSTED');
+    db.prepare(
+      'INSERT INTO reconciliation_runs(id,deployment_id,run_sequence,comparison,freshness,block_number,block_hash,projector_version,projection_build_id,log_scope_hash,scope_json,differences_json,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    ).run(
+      report.id,
+      report.deploymentId,
+      runSequence,
+      report.comparison,
+      report.freshness,
+      report.blockNumber,
+      report.blockHash,
+      report.projectorVersion,
+      report.projectionBuildId,
+      report.logScopeHash,
+      JSON.stringify(report.scope),
+      JSON.stringify(report.differences),
+      report.createdAt,
+    );
+  })();
   console.log(JSON.stringify(report));
   if (comparison !== 'MATCH') process.exitCode = 1;
 } finally {

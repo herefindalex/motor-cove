@@ -26,7 +26,7 @@ export function HomePage() {
     refetchInterval: 2_000,
   });
   const deploymentId = configQuery.data?.deploymentId;
-  const chainTime = useChainTime(deploymentId);
+  const chainTime = useChainTime(configQuery.data);
   const salesQuery = useQuery({
     queryKey: ['sales', deploymentId],
     queryFn: () => motorCoveApi.sales(deploymentId ?? ''),

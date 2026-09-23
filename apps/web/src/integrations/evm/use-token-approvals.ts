@@ -2,6 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { vehicleNftAbi } from '@motorcove/chain-artifacts';
 import type { PublicConfig } from '@motorcove/api-contracts';
 import { usePublicClient } from 'wagmi';
+import {
+  assertPublicBlockUnchanged,
+  readPublicDeploymentBlock,
+} from './public-deployment-block.js';
 
 export type ChainApprovalState =
   | 'checking'
@@ -33,12 +37,11 @@ export function useTokenApprovals(
     refetchInterval: 2_000,
     queryFn: async () => {
       if (!client || !config || !account) throw new Error('APPROVAL_CONTEXT_UNAVAILABLE');
-      if ((await client.getChainId()) !== Number(config.chainId))
-        throw new Error('APPROVAL_CHAIN_MISMATCH');
+      const block = await readPublicDeploymentBlock(client, config);
 
       const nft = config.nftAddress as `0x${string}`;
       const escrow = config.escrowAddress.toLowerCase();
-      return new Map(
+      const approvals = new Map(
         await Promise.all(
           tokenIds.map(async (tokenId) => {
             const [owner, approvedAddress, operatorApproved] = await Promise.all([
@@ -47,18 +50,21 @@ export function useTokenApprovals(
                 abi: vehicleNftAbi,
                 functionName: 'ownerOf',
                 args: [BigInt(tokenId)],
+                blockNumber: block.number,
               }),
               client.readContract({
                 address: nft,
                 abi: vehicleNftAbi,
                 functionName: 'getApproved',
                 args: [BigInt(tokenId)],
+                blockNumber: block.number,
               }),
               client.readContract({
                 address: nft,
                 abi: vehicleNftAbi,
                 functionName: 'isApprovedForAll',
                 args: [account, config.escrowAddress as `0x${string}`],
+                blockNumber: block.number,
               }),
             ]);
             const state: ChainApprovalState =
@@ -71,6 +77,8 @@ export function useTokenApprovals(
           }),
         ),
       );
+      await assertPublicBlockUnchanged(client, config, block);
+      return approvals;
     },
   });
 
