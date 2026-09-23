@@ -29,14 +29,50 @@ import {
   verifyKnownSourceDatabase,
   verifyBackup,
 } from '@motorcove/database/maintenance';
-import { databaseFixture } from '../helpers/database.js';
+import { databaseFixture, hashes } from '../helpers/database.js';
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
+function removeReconciliationSequence(db: Database.Database): void {
+  db.exec(`
+    PRAGMA foreign_keys=OFF;
+    CREATE TABLE __prior_reconciliation_runs (
+      id TEXT PRIMARY KEY NOT NULL,
+      deployment_id TEXT NOT NULL,
+      comparison TEXT NOT NULL,
+      freshness TEXT NOT NULL,
+      block_number INTEGER,
+      block_hash TEXT,
+      projector_version TEXT NOT NULL,
+      projection_build_id TEXT NOT NULL,
+      log_scope_hash TEXT NOT NULL,
+      scope_json TEXT NOT NULL,
+      differences_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (deployment_id) REFERENCES deployments(deployment_id) ON UPDATE no action ON DELETE no action,
+      CONSTRAINT reconciliation_comparison_check CHECK(comparison IN ('MATCH','MISMATCH','UNVERIFIABLE')),
+      CONSTRAINT reconciliation_freshness_check CHECK(freshness IN ('CURRENT','PROJECTION_LAGGING','HEAD_UNKNOWN'))
+    );
+    INSERT INTO __prior_reconciliation_runs
+      (id,deployment_id,comparison,freshness,block_number,block_hash,projector_version,
+       projection_build_id,log_scope_hash,scope_json,differences_json,created_at)
+    SELECT id,deployment_id,comparison,freshness,block_number,block_hash,projector_version,
+           projection_build_id,log_scope_hash,scope_json,differences_json,created_at
+    FROM reconciliation_runs ORDER BY rowid;
+    DROP TABLE reconciliation_runs;
+    ALTER TABLE __prior_reconciliation_runs RENAME TO reconciliation_runs;
+    PRAGMA foreign_keys=ON;
+  `);
+  db.prepare(
+    'DELETE FROM __drizzle_migrations WHERE created_at=(SELECT MAX(created_at) FROM __drizzle_migrations)',
+  ).run();
+}
+
 function downgradeToFirstMigration(databasePath: string): void {
   const db = new Database(databasePath);
+  removeReconciliationSequence(db);
   db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
   db.prepare(
     'DELETE FROM __drizzle_migrations WHERE created_at=(SELECT MAX(created_at) FROM __drizzle_migrations)',
@@ -102,6 +138,7 @@ describe('native migration path', () => {
       null,
       '2026-09-21T00:00:00.000Z',
     );
+    removeReconciliationSequence(db);
     db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
     db.prepare(
       'DELETE FROM __drizzle_migrations WHERE created_at=(SELECT MAX(created_at) FROM __drizzle_migrations)',
@@ -128,7 +165,51 @@ describe('native migration path', () => {
           count: number;
         }
       ).count,
-    ).toBe(2);
+    ).toBe(3);
+    upgraded.close();
+  });
+
+  it('backfills reconciliation sequence by legacy physical order without rewriting timestamps', async () => {
+    const { root, paths } = await databaseFixture('r27-sequence-backfill');
+    roots.push(root);
+    const db = new Database(paths.databasePath);
+    removeReconciliationSequence(db);
+    db.prepare(
+      'UPDATE db_contract SET migration_bundle_digest=?,schema_fingerprint=? WHERE id=1',
+    ).run(migrationBundleDigest(migrationBundle().slice(0, 2)), schemaFingerprint(db));
+    const insert = db.prepare(`
+      INSERT INTO reconciliation_runs(
+        id,deployment_id,comparison,freshness,block_number,block_hash,projector_version,
+        projection_build_id,log_scope_hash,scope_json,differences_json,created_at
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+    `);
+    const common = [
+      hashes.deployment,
+      'CURRENT',
+      1,
+      hashes.block,
+      '1',
+      'build-test',
+      hashes.scope,
+      '{}',
+      '[]',
+    ] as const;
+    insert.run('first', common[0], 'MATCH', ...common.slice(1), '2026-09-23T12:00:00.000Z');
+    insert.run('second', common[0], 'MISMATCH', ...common.slice(1), '2026-09-23T11:59:00.000Z');
+    db.close();
+
+    await expect(migrateEnvironment(paths)).resolves.toMatchObject({ changed: true });
+    const upgraded = new Database(paths.databasePath, { readonly: true, fileMustExist: true });
+    expect(
+      upgraded
+        .prepare(
+          'SELECT id,run_sequence AS runSequence,created_at AS createdAt FROM reconciliation_runs ORDER BY run_sequence',
+        )
+        .all(),
+    ).toEqual([
+      { id: 'first', runSequence: 1, createdAt: '2026-09-23T12:00:00.000Z' },
+      { id: 'second', runSequence: 2, createdAt: '2026-09-23T11:59:00.000Z' },
+    ]);
     upgraded.close();
   });
 
@@ -342,6 +423,7 @@ describe('native migration path', () => {
     db.prepare(
       `INSERT INTO catalog_vehicles VALUES ('predeploy','Predeploy','kept','M','2026','/p.svg','MANUAL',NULL,NULL,'x','x')`,
     ).run();
+    removeReconciliationSequence(db);
     db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
     db.prepare(
       'DELETE FROM __drizzle_migrations WHERE created_at=(SELECT MAX(created_at) FROM __drizzle_migrations)',

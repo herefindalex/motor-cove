@@ -16,10 +16,15 @@
       "id": "0001_source-record-integrity",
       "createdAt": 1790026879293,
       "hash": "8a09f96947471d3b9f21b6f08fa7e551236bdb865174da6ff5d2bc6e19f29fca"
+    },
+    {
+      "id": "0002_reconciliation_sequence",
+      "createdAt": 1790172299011,
+      "hash": "642d35a098f83b950ad6238f4da2bb4cc8258586be0b4470cc8e17c8f762e517"
     }
   ],
-  "migrationBundleDigest": "499e8645adc299e7ccf58cc3dd2bc2c6eb7b61a09127f41d58e4eb6a9004aa12",
-  "schemaFingerprint": "55da2994016edf47d7184d0c705a744b201b40927b4f6d58d5495ea7c6061790",
-  "schemaSourceDigest": "b581099c00964620f99ee6b88f1b55ed749bf22b5d389a73acd82a9b18700c9f",
+  "migrationBundleDigest": "f8e66eb86ab23d0d723ce0137bb07b7f004f0764e968db57efa2ef1075e311cd",
+  "schemaFingerprint": "d1e8b464adc8e505e654a0f16b6519bc370d126a5808bcb088a80726706c442d",
+  "schemaSourceDigest": "566b94074412bb9090debbeddc96f6b83dd92cfca44d49e7801f59c6789331e8",
   "requiredProjectorVersion": "1"
 }

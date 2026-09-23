@@ -61,5 +61,6 @@ historical statement, not proof of present freshness.
 
 ### Audit history
 
-Each reconciliation report keeps its own deployment, projection build, log scope, checkpoint, head,
-and creation time. Later runtime state cannot rewrite the meaning of an older report.
+Each reconciliation report keeps its deployment, projection build, log scope, checkpoint, head,
+publication time, and deployment-scoped `run_sequence`. The sequence selects the latest report;
+the timestamp does not. Later runtime state cannot rewrite an older report.

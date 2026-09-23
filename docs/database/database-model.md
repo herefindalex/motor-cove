@@ -388,21 +388,21 @@ projection_status and recovery_reason are durable state claims; CURRENT alone do
 
 ### `reconciliation_runs`
 
-| Property            | Contract                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| Purpose             | Historical report of a projection-to-chain comparison at explicit anchors.                 |
-| Category            | AUDIT_EVIDENCE                                                                             |
-| Authority           | Reconciliation observation at its recorded deployment, scope, checkpoint, and head         |
-| Identity            | id; each report also binds deployment and comparison anchor                                |
-| Writers             | Reconciliation CLI                                                                         |
-| Readers             | API diagnostics; Operators                                                                 |
-| Derived             | yes                                                                                        |
-| Rebuildable         | no                                                                                         |
-| Recovery source     | Verified database backup; a new run cannot recreate the prior observation                  |
-| Backup requirement  | PREFER                                                                                     |
-| Restore requirement | Preserve each historical report with its original scope, block/hash, and projection build. |
-| Reorg semantics     | A report remains tied to its historical anchors and never inherits current canonicality.   |
-| Lifecycle           | Append-only report publication after the comparison result is fully determined.            |
+| Property            | Contract                                                                                                                                                          |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Purpose             | Historical report of a projection-to-chain comparison at explicit anchors.                                                                                        |
+| Category            | AUDIT_EVIDENCE                                                                                                                                                    |
+| Authority           | Reconciliation observation at its recorded deployment, scope, checkpoint, and head                                                                                |
+| Identity            | id; deployment_id plus run_sequence orders reports for that deployment                                                                                            |
+| Writers             | Reconciliation CLI                                                                                                                                                |
+| Readers             | API diagnostics; Operators                                                                                                                                        |
+| Derived             | yes                                                                                                                                                               |
+| Rebuildable         | no                                                                                                                                                                |
+| Recovery source     | Verified database backup; a new run cannot recreate the prior observation                                                                                         |
+| Backup requirement  | PREFER                                                                                                                                                            |
+| Restore requirement | Preserve each historical report with its original scope, block/hash, and projection build.                                                                        |
+| Reorg semantics     | A report remains tied to its historical anchors and never inherits current canonicality.                                                                          |
+| Lifecycle           | Append-only report publication after comparison result is fully determined; run_sequence is allocated transactionally under reconciliation maintenance ownership. |
 
 #### Temporal semantics
 
@@ -411,6 +411,6 @@ projection_status and recovery_reason are durable state claims; CURRENT alone do
 | `created_at` | `VERIFICATION_TIME` | Time this anchored comparison report was published.          |
 | `block_hash` | `CHAIN_TIME`        | Chain anchor against which this report compared projections. |
 
-A report never inherits a later checkpoint, scope, or chain head.
+created_at is human publication time; run_sequence, not wall time, selects the latest report. A report never inherits a later checkpoint, scope, or chain head.
 
 <!-- GENERATED:DATABASE-TABLE-CONTRACTS:END -->

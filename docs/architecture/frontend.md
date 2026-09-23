@@ -89,3 +89,7 @@ Manual MetaMask behavior has not been recorded.
 See [wallet and network flow](../flows/wallet-and-network.md),
 [transaction lifecycle](../protocol/transaction-lifecycle.md), and
 [dependency rules](dependency-rules.md).
+
+## Public chain read identity
+
+Approval permission and contract time are published only after the public RPC chain ID and escrow `deploymentId()` match the current API config. Approval reads use one captured block number and reject the result if that block changes during observation. A failed identity proof leaves approval unavailable and contract time unknown. This read-side check complements the separate proof immediately before a wallet request.

@@ -446,7 +446,7 @@ export async function createReadOnlyReader(
         snapshot(() => {
           const row = db
             .prepare(
-              'SELECT comparison,freshness,CAST(block_number AS TEXT) AS blockNumber,block_hash AS blockHash,projector_version AS projectorVersion,projection_build_id AS projectionBuildId,log_scope_hash AS logScopeHash,scope_json AS scope,differences_json AS differences,created_at AS createdAt FROM reconciliation_runs WHERE deployment_id=? ORDER BY created_at DESC LIMIT 1',
+              'SELECT comparison,freshness,CAST(block_number AS TEXT) AS blockNumber,block_hash AS blockHash,projector_version AS projectorVersion,projection_build_id AS projectionBuildId,log_scope_hash AS logScopeHash,scope_json AS scope,differences_json AS differences,created_at AS createdAt FROM reconciliation_runs WHERE deployment_id=? ORDER BY run_sequence DESC LIMIT 1',
             )
             .get(deploymentId) as
             | (Omit<ReconciliationRecord, 'scope' | 'differences'> & {

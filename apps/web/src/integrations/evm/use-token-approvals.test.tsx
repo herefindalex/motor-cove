@@ -8,6 +8,7 @@ import { useTokenApprovals } from './use-token-approvals.js';
 
 const rpc = vi.hoisted(() => ({
   getChainId: vi.fn(async () => 31_337),
+  getBlock: vi.fn(async () => ({ number: 5n, hash: `0x${'a'.repeat(64)}` })),
   readContract: vi.fn(),
 }));
 
@@ -31,6 +32,7 @@ function wrapper({ children }: PropsWithChildren) {
 beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   rpc.getChainId.mockResolvedValue(31_337);
+  rpc.getBlock.mockResolvedValue({ number: 5n, hash: `0x${'a'.repeat(64)}` });
   rpc.readContract.mockReset();
 });
 afterEach(cleanup);
@@ -38,6 +40,7 @@ afterEach(cleanup);
 describe('token approval reads', () => {
   it('reports permission only after a matching on-chain approval read', async () => {
     rpc.readContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
+      if (functionName === 'deploymentId') return config.deploymentId;
       if (functionName === 'ownerOf') return account;
       return functionName === 'getApproved' ? config.escrowAddress : false;
     });
@@ -50,6 +53,7 @@ describe('token approval reads', () => {
 
   it('accepts an ERC-721 operator approval', async () => {
     rpc.readContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
+      if (functionName === 'deploymentId') return config.deploymentId;
       if (functionName === 'ownerOf') return account;
       return functionName === 'getApproved' ? `0x${'0'.repeat(40)}` : true;
     });
@@ -59,6 +63,7 @@ describe('token approval reads', () => {
 
   it('keeps create-sale permission closed when both approval reads are negative', async () => {
     rpc.readContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
+      if (functionName === 'deploymentId') return config.deploymentId;
       if (functionName === 'ownerOf') return account;
       return functionName === 'getApproved' ? `0x${'0'.repeat(40)}` : false;
     });
@@ -75,6 +80,7 @@ describe('token approval reads', () => {
 
   it('rejects a stale indexed owner even if the token has an escrow approval', async () => {
     rpc.readContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
+      if (functionName === 'deploymentId') return config.deploymentId;
       if (functionName === 'ownerOf') return `0x${'9'.repeat(40)}`;
       return functionName === 'getApproved' ? config.escrowAddress : false;
     });
@@ -85,6 +91,7 @@ describe('token approval reads', () => {
   it('rereads permission when receipt evidence advances', async () => {
     let approved = false;
     rpc.readContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
+      if (functionName === 'deploymentId') return config.deploymentId;
       if (functionName === 'ownerOf') return account;
       if (functionName === 'getApproved')
         return approved ? config.escrowAddress : `0x${'0'.repeat(40)}`;
