@@ -13,7 +13,7 @@ describe('SubmissionNotice', () => {
       <SubmissionNotice result={{ kind: 'submitted', hash, clientOperationId: 'operation-1' }} />,
     );
     expect(screen.getByRole('status').textContent).toContain(
-      'Transaction submitted. Waiting for inclusion.',
+      'Transaction submitted. Check the timeline for its latest status.',
     );
     expect(screen.getByRole('status').textContent).toContain(hash);
 

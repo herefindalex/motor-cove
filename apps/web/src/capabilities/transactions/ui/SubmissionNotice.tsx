@@ -17,7 +17,7 @@ export function SubmissionNotice({
   if (result.kind === 'submitted' || result.kind === 'submitted-non-durable') {
     return (
       <output role={result.kind === 'submitted-non-durable' ? 'alert' : 'status'}>
-        <span>Transaction submitted. Waiting for inclusion. </span>
+        <span>Transaction submitted. Check the timeline for its latest status. </span>
         <code>{result.hash}</code>{' '}
         <button
           type="button"
