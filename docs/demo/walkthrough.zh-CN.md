@@ -3,7 +3,7 @@
 [English](walkthrough.md) · [繁體中文](walkthrough.zh-TW.md)
 
 本指南涵盖正常交易、故障恢复证据与团队交付边界。请先依
-[本机开发 runbook](../runbooks/local-development.md)创建新的 owned environment。不要 reset
+[本机开发 runbook](../runbooks/local-development.zh-CN.md)创建新的 owned environment。不要 reset
 既有环境，也不要把未实际运行的情境当成验证证据。
 
 ## 1. 使用本地 demo wallet 完成一笔交易
@@ -34,7 +34,7 @@ Connector 使用 Anvil 已解锁的测试帐号；这不是 MetaMask 测试。
 - **Expire、refund 与 reclaim：**buyer fund 后，把本地 Anvil 时间推进到期限之后；任一帐号
   可 expire。Buyer withdraw refund，seller 再独立 reclaim NFT。
 
-以上路径对应 [scenario catalog](../testing/scenario-catalog.md) 的 `SALE-001` 到 `SALE-005`。
+以上路径对应 [scenario catalog](../testing/scenario-catalog.zh-CN.md) 的 `SALE-001` 到 `SALE-005`。
 
 ## 3. 故障与恢复路径
 
@@ -61,10 +61,10 @@ pnpm vitest run tests/integration/indexer-kill-recovery.test.ts
 从 `SALE-002` 等 scenario 开始，沿着 contract ABI、frontend gateway、Indexer
 decoder/projector、API response 与文档证据追踪。宣称 ready 前应检查 negative architecture
 fixtures、consumer tests、generated artifacts 与 migration gates。交接字段与证据格式见
-[delivery workflow](../collaboration/delivery-workflow.md)。
+[delivery workflow](../collaboration/delivery-workflow.zh-CN.md)。
 
 ## 清理
 
 只停止本次 demo 启动的进程。若失败状态仍需诊断，请保留该 environment。暂存测试会清除
 自己的 roots。破坏性的 demo reset 只适用于可丢弃且由 MotorCove 管理的环境，并须依
-[本机 reset runbook](../runbooks/local-reset.md)运行。
+[本机 reset runbook](../runbooks/local-reset.zh-CN.md)运行。

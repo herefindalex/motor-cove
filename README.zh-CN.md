@@ -21,7 +21,7 @@ Browser E2E 将仅限 loopback 的本地 demo connector 与可注入故障的 EI
 分开；它不是实际的浏览器钱包扩充功能测试。已发布的原代码已通过 repository 的 GitHub
 Actions workflow；branch protection、reviewer identities、手动 MetaMask、公开链与外部安全
 稽核尚未验证。完整的 required／implemented／verified 分界请见
-[实作状态](docs/implementation-status.md)。存在程序或测试档不等于已通过验证。
+[实作状态](docs/implementation-status.zh-CN.md)。存在程序或测试档不等于已通过验证。
 
 ## 架构一览
 
@@ -41,7 +41,7 @@ flowchart LR
 
 写入路径为 `browser → wallet → RPC → contracts`；读取路径为
 `logs → Indexer → SQLite → API → browser`。Receipt observation 不会直接更新 projection。
-信任与故障边界见[架构总览](docs/architecture/overview.md)。
+信任与故障边界见[架构总览](docs/architecture/overview.zh-CN.md)。
 
 ## Repository 展示的工程能力
 
@@ -52,7 +52,7 @@ flowchart LR
 - 保留 catalog 权威数据、可重建 projection 的 mixed-authority SQLite 设计。
 - Provider／consumer 契约、change recipes、本机 gate，以及区分 source inspection 与真实运行的证据。
 
-[工程能力对照](docs/engineering-capability-map.md)把每项能力连到程序、scenario、验证纪录与限制。
+[工程能力对照](docs/engineering-capability-map.zh-CN.md)把每项能力连到程序、scenario、验证纪录与限制。
 
 ## 技术栈一览
 
@@ -66,7 +66,7 @@ flowchart LR
 | Delivery | pnpm workspace、GitHub Actions workflow                  | 可重现的本机 gate 与已运行的远程 CI                |
 
 Workspace 固定使用 Node 24.21.0 与 pnpm 12.5.1。精确版本、实际用途、理由及取舍见
-[Technology choices](docs/technology-choices.md)与[本机工具链纪录](docs/toolchain.md)。
+[Technology choices](docs/technology-choices.zh-CN.md)与[本机工具链纪录](docs/toolchain.zh-CN.md)。
 
 ## 启动隔离的本机 demo
 
@@ -108,28 +108,28 @@ pnpm db:check
 完整本机 gate 为 `pnpm verify` 与 `pnpm test:e2e`。只对可丢弃且由 MotorCove 管理的 demo
 使用 `MOTORCOVE_ENV=demo-local pnpm demo:reset -- --yes`；它会验证本机 Anvil 身分、调用
 `anvil_reset`，再移除所选环境的 generated state。运行 maintenance 前先读
-[本机开发](docs/runbooks/local-development.md)与[本机 reset](docs/runbooks/local-reset.md) runbook。
+[本机开发](docs/runbooks/local-development.zh-CN.md)与[本机 reset](docs/runbooks/local-reset.zh-CN.md) runbook。
 
 ## 阅读路径
 
-- **理解项目：** [文档索引](docs/README.zh-CN.md) → [范围](docs/project-scope.md) →
-  [技术选型](docs/technology-choices.md) → [架构](docs/architecture/overview.md)
-- **追踪一笔交易：** [Listing 与 funding](docs/flows/listing-and-funding.md) →
-  [交易生命周期](docs/protocol/transaction-lifecycle.md) →
-  [Indexer 与 API](docs/architecture/backend-indexer.md) → [数据权责](docs/architecture/data-authority.md)
-- **启动与检查：** [本机开发](docs/runbooks/local-development.md) →
-  [繁中 demo](docs/demo/walkthrough.zh-CN.md) → [测试策略](docs/testing/strategy.md)
-- **安全贡献：** [CONTRIBUTING](CONTRIBUTING.md) → [Onboarding](docs/onboarding/README.md) →
-  [Change recipes](docs/onboarding/change-recipes.md)
-- **查核证据：** [能力对照](docs/engineering-capability-map.md) →
-  [Scenario catalog](docs/testing/scenario-catalog.md) →
+- **理解项目：** [文档索引](docs/README.zh-CN.md) → [范围](docs/project-scope.zh-CN.md) →
+  [技术选型](docs/technology-choices.zh-CN.md) → [架构](docs/architecture/overview.zh-CN.md)
+- **追踪一笔交易：** [Listing 与 funding](docs/flows/listing-and-funding.zh-CN.md) →
+  [交易生命周期](docs/protocol/transaction-lifecycle.zh-CN.md) →
+  [Indexer 与 API](docs/architecture/backend-indexer.zh-CN.md) → [数据权责](docs/architecture/data-authority.zh-CN.md)
+- **启动与检查：** [本机开发](docs/runbooks/local-development.zh-CN.md) →
+  [繁中 demo](docs/demo/walkthrough.zh-CN.md) → [测试策略](docs/testing/strategy.zh-CN.md)
+- **安全贡献：** [CONTRIBUTING](CONTRIBUTING.zh-CN.md) → [Onboarding](docs/onboarding/README.zh-CN.md) →
+  [Change recipes](docs/onboarding/change-recipes.zh-CN.md)
+- **查核证据：** [能力对照](docs/engineering-capability-map.zh-CN.md) →
+  [Scenario catalog](docs/testing/scenario-catalog.zh-CN.md) →
   [Verification records](docs/evidence/verification.json)
 
 ## 边界
 
 MotorCove 不处理实体产权、交付、融资、税务、登录、SIWE、后端钱包保管、公开链部署或
 正式数据库服务。运行范围限单机 SQLite 与 loopback Anvil。完整 non-goals 与仍待完成的
-产品缺口见[项目范围](docs/project-scope.md)。
+产品缺口见[项目范围](docs/project-scope.zh-CN.md)。
 
 ## 授权
 
