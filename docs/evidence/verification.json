@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "4609e6d93b3da9b36bd277595fcd144565b0de30",
+    "revision": "dfafe44fd8fbe915093b324fc19d3cd3bf07dd8d",
     "dirty": true,
-    "capturedAt": "2026-09-22T16:44:21Z",
-    "sourceFingerprint": "sha256:407719d9683a3826463e41a784cb7f1715ef55c350f2c578c17ec04446d5f62e",
+    "capturedAt": "2026-09-23T01:38:00Z",
+    "sourceFingerprint": "sha256:38f32e5f580dbcf9d3e1da23c205b652fd6a0214e01fcf24b038754ed89550fa",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "R18 verification used controlled transaction ports, same-realm coordination fixtures, two real Chromium pages in one browser profile, harness-owned temporary SQLite environments, loopback Anvil, synthetic accounts, and GitHub-hosted CI. It does not claim cross-tab ownership without Web Locks, cross-device coordination, public-network behavior, manual MetaMask, or hardware power-loss durability.",
+    "limits": "R19 verification used controlled transaction ports, same-realm fallback fixtures, two real Chromium pages with Web Locks in one browser profile, harness-owned temporary SQLite environments, loopback Anvil, synthetic accounts, and GitHub-hosted CI. It does not claim cross-tab ownership without Web Locks, cross-device coordination, public-network behavior, manual MetaMask, hardware power-loss durability, or volatile evidence durability before successful promotion.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -110,15 +110,16 @@
         "TX-003",
         "TX-004",
         "TX-006",
-        "IDX-001"
+        "IDX-001",
+        "TX-007"
       ],
       "level": "LOCAL-TEST",
       "command": "pnpm test:e2e",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "7 Playwright scenarios passed against harness-owned Anvil, managed SQLite, API, Indexer, and Web. Two real Chromium pages verified operation-scoped observation exclusion, independent operations, unrelated journal writes, and owner-close handoff.",
-      "limitations": "Wallet and storage fault injection use controlled browser adapters. Cross-tab observation ownership requires Web Locks in one browser profile; manual MetaMask, cross-device coordination, and real device storage failure remain unverified.",
-      "executedAt": "2026-09-22T16:44:21Z"
+      "result": "8 Playwright scenarios passed against harness-owned Anvil, managed SQLite, API, Indexer, and Web. Two real Chromium pages verified same-intent submission exclusion before simulation or wallet work, independent intents, normal release, owner-close handoff, operation-scoped observation ownership, and serialized journal writes.",
+      "limitations": "Wallet and storage fault injection use controlled browser adapters. Cross-tab submission and observation ownership require Web Locks in one browser profile; manual MetaMask, cross-device coordination, and real device storage failure remain unverified.",
+      "executedAt": "2026-09-23T01:38:00Z"
     },
     {
       "id": "RUN-INTEGRATION",
@@ -211,9 +212,9 @@
       "command": "pnpm check:architecture",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Architecture graph valid for 162 source files; all 10 negative dependency fixtures rejected.",
+      "result": "Architecture graph valid for 164 source files; all 10 negative dependency fixtures rejected.",
       "limitations": "Static source imports only; runtime process behavior is verified separately.",
-      "executedAt": "2026-09-22T16:44:21Z"
+      "executedAt": "2026-09-23T01:38:00Z"
     },
     {
       "id": "RUN-GENERATE-CHECK",
@@ -254,15 +255,16 @@
         "DB-68",
         "DB-69",
         "DB-70",
-        "TX-006"
+        "TX-006",
+        "TX-007"
       ],
       "level": "LOCAL-TEST",
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generation, database contracts, formatting, docs, architecture, type checking, lint, 13 Foundry tests, 46 files / 302 unit, component, and database tests, 14 files / 58 integration tests, and all 7 workspace builds passed.",
-      "limitations": "The gate does not establish cross-tab observation ownership without Web Locks, manual MetaMask behavior, public-network safety, branch protection, hardware power-loss durability, or cross-device coordination.",
-      "executedAt": "2026-09-22T16:44:21Z"
+      "result": "Generation, database contracts, formatting, docs, architecture, type checking, lint, 13 Foundry tests, 47 files / 308 unit, component, and database tests, 14 files / 58 integration tests, and all 7 workspace builds passed.",
+      "limitations": "The gate does not establish cross-tab submission or observation ownership without Web Locks, manual MetaMask behavior, public-network safety, branch protection, hardware power-loss durability, or cross-device coordination.",
+      "executedAt": "2026-09-23T01:38:00Z"
     },
     {
       "id": "RUN-DOCS-CHECK",
@@ -273,18 +275,18 @@
       "status": "executed/pass",
       "result": "18 capabilities, 48 commands, database acceptance IDs DB-01 through DB-70, documentation acceptance IDs DOC-01 through DOC-32, workspace links, and 8 negative fixtures passed.",
       "limitations": "Mermaid visual rendering and independent contributor onboarding remain manual checks.",
-      "executedAt": "2026-09-22T16:44:21Z"
+      "executedAt": "2026-09-23T01:38:00Z"
     },
     {
       "id": "RUN-WEB-COMPONENT",
-      "scenarios": ["TX-001", "TX-004"],
+      "scenarios": ["TX-001", "TX-004", "TX-007"],
       "level": "LOCAL-TEST",
       "command": "pnpm test:components",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
       "result": "2 transaction UI files / 5 tests passed through pnpm test:components; broader R13 marketplace and page behavior is recorded in RUN-TRANSACTION-RECOVERY.",
       "limitations": "Controlled journal fixture only; injected provider behavior is covered separately by Playwright and still lacks manual MetaMask evidence.",
-      "executedAt": "2026-09-22T16:44:21Z"
+      "executedAt": "2026-09-23T01:38:00Z"
     },
     {
       "id": "RUN-CHAIN-SEED-JOURNAL",
@@ -383,18 +385,28 @@
       "limitations": "The browser proof uses Web Locks in one Chromium profile and harness-owned local services. The no-Web-Locks fallback is same-realm only; cross-device, public-network, and manual MetaMask behavior were not run.",
       "executedAt": "2026-09-22T16:44:21Z"
     },
-
+    {
+      "id": "RUN-R19-FOCUSED",
+      "scenarios": ["TX-003", "TX-005", "TX-007"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm exec vitest run apps/web/src/capabilities/transactions/submit-operation.test.ts apps/web/src/integrations/persistence/browser-submission-coordinator.test.ts apps/web/src/integrations/persistence/local-storage-journal.test.ts; pnpm test:e2e",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Focused transaction submission and volatile-evidence suites passed 3 files / 36 tests; the complete 8-scenario Playwright run passed. Chromium held one same-intent submission in simulation, rejected a second tab before journal, simulation, or wallet work, allowed an independent intent, and transferred ownership after the owner page closed.",
+      "limitations": "The browser proof uses Web Locks in one Chromium profile and controlled transaction callbacks. The no-Web-Locks fallback is same-realm only; cross-device, public-network, manual MetaMask behavior, and process death during wallet response persistence were not run.",
+      "executedAt": "2026-09-23T01:38:00Z"
+    },
     {
       "id": "RUN-CI",
-      "scenarios": ["REL-001", "ARCH-001", "TX-006"],
+      "scenarios": ["REL-001", "ARCH-001", "TX-007"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35755484686)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35806642682)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/pass",
-      "result": "GitHub Actions run 35755484686 completed successfully for R18 source 4609e6d93b3da9b36bd277595fcd144565b0de30: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
-      "executedAt": "2026-09-22T16:43:13Z",
+      "result": "GitHub Actions run 35806642682 completed successfully for R19 source dfafe44fd8fbe915093b324fc19d3cd3bf07dd8d: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
+      "executedAt": "2026-09-23T01:35:59Z",
       "limitations": "GitHub-hosted deterministic local stack only; cross-tab ownership without Web Locks, branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35755484686"
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35806642682"
     }
   ]
 }
