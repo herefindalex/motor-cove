@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { encodeFunctionData } from 'viem';
+import { decodeFunctionResult, encodeFunctionData } from 'viem';
 import { usePublicClient, useWalletClient } from 'wagmi';
 import { motorCoveEscrowAbi, vehicleNftAbi } from '@motorcove/chain-artifacts';
 import type { PublicConfig } from '@motorcove/api-contracts';
@@ -21,6 +21,14 @@ type Action = {
   simulate(): Promise<unknown>;
   submit(): Promise<`0x${string}`>;
 };
+
+type WalletEthCall = (request: {
+  readonly method: 'eth_call';
+  readonly params: readonly [
+    { readonly to: `0x${string}`; readonly data: `0x${string}` },
+    'latest',
+  ];
+}) => Promise<`0x${string}`>;
 
 export function useEscrowGateway(
   config: PublicConfig | undefined,
@@ -53,10 +61,41 @@ export function useEscrowGateway(
     const chainId = Number(config.chainId);
     const nft = config.nftAddress as `0x${string}`;
     const escrow = config.escrowAddress as `0x${string}`;
+    const deploymentId = config.deploymentId as `0x${string}`;
+    const deploymentIdCall = encodeFunctionData({
+      abi: motorCoveEscrowAbi,
+      functionName: 'deploymentId',
+    });
+    const verifyBeforeSubmit = async (): Promise<void> => {
+      const publicChainId = await publicClient.getChainId();
+      if (publicChainId !== chainId || wallet.data.chain.id !== chainId) {
+        throw new Error('OPERATION_ENVIRONMENT_MISMATCH');
+      }
+      const publicDeploymentId = await publicClient.readContract({
+        address: escrow,
+        abi: motorCoveEscrowAbi,
+        functionName: 'deploymentId',
+      });
+      const walletDeploymentResult = await (wallet.data.request as unknown as WalletEthCall)({
+        method: 'eth_call',
+        params: [{ to: escrow, data: deploymentIdCall }, 'latest'],
+      });
+      const walletDeploymentId = decodeFunctionResult({
+        abi: motorCoveEscrowAbi,
+        functionName: 'deploymentId',
+        data: walletDeploymentResult,
+      });
+      if (
+        publicDeploymentId.toLowerCase() !== deploymentId.toLowerCase() ||
+        walletDeploymentId.toLowerCase() !== deploymentId.toLowerCase()
+      ) {
+        throw new Error('OPERATION_ENVIRONMENT_MISMATCH');
+      }
+    };
     const run = (action: Action): Promise<SubmissionResult> =>
       submitOperation(
         {
-          deploymentId: config.deploymentId as `0x${string}`,
+          deploymentId,
           chainId,
           account,
           protocolVersion: config.protocolVersion,
@@ -70,6 +109,7 @@ export function useEscrowGateway(
         },
         {
           ...action,
+          verifyBeforeSubmit,
           readNonce: async (hash) => (await publicClient.getTransaction({ hash })).nonce,
         },
         journal,

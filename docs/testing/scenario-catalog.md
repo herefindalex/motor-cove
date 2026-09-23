@@ -53,3 +53,13 @@ Database acceptance IDs `DB-01` through `DB-75` are maintained in the
   against the post-reorg header hash before a scan-complete block is committed.
 - **IDX-004:** reindex can exceed 1,000 successful batches, stops on successful no-progress responses,
   and resumes a durable `CATCHING_UP` marker without repeating its source rewind.
+
+## R24 deployment proof and live-current coverage
+
+- **TX-001 / REL-001:** pre-submit regression tests compare the immutable intent with the public
+  RPC and wallet provider deployment identities. Any mismatch or unavailable proof stops before
+  the wallet write; matching evidence permits one submission.
+- **IDX-001:** integration regression tests keep a fixed-target catch-up below the live eligible
+  head from publishing `CURRENT` and permit `CURRENT` only after live eligible convergence.
+- **REL-001:** API tests allow the one configured frontend origin and reject a different local
+  hostname under the default CORS policy.

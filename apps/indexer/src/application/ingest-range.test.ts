@@ -214,7 +214,7 @@ describe('ingestRange', () => {
     expect(target.commits[0]?.checkpoint.hash).toBe(branchHash(105n, 2n));
   });
 
-  it('does not mark a checkpoint behind the eligible head current', async () => {
+  it('marks current after committing the eligible target', async () => {
     const chain: ChainReader = {
       getHead: async () => header(9n),
       getBlock: async (number) => header(number),
@@ -225,7 +225,42 @@ describe('ingestRange', () => {
     await ingestRange(chain, target.unit, 1n, 0n, 2n);
 
     expect(target.commits).toHaveLength(1);
+    expect(target.current).toEqual([9n]);
+  });
+
+  it('does not mark current when a committed batch remains behind the eligible target', async () => {
+    const chain: ChainReader = {
+      getHead: async () => header(9n),
+      getBlock: async (number) => header(number),
+      getEvents: async () => [],
+    };
+    const target = store(header(5n));
+
+    await ingestRange(chain, target.unit, 1n, 0n, 2n);
+
+    expect(target.commits).toHaveLength(1);
+    expect(target.commits[0]?.checkpoint.number).toBe(6n);
     expect(target.current).toEqual([]);
+  });
+
+  it('does not publish live currentness for an older fixed maintenance target', async () => {
+    const chain: ChainReader = {
+      getHead: async () => header(9n),
+      getBlock: async (number) => header(number),
+      getEvents: async () => [],
+    };
+    const target = store(header(6n));
+
+    await ingestRange(chain, target.unit, 1n, 0n, 0n, 7n);
+
+    expect(target.commits).toHaveLength(1);
+    expect(target.commits[0]?.checkpoint.number).toBe(7n);
+    expect(target.current).toEqual([]);
+
+    const completedTarget = store(header(7n));
+    await ingestRange(chain, completedTarget.unit, 1n, 0n, 0n, 7n);
+    expect(completedTarget.commits).toHaveLength(0);
+    expect(completedTarget.current).toEqual([]);
   });
 
   it('rejects a new batch that no longer joins the durable checkpoint', async () => {

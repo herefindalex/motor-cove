@@ -13,11 +13,7 @@ export async function createApp(
   const app = Fastify({ logger: true, genReqId: () => crypto.randomUUID() });
   app.addHook('onClose', async () => reader.close());
   await app.register(cors, {
-    origin: [
-      'http://127.0.0.1:5173',
-      'http://localhost:5173',
-      process.env.MOTORCOVE_WEB_ORIGIN,
-    ].filter((origin): origin is string => Boolean(origin)),
+    origin: [process.env.MOTORCOVE_WEB_ORIGIN ?? 'http://127.0.0.1:5173'],
   });
   app.get('/health/live', async () => ({ status: 'live' }));
   app.get('/health/ready', async (_request, reply) => {

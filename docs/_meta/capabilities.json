@@ -68,7 +68,7 @@
     {
       "id": "CAP-06",
       "name": "Transaction lifecycle",
-      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, serializes same-profile browser writes, assigns operation-scoped cross-tab observation ownership, and preserves tab-local evidence when durable storage reads are unavailable. Assigns cross-tab submission ownership to one in-flight immutable intent before any await and exposes matching per-action pending state. Volatile transaction evidence can rebase only over a matching hashless durable revision. Candidate inspection validates the saved descriptor against configured contracts, the actual RPC chain, and the on-chain deployment getter before transaction lookup. Known-hash verification continues in the volatile overlay when a durable update fails.",
+      "behavior": "Durably records immutable intent before wallet submission, rechecks full live deployment identity, observes canonical receipt outcomes for every supported action, keeps successful and reverted local receipts under non-final observation, preserves funding-specific projection proof, serializes same-profile browser writes, assigns operation-scoped cross-tab observation ownership, and preserves tab-local evidence when durable storage reads are unavailable. Assigns cross-tab submission ownership to one in-flight immutable intent before any await and exposes matching per-action pending state. Volatile transaction evidence can rebase only over a matching hashless durable revision. Candidate inspection validates the saved descriptor against configured contracts, the actual RPC chain, and the on-chain deployment getter before transaction lookup. Known-hash verification continues in the volatile overlay when a durable update fails. Immediately before wallet submission, the gateway proves the immutable deployment identity through both the public RPC and wallet provider.",
       "implementation": "implemented",
       "code": [
         "apps/web/src/capabilities/transactions",
@@ -83,7 +83,8 @@
         "docs/adr/0020-cross-tab-transaction-observation-ownership.md",
         "apps/web/src/integrations/persistence/browser-submission-coordinator.ts",
         "docs/adr/0021-cross-tab-submission-and-volatile-rebase.md",
-        "docs/adr/0025-filesystem-transaction-and-restore-evidence.md"
+        "docs/adr/0025-filesystem-transaction-and-restore-evidence.md",
+        "apps/web/src/integrations/evm/use-escrow-gateway.r24.test.tsx"
       ],
       "scenarios": [
         "TX-001",
@@ -96,7 +97,15 @@
         "TX-008",
         "TX-009"
       ],
-      "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E", "RUN-R23-FOCUSED"],
+      "verification": [
+        "RUN-TRANSACTION-RECOVERY",
+        "RUN-INTEGRATION",
+        "RUN-E2E",
+        "RUN-R23-FOCUSED",
+        "RUN-R24-FOCUSED",
+        "RUN-R24-VERIFY",
+        "RUN-R24-E2E"
+      ],
       "limits": "Non-durable known-hash tracking survives client-side route changes and storage read denial only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-tab observation and submission ownership require Web Locks; their fallbacks coordinate one JavaScript realm only. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
     },
     {
@@ -140,7 +149,7 @@
     {
       "id": "CAP-10",
       "name": "Event-driven backend",
-      "behavior": "Observes headers before requesting logs by exact block hash, orders events, applies pure projectors, and atomically advances source and checkpoint state. Verifies bound raw and decoded source evidence before rebuild and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse their verified captured target and durable catch-up checkpoint without repeating the source rewind. Source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert. Reconciliation refreshes the latest head after anchored comparison so publication freshness cannot reuse a stale pre-comparison sample. A checkpoint above the current indexing-depth eligible target fails closed until explicit reindex convergence.",
+      "behavior": "Observes headers before requesting logs by exact block hash, orders events, applies pure projectors, and atomically advances source and checkpoint state. Verifies bound raw and decoded source evidence before rebuild and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse their verified captured target and durable catch-up checkpoint without repeating the source rewind. Source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert. Reconciliation refreshes the latest head after anchored comparison so publication freshness cannot reuse a stale pre-comparison sample. A checkpoint above the current indexing-depth eligible target fails closed until explicit reindex convergence. Live CURRENT requires convergence to the current depth-adjusted eligible target, not merely a fixed maintenance target.",
       "implementation": "implemented",
       "code": [
         "apps/indexer/src/application/ingest-range.ts",
@@ -154,7 +163,8 @@
         "apps/indexer/src/cli/reconcile.ts",
         "tests/integration/reconciliation-head-failure.test.ts",
         "docs/adr/0022-bootstrap-snapshots-and-reconciliation-publication.md",
-        "docs/adr/0023-reset-intent-and-indexing-depth-convergence.md"
+        "docs/adr/0023-reset-intent-and-indexing-depth-convergence.md",
+        "tests/integration/indexer-currentness.r24.test.ts"
       ],
       "scenarios": [
         "IDX-001",
@@ -166,7 +176,14 @@
         "DB-62",
         "DB-72"
       ],
-      "verification": ["RUN-INDEXER-UNIT", "RUN-INDEXER-KILL", "RUN-INTEGRATION"],
+      "verification": [
+        "RUN-INDEXER-UNIT",
+        "RUN-INDEXER-KILL",
+        "RUN-INTEGRATION",
+        "RUN-R24-FOCUSED",
+        "RUN-R24-VERIFY",
+        "RUN-R24-E2E"
+      ],
       "limits": "Automatic recovery across arbitrary canonical branch changes remains outside scope; incomplete rebuild source requires explicit reindex."
     },
     {
@@ -260,16 +277,23 @@
     {
       "id": "CAP-12",
       "name": "Cross-team interface contracts",
-      "behavior": "Publishes ABI, deployment, HTTP wire, database, and package export contracts for consumers.",
+      "behavior": "Publishes ABI, deployment, HTTP wire, database, and package export contracts for consumers. API CORS accepts one configured canonical frontend origin.",
       "implementation": "implemented",
       "code": [
         "packages/chain-artifacts",
         "packages/api-contracts",
         "packages/database/package.json",
-        "tooling/scripts/generate.ts"
+        "tooling/scripts/generate.ts",
+        "apps/api/src/app/create-app.r24.test.ts"
       ],
       "scenarios": ["ARCH-001", "REL-001"],
-      "verification": ["RUN-GENERATE-CHECK", "RUN-API-CONTRACT"],
+      "verification": [
+        "RUN-GENERATE-CHECK",
+        "RUN-API-CONTRACT",
+        "RUN-R24-FOCUSED",
+        "RUN-R24-VERIFY",
+        "RUN-R24-E2E"
+      ],
       "limits": "Generated artifacts require a current drift check after provider changes."
     },
     {

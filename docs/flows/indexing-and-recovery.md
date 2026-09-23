@@ -63,6 +63,11 @@ the durable checkpoint greater than `head - indexingDepth`, normal ingestion mar
 new holdback window and does not silently rewind. Stop runtime writers and run the existing explicit
 reindex workflow to the eligible target. Decreasing depth continues by ordinary forward catch-up.
 
+Committing a batch records checkpoint progress without declaring the projection live-current. The
+worker compares the resulting checkpoint and anchor with the latest depth-adjusted eligible target.
+Reaching an older fixed maintenance target alone leaves the projection in its catch-up state; only
+live eligible convergence publishes `CURRENT`.
+
 See [projection runbook](../runbooks/projection-rebuild-and-reindex.md) and
 [backup/recovery runbook](../runbooks/backup-restore-and-recovery.md).
 

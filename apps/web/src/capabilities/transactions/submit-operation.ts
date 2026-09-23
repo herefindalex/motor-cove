@@ -18,6 +18,7 @@ export interface SubmissionAction {
   readonly calldata: `0x${string}`;
   readonly retryOf?: string;
   readonly simulate: () => Promise<unknown>;
+  readonly verifyBeforeSubmit?: () => Promise<void>;
   readonly submit: () => Promise<`0x${string}`>;
   readonly readNonce: (hash: `0x${string}`) => Promise<number>;
 }
@@ -254,6 +255,36 @@ async function submitOwnedOperation(
     status: 'AWAITING_WALLET',
   };
   awaitingWallet = await journal.save(awaitingWallet);
+  if (!context.contextStillCurrent()) {
+    await journal.save({
+      ...awaitingWallet,
+      updatedAt: new Date().toISOString(),
+      status: 'FAILED_BEFORE_SUBMIT',
+      lastErrorCategory: 'OPERATION_CONTEXT_CHANGED',
+    });
+    return {
+      kind: 'failed',
+      message: 'OPERATION_CONTEXT_CHANGED',
+      clientOperationId: base.clientOperationId,
+    };
+  }
+
+  try {
+    await action.verifyBeforeSubmit?.();
+  } catch {
+    await journal.save({
+      ...awaitingWallet,
+      updatedAt: new Date().toISOString(),
+      status: 'FAILED_BEFORE_SUBMIT',
+      lastErrorCategory: 'OPERATION_ENVIRONMENT_MISMATCH',
+    });
+    return {
+      kind: 'failed',
+      message: 'OPERATION_ENVIRONMENT_MISMATCH',
+      clientOperationId: base.clientOperationId,
+    };
+  }
+
   if (!context.contextStillCurrent()) {
     await journal.save({
       ...awaitingWallet,

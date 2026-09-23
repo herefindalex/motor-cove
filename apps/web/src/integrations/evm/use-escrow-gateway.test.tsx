@@ -10,6 +10,9 @@ const account = `0x${'1'.repeat(40)}` as const;
 const hash = `0x${'2'.repeat(64)}` as const;
 const writeContract = vi.fn(async () => hash);
 const simulateContract = vi.fn(async () => ({}));
+let activeDeploymentId = `0x${'3'.repeat(64)}`;
+const readContract = vi.fn(async () => activeDeploymentId);
+const walletRequest = vi.fn(async () => activeDeploymentId);
 
 vi.mock('wagmi', () => ({
   useWalletClient: () => ({
@@ -17,11 +20,14 @@ vi.mock('wagmi', () => ({
       account: { address: account },
       chain: { id: 31_337 },
       writeContract,
+      request: walletRequest,
     },
   }),
   usePublicClient: () => ({
     simulateContract,
     getTransaction: vi.fn(async () => ({ nonce: 1 })),
+    getChainId: vi.fn(async () => 31_337),
+    readContract,
   }),
 }));
 
@@ -78,6 +84,7 @@ describe('useEscrowGateway live deployment context', () => {
     const transactionJournal = journal();
     const first = config('3');
     const second = config('4');
+    activeDeploymentId = first.deploymentId as `0x${string}`;
     const { result, rerender } = renderHook(
       ({ activeConfig }) => useEscrowGateway(activeConfig, transactionJournal),
       { initialProps: { activeConfig: first } },
@@ -88,6 +95,7 @@ describe('useEscrowGateway live deployment context', () => {
     const oldSubmission = oldGateway.fundSale(1n, 10n);
     await vi.waitFor(() => expect(simulateContract).toHaveBeenCalledTimes(1));
 
+    activeDeploymentId = second.deploymentId as `0x${string}`;
     rerender({ activeConfig: second });
     releaseSimulation?.();
 

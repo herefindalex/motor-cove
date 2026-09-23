@@ -26,6 +26,13 @@ The connectors still submit real JSON-RPC transactions to Anvil.
 
 ## Failure and recovery
 
+Before opening the wallet request, the gateway saves the pending intent and verifies the intended
+deployment through both the public RPC and the wallet provider. It compares the public chain ID,
+the wallet client chain ID, and each provider's escrow `deploymentId()` with the immutable intent.
+This check also covers token approval. A mismatch or unavailable proof stops before the wallet
+write and records `FAILED_BEFORE_SUBMIT / OPERATION_ENVIRONMENT_MISMATCH`. A later wallet result
+still follows the normal hash and unknown-result recovery rules.
+
 A rejection is safe to retry as a new user decision. An unknown submission result is not. Account or
 chain changes must not erase the immutable account, chain, contract, action, nonce, or hash stored by
 an earlier operation. Reload resumes only entries with enough evidence to query without submitting.

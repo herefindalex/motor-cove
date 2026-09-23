@@ -272,9 +272,7 @@ export class SqliteProjectionStore implements ProjectionUnitOfWork {
           this.deploymentId,
         );
       this.db
-        .prepare(
-          "UPDATE indexer_runtime_status SET projection_status='CURRENT',recovery_reason=NULL,worker_heartbeat_at=? WHERE deployment_id=?",
-        )
+        .prepare('UPDATE indexer_runtime_status SET worker_heartbeat_at=? WHERE deployment_id=?')
         .run(new Date().toISOString(), this.deploymentId);
       this.commitFaultHook?.('BEFORE_COMMIT');
     });

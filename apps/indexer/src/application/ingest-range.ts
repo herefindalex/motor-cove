@@ -111,7 +111,7 @@ export async function ingestRange(
     throw new Error('RECOVERY_REQUIRED: checkpoint exceeds eligible indexing target');
   }
   if (from > target) {
-    await store.markCurrent?.(head.number);
+    if (target === eligibleTarget) await store.markCurrent?.(head.number);
     return;
   }
 
@@ -183,4 +183,5 @@ export async function ingestRange(
     throw new Error('RECOVERY_REQUIRED: range anchor changed');
   }
   await store.commit(headers, orderedEvents, end);
+  if (end.number === eligibleTarget) await store.markCurrent?.(head.number);
 }

@@ -47,6 +47,10 @@ connectors. They use unlocked Anvil accounts and send real transactions through 
 flag is honored only by the Vite development server, and startup fails if its RPC is not loopback.
 Only public test addresses are present in the bundle; no private key is embedded.
 
+The API accepts this exact browser origin by default. If the UI is deliberately served from a
+different origin, set `MOTORCOVE_WEB_ORIGIN` to that one origin before starting the API. The
+`localhost` spelling is a different origin and is not allowed by the default CORS policy.
+
 Leave `VITE_MOTORCOVE_DEMO_WALLET` unset when testing an injected wallet. Configure that wallet with
 RPC `http://127.0.0.1:8545`, chain ID `31337`, and only an Anvil test account.
 

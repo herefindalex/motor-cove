@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "5e34deb602601090192ab89f3fdda146735b027f",
+    "revision": "6020818ef3911dcdc3c6c8548ad3c7f349a0cfd8",
     "dirty": true,
-    "capturedAt": "2026-09-23T06:40:48Z",
-    "sourceFingerprint": "sha256:87b7f5bbffb15b4b550d64db4784a37ce4ff406ae2d1106aeb07ec27a186fb56",
+    "capturedAt": "2026-09-23T07:19:30Z",
+    "sourceFingerprint": "sha256:0dfe6e3bcd68d28ef08860df5b1d6f49e5b7812e06e6d7684a14ad16894c7b6b",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "Coverage hardening uses table-driven and jsdom component guards, harness-owned loopback Anvil, synthetic accounts, Chromium, and GitHub-hosted CI. The focused guards do not claim browser-extension wallet, public-network provider, cross-device coordination, or hardware power-loss coverage. Recovery barrier, bootstrap receipt, and rebuild freshness guards remain deferred until their product invariants are implemented.",
+    "limits": "R24 verification used pinned local toolchain, synthetic Anvil accounts and loopback services. Browser E2E did not use a wallet extension or public RPC. Fingerprint is SHA-256 over sorted changed and untracked repository-relative paths and their bytes, each NUL-delimited, excluding this verification file.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -477,6 +477,39 @@
       "result": "Focused R23 regressions passed 5 files / 72 tests. Database and recovery lanes passed 6 files / 43 tests and 1 file / 25 tests; transaction UI components passed 2 files / 5 tests. The complete gate passed 17 Foundry tests, 53 unit/component/database files with 370 tests, 14 integration files with 61 tests, all 7 workspace builds, and 8 Playwright E2E scenarios. Documentation generated 18 capabilities and 48 commands, validated DB-01 through DB-75, and architecture checked 169 source files while rejecting all 10 negative fixtures.",
       "limitations": "Reset coverage uses real temporary directories, symlinks, and advisory locks without an actual Anvil reset. Restore uses real better-sqlite3 backup files with a deterministic copy-boundary injection. Transaction recovery uses controlled EVM reader and UI adapters; no browser-extension wallet, public RPC, hardware power loss, or malicious filesystem actor was exercised.",
       "executedAt": "2026-09-23T06:40:48Z"
+    },
+    {
+      "id": "RUN-R24-FOCUSED",
+      "scenarios": ["TX-001", "IDX-001", "REL-001"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm exec vitest run apps/web/src/capabilities/transactions/submit-operation.r24.test.ts apps/web/src/integrations/evm/use-escrow-gateway.r24.test.tsx tests/integration/indexer-currentness.r24.test.ts apps/api/src/app/create-app.r24.test.ts; pnpm check:architecture",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Four R24 regression files passed (11 tests); architecture graph and 10 negative fixtures passed.",
+      "limitations": "Local synthetic provider, API injection, and SQLite integration evidence only; full verify, browser E2E, and external wallet proof are recorded separately.",
+      "executedAt": "2026-09-23T07:11:34Z"
+    },
+    {
+      "id": "RUN-R24-VERIFY",
+      "scenarios": ["TX-001", "IDX-001", "REL-001"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm verify",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Full verify passed: formatting, docs, architecture, typecheck, lint, contracts, database and application tests, 56 unit/component files (382 tests), 15 integration files (62 tests), and production build.",
+      "limitations": "First attempt stopped at lint on unnecessary assertions in two gateway test files; assertions were removed and the complete command passed on rerun. Synthetic loopback test assets only.",
+      "executedAt": "2026-09-23T07:18:58Z"
+    },
+    {
+      "id": "RUN-R24-E2E",
+      "scenarios": ["TX-001", "IDX-001", "REL-001"],
+      "level": "LOCAL-E2E",
+      "command": "pnpm test:e2e",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Playwright passed 8 of 8 tests against harness-owned local Anvil, API, Indexer, and Web.",
+      "limitations": "Harness uses local synthetic accounts and controlled provider behavior; no real wallet extension, public RPC, or public-chain asset was used. pnpm reported WebServer teardown errors after Playwright passed; command exit code was 0.",
+      "executedAt": "2026-09-23T07:18:58Z"
     }
   ]
 }
