@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "dfafe44fd8fbe915093b324fc19d3cd3bf07dd8d",
+    "revision": "5df9e8e04e9a64be879022f3fb23d2656c39306e",
     "dirty": true,
-    "capturedAt": "2026-09-23T01:38:00Z",
-    "sourceFingerprint": "sha256:38f32e5f580dbcf9d3e1da23c205b652fd6a0214e01fcf24b038754ed89550fa",
+    "capturedAt": "2026-09-23T02:20:04Z",
+    "sourceFingerprint": "sha256:2b1a271fde850ccf6a9499234a5f48d6e8e0454c47358d30c51ac02514f54118",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "R19 verification used controlled transaction ports, same-realm fallback fixtures, two real Chromium pages with Web Locks in one browser profile, harness-owned temporary SQLite environments, loopback Anvil, synthetic accounts, and GitHub-hosted CI. It does not claim cross-tab ownership without Web Locks, cross-device coordination, public-network behavior, manual MetaMask, hardware power-loss durability, or volatile evidence durability before successful promotion.",
+    "limits": "R20 verification used same-host advisory locks, harness-owned temporary SQLite environments, controlled chain clients, loopback Anvil, synthetic accounts, Chromium, and GitHub-hosted CI. It does not claim distributed bootstrap ownership, public-network provider behavior, manual MetaMask, cross-device coordination, or hardware power-loss durability.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -26,15 +26,16 @@
         "DB-64",
         "DB-65",
         "DB-66",
-        "DB-67"
+        "DB-67",
+        "DB-71"
       ],
       "level": "DB-TEST",
       "command": "pnpm test:migrations",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "1 file, 24 tests passed: verified pre-migration evidence archive creation, proof revalidation and reuse, repeated backup failure before SQL, tamper and live-source mismatch rejection, fresh-only ownership, and migration history controls.",
+      "result": "1 file / 25 tests passed, including migration safety backup under caller-held bootstrap ownership, verified archive creation and reuse, changed-source rejection, native history controls, rollback, and resume.",
       "limitations": "Real better-sqlite3 and filesystem fixtures cover validation and restart boundaries; hardware power loss and explicit import/adoption workflows were not run.",
-      "executedAt": "2026-09-22T15:40:55Z"
+      "executedAt": "2026-09-23T02:20:04Z"
     },
     {
       "id": "RUN-DB-BOUNDARIES",
@@ -77,14 +78,14 @@
     },
     {
       "id": "RUN-DB-RECOVERY",
-      "scenarios": ["DB-47", "DB-48", "DB-50", "DB-69", "DB-70"],
+      "scenarios": ["DB-47", "DB-48", "DB-50", "DB-69", "DB-70", "DB-71"],
       "level": "DB-TEST",
       "command": "pnpm test:recovery",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "1 file and 19 tests passed for source-ready standard backups, operation-bound evidence-only maintenance archives, projection evidence recomputation and tamper rejection, restore refusal before quarantine, deployed/predeployment identity, and SQLite generation recovery.",
+      "result": "1 file / 24 tests passed. Standard backup and restore contend with real bootstrap ownership; incomplete bootstrap sidecar pairs and changed active sidecars are rejected before quarantine; source-ready, evidence-only, identity, and generation recovery cases remain covered.",
       "limitations": "Maintenance callbacks and failure boundaries are controlled in harness-owned SQLite environments. No hardware power-loss claim; restore-behind-head catch-up remains in RUN-INTEGRATION.",
-      "executedAt": "2026-09-22T15:40:55Z"
+      "executedAt": "2026-09-23T02:20:04Z"
     },
     {
       "id": "RUN-CONTRACTS",
@@ -117,9 +118,9 @@
       "command": "pnpm test:e2e",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "8 Playwright scenarios passed against harness-owned Anvil, managed SQLite, API, Indexer, and Web. Two real Chromium pages verified same-intent submission exclusion before simulation or wallet work, independent intents, normal release, owner-close handoff, operation-scoped observation ownership, and serialized journal writes.",
+      "result": "8 Playwright scenarios passed against harness-owned SQLite, API, Indexer, Web, and loopback Anvil services, including marketplace settlement and recovery plus cross-tab observation and same-intent submission ownership.",
       "limitations": "Wallet and storage fault injection use controlled browser adapters. Cross-tab submission and observation ownership require Web Locks in one browser profile; manual MetaMask, cross-device coordination, and real device storage failure remain unverified.",
-      "executedAt": "2026-09-23T01:38:00Z"
+      "executedAt": "2026-09-23T02:20:04Z"
     },
     {
       "id": "RUN-INTEGRATION",
@@ -155,15 +156,16 @@
         "DB-58",
         "DB-60",
         "DB-61",
-        "DB-62"
+        "DB-62",
+        "DB-72"
       ],
       "level": "LOCAL-TEST",
       "command": "pnpm test:integration",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "14 files / 58 tests passed on the R18 source, including source refresh, real-chain recovery, reindex, reconciliation, and transaction convergence cases.",
+      "result": "14 files / 60 tests passed on R20 source, including publication-time reconciliation head movement and failure, source refresh, real-chain recovery, reindex, reconciliation, and transaction convergence.",
       "limitations": "Local deterministic Anvil and ordinary process termination only; public-network finality, unavailable archive history, hardware power loss, and full host-filesystem faults remain unverified.",
-      "executedAt": "2026-09-22T16:44:21Z"
+      "executedAt": "2026-09-23T02:20:04Z"
     },
     {
       "id": "RUN-INDEXER-UNIT",
@@ -256,15 +258,17 @@
         "DB-69",
         "DB-70",
         "TX-006",
-        "TX-007"
+        "TX-007",
+        "DB-71",
+        "DB-72"
       ],
       "level": "LOCAL-TEST",
       "command": "pnpm verify",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "Generation, database contracts, formatting, docs, architecture, type checking, lint, 13 Foundry tests, 47 files / 308 unit, component, and database tests, 14 files / 58 integration tests, and all 7 workspace builds passed.",
-      "limitations": "The gate does not establish cross-tab submission or observation ownership without Web Locks, manual MetaMask behavior, public-network safety, branch protection, hardware power-loss durability, or cross-device coordination.",
-      "executedAt": "2026-09-23T01:38:00Z"
+      "result": "Generation, database contracts, formatting, docs, architecture, type checking, lint, 13 Foundry tests, 47 files / 314 unit, component, and database tests, 14 files / 60 integration tests, and all 7 workspace builds passed.",
+      "limitations": "The gate does not establish distributed bootstrap ownership, public-network provider behavior, manual MetaMask behavior, branch protection, hardware power-loss durability, or cross-device coordination.",
+      "executedAt": "2026-09-23T02:20:04Z"
     },
     {
       "id": "RUN-DOCS-CHECK",
@@ -273,9 +277,9 @@
       "command": "pnpm docs:check",
       "workingDirectory": "workspace root",
       "status": "executed/pass",
-      "result": "18 capabilities, 48 commands, database acceptance IDs DB-01 through DB-70, documentation acceptance IDs DOC-01 through DOC-32, workspace links, and 8 negative fixtures passed.",
+      "result": "18 capabilities, 48 commands, database acceptance IDs DB-01 through DB-72, documentation acceptance IDs DOC-01 through DOC-32, workspace links, and 8 negative fixtures passed.",
       "limitations": "Mermaid visual rendering and independent contributor onboarding remain manual checks.",
-      "executedAt": "2026-09-23T01:38:00Z"
+      "executedAt": "2026-09-23T02:20:04Z"
     },
     {
       "id": "RUN-WEB-COMPONENT",
@@ -396,17 +400,19 @@
       "limitations": "The browser proof uses Web Locks in one Chromium profile and controlled transaction callbacks. The no-Web-Locks fallback is same-realm only; cross-device, public-network, manual MetaMask behavior, and process death during wallet response persistence were not run.",
       "executedAt": "2026-09-23T01:38:00Z"
     },
-    {
+    {"id": "RUN-R20-FOCUSED", "scenarios": ["DB-71", "DB-72"], "level": "LOCAL-TEST", "command": "pnpm exec vitest run tests/recovery/backup-restore.test.ts tests/migrations/migrations.test.ts tests/integration/reconciliation-head-failure.test.ts; pnpm test:migrations; pnpm test:recovery; pnpm test:db; pnpm test:integration", "workingDirectory": "workspace root", "status": "executed/pass", "result": "Focused R20 suites passed 3 files / 52 tests. Full lanes passed migrations 25, recovery 24, database 38, and integration 60 tests. Real flock contention excludes backup/restore during bootstrap; complete sidecar pairs and pre-quarantine generation equality are enforced; publication-time head movement reports lag and publication read failure reports unknown.", "limitations": "Ownership evidence is same-host advisory flock; SQLite fixtures are harness-owned. Reconciliation uses a controlled chain client for exact head timing. No distributed lock, public RPC timing, or hardware power loss was exercised.", "executedAt": "2026-09-23T02:20:04Z"},
+
+{
       "id": "RUN-CI",
-      "scenarios": ["REL-001", "ARCH-001", "TX-007"],
+      "scenarios": ["REL-001", "ARCH-001", "DB-71", "DB-72"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35806642682)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35809479117)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/pass",
-      "result": "GitHub Actions run 35806642682 completed successfully for R19 source dfafe44fd8fbe915093b324fc19d3cd3bf07dd8d: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
-      "executedAt": "2026-09-23T01:35:59Z",
-      "limitations": "GitHub-hosted deterministic local stack only; cross-tab ownership without Web Locks, branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35806642682"
+      "result": "GitHub Actions run 35809479117 completed successfully for R20 source 5df9e8e04e9a64be879022f3fb23d2656c39306e: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
+      "executedAt": "2026-09-23T02:18:37Z",
+      "limitations": "GitHub-hosted deterministic local stack only; distributed ownership, branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35809479117"
     }
   ]
 }
