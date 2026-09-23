@@ -10,6 +10,7 @@
     "./projection-writer": "./src/projection-writer/index.ts",
     "./seeds": "./src/seeds/local-catalog.ts",
     "./maintenance": "./src/maintenance/index.ts",
+    "./model": "./src/model.ts",
     "./types": "./src/types/index.ts"
   },
   "scripts": {

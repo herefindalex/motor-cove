@@ -16,4 +16,6 @@ look disposable; calling every row authoritative would hide that chain-derived p
 replay or reindex. A full backup preserves both classes. A projection rebuild replaces only derived
 tables.
 
-See [database architecture](database.md) and [database schema reference](../reference/database-schema.md).
+See [database architecture](database.md), the generated
+[database schema reference](../database/schema-reference.generated.md), and the curated
+[authority and lifecycle matrix](../database/authority-and-lifecycle.md).

@@ -21,7 +21,7 @@ escrow are rejected, and legitimate `createSale` custody remains available. Exis
 deployments without that immutable binding require an explicit demo reset before reuse.
 
 - `pnpm verify`: generation, database contract, formatting, docs, architecture, type checking, lint,
-  17 Foundry tests, 51 unit/component/database files with 344 tests, 14 integration files with 61
+  17 Foundry tests, 53 unit/component/database files with 364 tests, 14 integration files with 61
   tests, and all 7 workspace builds passed.
 - `pnpm test:e2e`: 8 local Playwright scenarios passed against harness-owned Anvil, managed SQLite,
   API, Indexer, and Web.
@@ -32,6 +32,9 @@ deployments without that immutable binding require an explicit demo reset before
   evidence, observer re-poll ownership, deployment identity fields, and page-level non-durable hash
   disclosure. Recovery barrier, bootstrap receipt, and rebuild freshness guards remain outside this
   baseline until their corresponding product invariants are implemented.
+- Database documentation checks executed current migrations in isolated SQLite, matched all 13
+  physical tables to the semantic model, passed 4 focused contract tests, and kept generated
+  columns, keys, indexes, constraints, digests, and the authority matrix byte-current.
 - Documentation checks generated 18 capabilities and 48 commands, validated database acceptance IDs
   through DB-73, rejected all 8 documentation negative fixtures, and rejected all 10 architecture
   negative fixtures.

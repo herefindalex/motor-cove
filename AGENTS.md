@@ -161,6 +161,8 @@ fresh harness-owned Anvil, managed environment, Indexer, API, and Web through `p
 - Update command metadata, capability metadata, scenarios, status, runbooks, and verification
   records when their source behavior changes.
 - Run `pnpm docs:generate` after changing `docs/_meta/*.json`, then run `pnpm docs:check`.
+- Database migrations define physical schema; `@motorcove/database/model` defines table authority
+  and lifecycle semantics. Regenerate the database reference after either changes.
 - Record the exact command, environment, result, source revision or fingerprint, and limitations.
   Never report a skipped or not-run gate as passed.
 

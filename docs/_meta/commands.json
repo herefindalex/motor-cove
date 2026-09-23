@@ -357,16 +357,16 @@
       "name": "docs:generate",
       "command": "pnpm docs:generate",
       "status": "implemented",
-      "effect": "updates generated Markdown regions",
-      "prerequisite": "metadata valid",
+      "effect": "updates metadata-owned Markdown regions and the migration-derived database schema reference",
+      "prerequisite": "documentation metadata, database model, and migration history valid",
       "runbook": "../reference/commands.md"
     },
     {
       "name": "docs:generate:check",
       "command": "pnpm docs:generate:check",
       "status": "implemented",
-      "effect": "read-only generated Markdown drift check",
-      "prerequisite": "metadata valid",
+      "effect": "read-only generated Markdown, database table-model coverage, and physical schema drift check",
+      "prerequisite": "documentation metadata, database model, and migration history valid",
       "runbook": "../testing/strategy.md"
     },
     {

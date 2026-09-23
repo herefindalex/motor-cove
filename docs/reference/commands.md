@@ -50,8 +50,8 @@ in `_meta/commands.json` owns the table.
 | `pnpm test:db` | implemented | runs database ownership, locking, constraints, and reset-boundary tests | native SQLite driver installed |
 | `pnpm test:seeds` | implemented | runs catalog seed identity and idempotency tests | native SQLite driver installed |
 | `pnpm test:recovery` | implemented | runs backup readiness, restore refusal, and maintenance marker recovery tests | native SQLite driver installed |
-| `pnpm docs:generate` | implemented | updates generated Markdown regions | metadata valid |
-| `pnpm docs:generate:check` | implemented | read-only generated Markdown drift check | metadata valid |
+| `pnpm docs:generate` | implemented | updates metadata-owned Markdown regions and the migration-derived database schema reference | documentation metadata, database model, and migration history valid |
+| `pnpm docs:generate:check` | implemented | read-only generated Markdown, database table-model coverage, and physical schema drift check | documentation metadata, database model, and migration history valid |
 | `pnpm docs:check` | implemented | read-only docs consistency checks | dependencies installed |
 | `pnpm docs:smoke` | implemented | temporary SQLite test environments only | native driver installed |
 <!-- GENERATED:COMMANDS:END -->

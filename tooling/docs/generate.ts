@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { generateDatabaseDocumentation } from './generate-database.js';
 
 const root = resolve(import.meta.dirname, '../..');
 const readJson = (path: string): unknown =>
@@ -15,7 +16,8 @@ const replace = (path: string, start: string, end: string, body: string, check: 
   if (check && next !== current) throw new Error(`GENERATED_DOC_DRIFT: ${path}`);
   if (!check) writeFileSync(absolute, next);
 };
-export function generate(check = false) {
+export async function generate(check = false) {
+  const databaseDocumentation = await generateDatabaseDocumentation(check);
   const capabilityData = readJson('docs/_meta/capabilities.json') as {
     capabilities: Array<{
       id: string;
@@ -70,7 +72,8 @@ export function generate(check = false) {
       mode: check ? 'check' : 'write',
       capabilities: capabilityData.capabilities.length,
       commands: commands.length,
+      databaseTables: databaseDocumentation.tables,
     }),
   );
 }
-generate(process.argv.includes('--check'));
+await generate(process.argv.includes('--check'));

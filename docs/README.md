@@ -45,6 +45,7 @@ Operational runbooks:
 - [Backup, restore, and maintenance recovery](runbooks/backup-restore-and-recovery.md)
 - [Local reset](runbooks/local-reset.md)
 - [Database changes and reset boundaries](runbooks/reset-and-migrations.md)
+- [Database documentation and schema contract](database/README.md)
 
 ## Contribute safely
 
@@ -103,6 +104,7 @@ identity are recorded in
 - [Frontend architecture](architecture/frontend.md)
 - [Database architecture](architecture/database.md) and
   [database ownership/dependencies](architecture/database-ownership-and-dependencies.md)
+- [Database model, authority, and recovery](database/README.md)
 - [Escrow protocol](protocol/escrow.md)
 - [Wallet outcome and managed node ownership decision](adr/0016-wallet-outcomes-and-managed-node-ownership.md)
 - [Recoverable evidence and unavailable observations decision](adr/0017-recoverable-evidence-and-unavailable-observations.md)

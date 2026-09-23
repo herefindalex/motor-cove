@@ -1,10 +1,10 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "32ae694f3dc968e98c14d931be4aa62a53a8d2ec",
+    "revision": "442539f45be07fca035b73d077195ebedbfb464e",
     "dirty": true,
-    "capturedAt": "2026-09-23T04:53:05Z",
-    "sourceFingerprint": "sha256:7e0005a7d9eb3ef3835ff36bc444f6f9e87d81be8185db4e6b3addc18b098044",
+    "capturedAt": "2026-09-23T05:49:52Z",
+    "sourceFingerprint": "sha256:842dc38bd5b22b033313cd650edf44d2937e32970d441230a0edb8c2b719de46",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
     "limits": "Coverage hardening uses table-driven and jsdom component guards, harness-owned loopback Anvil, synthetic accounts, Chromium, and GitHub-hosted CI. The focused guards do not claim browser-extension wallet, public-network provider, cross-device coordination, or hardware power-loss coverage. Recovery barrier, bootstrap receipt, and rebuild freshness guards remain deferred until their product invariants are implemented.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
@@ -455,6 +455,17 @@
       "executedAt": "2026-09-23T04:52:36Z",
       "limitations": "GitHub-hosted deterministic local stack only; browser-extension wallet, branch protection, reviewer identity, public networks, hardware power loss, cross-device coordination, and deferred product invariants remain outside this run.",
       "url": "https://github.com/herefindalex/motor-cove/actions/runs/35819793426"
+    },
+    {
+      "id": "RUN-DB-DOCUMENTATION",
+      "scenarios": [],
+      "level": "DOC-TEST",
+      "command": "pnpm exec vitest run tooling/docs/database-docs.test.ts; pnpm docs:check; pnpm --dir packages/database typecheck; pnpm check:architecture; pnpm verify; pnpm test:e2e",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Database documentation contract passed 1 file / 4 tests over 13 migrated tables. The full gate passed 17 Foundry tests, 53 unit/component/database files with 364 tests, 14 integration files with 61 tests, all 7 workspace builds, and 8 Playwright E2E scenarios.",
+      "limitations": "Generation used an isolated in-memory better-sqlite3 database and current Drizzle migrations; it did not inspect or modify a managed environment. The documentation records the current staged-copy checksum and child-path containment gaps pending R23.",
+      "executedAt": "2026-09-23T05:49:52Z"
     }
   ]
 }
