@@ -114,9 +114,9 @@ Migration ordering and SQL hashes, not wall-clock recency, determine validity.
 
 #### Temporal semantics
 
-| Field         | Time class          | Meaning                                                       |
-| ------------- | ------------------- | ------------------------------------------------------------- |
-| `verified_at` | `VERIFICATION_TIME` | Time schema and migration history were last verified locally. |
+| Field         | Time class          | Meaning                                                             |
+| ------------- | ------------------- | ------------------------------------------------------------------- |
+| `verified_at` | `VERIFICATION_TIME` | Time migration finalization published the verified schema contract. |
 
 A newer timestamp cannot substitute for a matching schema fingerprint.
 

@@ -92,7 +92,7 @@ export const databaseModel = {
       {
         field: 'verified_at',
         category: 'VERIFICATION_TIME',
-        meaning: 'Time schema and migration history were last verified locally.',
+        meaning: 'Time migration finalization published the verified schema contract.',
       },
     ],
     temporalNote: 'A newer timestamp cannot substitute for a matching schema fingerprint.',

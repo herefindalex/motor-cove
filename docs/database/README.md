@@ -31,6 +31,8 @@ managed environment.
 - [Temporal semantics](temporal-semantics.md): business, chain, observation, verification,
   process-liveness, and local-mutation time and what each existing field proves.
 - [Database architecture](../architecture/database.md): process and package boundaries.
+- [R26 temporal and schema completeness audit](audits/r26/02_Temporal_Semantics_Matrix.md):
+  table matrix, findings, schema decisions, migration risk, and regression plan.
 - [Database acceptance matrix](../testing/database-acceptance-matrix.md): implemented and executed
   verification evidence.
 

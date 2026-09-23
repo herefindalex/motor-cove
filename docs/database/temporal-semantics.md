@@ -23,21 +23,21 @@ model exists in its migrated physical table.
 
 ## Table and field meanings
 
-| Table                    | Existing time or position fields                                     | Interpretation                                                                                                                                         |
-| ------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `__drizzle_migrations`   | `created_at`                                                         | Local migration-ledger write time. Ordered migration hashes and the schema contract establish validity.                                                |
-| `db_contract`            | `verified_at`                                                        | Last local schema verification. A fresh value cannot compensate for a wrong fingerprint.                                                               |
-| `deployments`            | `registered_at`; deployment block/hash fields                        | Local registration time differs from the NFT and escrow deployment blocks that bind chain identity.                                                    |
-| `catalog_vehicles`       | `created_at`, `updated_at`                                           | Local catalog writes. Catalog authority comes from the approved seed/input, not the clock.                                                             |
-| `catalog_asset_bindings` | No wall-clock column                                                 | Deployment, collection, token, and catalog identity define the binding. Chain replay cannot recreate catalog intent.                                   |
-| `indexed_blocks`         | `block_timestamp`; number/hash/parent hash                           | Header-provided chain time and branch identity. `is_canonical` and scan evidence determine whether this row belongs to the current branch.             |
-| `chain_events`           | `first_seen_at`; block/hash/transaction/log position                 | First local sighting is observation time; block and log identity anchor the event. Retained orphan evidence does not become canonical merely with age. |
-| `indexer_checkpoint`     | `updated_at`; `last_scanned_block`/`last_scanned_hash`               | Local atomic cursor update and its chain anchor. The timestamp cannot establish the latest live head.                                                  |
-| `sales`                  | `funded_at`, `expires_at`; creation/update block and last event hash | Contract business times and canonical event provenance. No local row-update timestamp is needed to order sale transitions.                             |
-| `payment_claims`         | Creation/withdrawal block hash and log index                         | Canonical claim events order the state; absence of a local timestamp does not make the claim timeless.                                                 |
-| `token_ownership`        | `updated_block`, last transfer block hash/log index                  | Last reflected canonical transfer, separate from historical sale buyer identity.                                                                       |
-| `indexer_runtime_status` | `worker_heartbeat_at`, `last_rpc_success_at`, `last_observed_at`     | Three distinct claims: worker liveness, RPC success, and observed head time. A local rebuild must not renew them.                                      |
-| `reconciliation_runs`    | `created_at`; comparison block/hash and recorded head                | Historical publication time and fixed comparison anchors. The report never inherits a later checkpoint or scope.                                       |
+| Table                    | Existing time or position fields                                     | Interpretation                                                                                                                                                      |
+| ------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `__drizzle_migrations`   | `created_at`                                                         | Local migration-ledger write time. Ordered migration hashes and the schema contract establish validity.                                                             |
+| `db_contract`            | `verified_at`                                                        | Migration finalization published the verified schema contract. Read-only verification does not advance it; a fresh value cannot compensate for a wrong fingerprint. |
+| `deployments`            | `registered_at`; deployment block/hash fields                        | Local registration time differs from the NFT and escrow deployment blocks that bind chain identity.                                                                 |
+| `catalog_vehicles`       | `created_at`, `updated_at`                                           | Local catalog writes. Catalog authority comes from the approved seed/input, not the clock.                                                                          |
+| `catalog_asset_bindings` | No wall-clock column                                                 | Deployment, collection, token, and catalog identity define the binding. Chain replay cannot recreate catalog intent.                                                |
+| `indexed_blocks`         | `block_timestamp`; number/hash/parent hash                           | Header-provided chain time and branch identity. `is_canonical` and scan evidence determine whether this row belongs to the current branch.                          |
+| `chain_events`           | `first_seen_at`; block/hash/transaction/log position                 | First local sighting is observation time; block and log identity anchor the event. Retained orphan evidence does not become canonical merely with age.              |
+| `indexer_checkpoint`     | `updated_at`; `last_scanned_block`/`last_scanned_hash`               | Local atomic cursor update and its chain anchor. The timestamp cannot establish the latest live head.                                                               |
+| `sales`                  | `funded_at`, `expires_at`; creation/update block and last event hash | Contract business times and canonical event provenance. No local row-update timestamp is needed to order sale transitions.                                          |
+| `payment_claims`         | Creation/withdrawal block hash and log index                         | Canonical claim events order the state; absence of a local timestamp does not make the claim timeless.                                                              |
+| `token_ownership`        | `updated_block`, last transfer block hash/log index                  | Last reflected canonical transfer, separate from historical sale buyer identity.                                                                                    |
+| `indexer_runtime_status` | `worker_heartbeat_at`, `last_rpc_success_at`, `last_observed_at`     | Three distinct claims: worker liveness, RPC success, and observed head time. A local rebuild must not renew them.                                                   |
+| `reconciliation_runs`    | `created_at`; comparison block/hash and recorded head                | Historical publication time and fixed comparison anchors. The report never inherits a later checkpoint or scope.                                                    |
 
 ## Freshness and recovery
 
@@ -47,6 +47,9 @@ local maintenance operation alone does not prove currentness. Readers present th
 alongside worker/RPC observation freshness; an expired heartbeat marks the observation stale without
 inventing a newer head or lag. `RECOVERY_REQUIRED` remains a durable integrity barrier and
 must not be cleared by a newer heartbeat, ordinary commit, restart, or stale transition.
+If a persisted worker heartbeat is later than the reader's clock, its age cannot be established;
+the reader reports `UNKNOWN` freshness and no numeric lag rather than treating the negative age as
+zero. This does not rewrite the last-known projection status.
 
 Rebuild verifies retained local chain evidence and publishes a new projection build. It does not
 reobserve the live chain or refresh worker-owned timestamps. Reindex reacquires source evidence

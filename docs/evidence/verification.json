@@ -554,6 +554,17 @@
       "result": "Four database documentation tests passed; docs:check, full verify, and local E2E all exited 0 against the post-R25 database contract (schema fingerprint 55da2994016edf47d7184d0c705a744b201b40927b4f6d58d5495ea7c6061790).",
       "limitations": "Candidate based on be88e9ee92b056e39efb0d0489034c7a2f721cd4. Generated schema inspection used an isolated in-memory SQLite database; no existing managed environment, public RPC, or real wallet was used. This is documentation and model reconciliation, not an R26 schema audit.",
       "executedAt": "2026-09-23T08:33:56Z"
+    },
+    {
+      "id": "RUN-R26-TEMPORAL-AUDIT",
+      "scenarios": [],
+      "level": "LOCAL-TEST",
+      "command": "pnpm exec vitest run tests/integration/api-reader-contract.test.ts; pnpm exec vitest run tests/seeds/catalog-seed.test.ts; pnpm docs:check; pnpm verify; pnpm test:e2e",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Future-heartbeat real SQLite/API regression failed on the pre-fix reader (FRESH, age 0, lag 0) and passed after correction (UNKNOWN, null age and lag). API reader and catalog seed focused tests passed; docs:check and full verify exited 0; local Playwright E2E passed 8 scenarios. The migrated schema remains at fingerprint 55da2994016edf47d7184d0c705a744b201b40927b4f6d58d5495ea7c6061790.",
+      "limitations": "Audit based on DB-DOC-2 commit b18e9416894c924a04ebe550ad97eb22134a9899, current source review, controlled clocks, local SQLite, and harness-owned loopback Anvil. No new migration was justified or executed against an existing user environment. No real wallet extension, public RPC, public-chain asset, or hardware power-loss test was used.",
+      "executedAt": "2026-09-23T08:55:46Z"
     }
   ]
 }
