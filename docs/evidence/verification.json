@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "9ad26931b2ee3e355eab325bdc74dac6a9b05637",
+    "revision": "32ae694f3dc968e98c14d931be4aa62a53a8d2ec",
     "dirty": true,
-    "capturedAt": "2026-09-23T04:28:44Z",
-    "sourceFingerprint": "sha256:b6bf194d4a9ef7909f8d71e8c32787999a7e5271ba78c2386a6250176153571c",
+    "capturedAt": "2026-09-23T04:53:05Z",
+    "sourceFingerprint": "sha256:7e0005a7d9eb3ef3835ff36bc444f6f9e87d81be8185db4e6b3addc18b098044",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "R22 verification used same-host coordination, harness-owned temporary SQLite environments, loopback Anvil, synthetic accounts, Chromium, and GitHub-hosted CI. It does not claim deployed-contract upgrade, public-network provider behavior, manual MetaMask, cross-device coordination, or hardware power-loss durability.",
+    "limits": "Coverage hardening uses table-driven and jsdom component guards, harness-owned loopback Anvil, synthetic accounts, Chromium, and GitHub-hosted CI. The focused guards do not claim browser-extension wallet, public-network provider, cross-device coordination, or hardware power-loss coverage. Recovery barrier, bootstrap receipt, and rebuild freshness guards remain deferred until their product invariants are implemented.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -434,16 +434,27 @@
       "executedAt": "2026-09-23T04:28:44Z"
     },
     {
+      "id": "RUN-COVERAGE-HARDENING",
+      "scenarios": ["TX-002", "TX-004", "TX-006", "REL-001"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm exec vitest run apps/web/src/features/marketplace/ui/Marketplace.navigation.regression.test.tsx apps/web/src/integrations/evm/TransactionObserver.repoll.regression.test.tsx apps/api/src/start-api.identity-matrix.regression.test.ts apps/web/src/pages/HomePage.non-durable.regression.test.tsx; pnpm verify; pnpm test:e2e",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Four baseline-green meta-regression files passed 19 tests covering client-side navigation with in-memory evidence, observer in-flight release and re-poll, all immutable deployment descriptor fields, and page-level non-durable hash disclosure. The complete gate passed 17 Foundry tests, 51 unit/component/database files with 344 tests, 14 integration files with 61 tests, all 7 workspace builds, and 8 Playwright E2E scenarios.",
+      "limitations": "The focused guards use MemoryRouter/jsdom and controlled adapters; the complete E2E lane uses harness-owned Chromium, Anvil, SQLite, API, Indexer, and Web. The three recovery/bootstrap/rebuild overlap guards are intentionally absent from this baseline and are not claimed as passing.",
+      "executedAt": "2026-09-23T04:53:05Z"
+    },
+    {
       "id": "RUN-CI",
-      "scenarios": ["REL-001", "ARCH-001", "TX-008", "SALE-006"],
+      "scenarios": ["REL-001", "ARCH-001", "TX-002", "TX-004", "TX-006"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35818144829)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35819793426)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/pass",
-      "result": "GitHub Actions run 35818144829 completed successfully for R22 source 9ad26931b2ee3e355eab325bdc74dac6a9b05637: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
-      "executedAt": "2026-09-23T04:27:49Z",
-      "limitations": "GitHub-hosted deterministic local stack only; deployed-contract upgrade, branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35818144829"
+      "result": "GitHub Actions run 35819793426 completed successfully for coverage source 32ae694f3dc968e98c14d931be4aa62a53a8d2ec: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
+      "executedAt": "2026-09-23T04:52:36Z",
+      "limitations": "GitHub-hosted deterministic local stack only; browser-extension wallet, branch protection, reviewer identity, public networks, hardware power loss, cross-device coordination, and deferred product invariants remain outside this run.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35819793426"
     }
   ]
 }
