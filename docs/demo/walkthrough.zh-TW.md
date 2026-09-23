@@ -1,6 +1,6 @@
 # Demo 操作指南
 
-[English](walkthrough.md)
+[English](walkthrough.md) · [简体中文](walkthrough.zh-CN.md)
 
 本指南涵蓋正常交易、故障恢復證據與團隊交付邊界。請先依
 [本機開發 runbook](../runbooks/local-development.md)建立新的 owned environment。不要 reset

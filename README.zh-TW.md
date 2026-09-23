@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/herefindalex/motor-cove/actions/workflows/ci.yml/badge.svg)](https://github.com/herefindalex/motor-cove/actions/workflows/ci.yml)
 
-[English](README.md)
+[English](README.md) · [简体中文](README.zh-CN.md)
 
 MotorCove 是刻意縮小業務範圍的 EVM 工程沙盒，以 ERC-721 車輛數位收藏品交易為情境，
 展示 React 前端、使用者錢包、Solidity 協定、事件 Indexer、SQLite projection 與唯讀 API
@@ -112,7 +112,7 @@ pnpm db:check
 
 ## 閱讀路徑
 
-- **理解專案：** [文件索引](docs/README.md) → [範圍](docs/project-scope.md) →
+- **理解專案：** [文件索引](docs/README.zh-TW.md) → [範圍](docs/project-scope.md) →
   [技術選型](docs/technology-choices.md) → [架構](docs/architecture/overview.md)
 - **追蹤一筆交易：** [Listing 與 funding](docs/flows/listing-and-funding.md) →
   [交易生命週期](docs/protocol/transaction-lifecycle.md) →

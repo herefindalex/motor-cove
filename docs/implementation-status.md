@@ -1,6 +1,6 @@
 # Implementation status
 
-Status captured on 2026-09-23 from the current pre-commit workspace. Capability metadata and the
+Status reconciled on 2026-09-23 through the R26 commit. Capability metadata and the
 verification JSON are the machine-readable sources; this page is the human summary.
 
 | Area      | Required behavior                                                                                                                                                         | Implemented                                                                                                                                                                                                                                 | Current local evidence                                                                                                                                                                                                                                                      |
@@ -58,7 +58,7 @@ Exact commands, timestamps, environment, source fingerprint, and limitations are
    protection, and final reviewer identities require owner-controlled external environments.
 
 Remote CI evidence is added to the machine-readable verification record only after the corresponding
-commit completes; this pre-commit status does not reuse a prior commit's CI result.
+commit completes; every result below is bound to its own source commit.
 
 ## R25 incremental result
 
@@ -73,9 +73,26 @@ rename. A deployed standard backup requires a valid historical bootstrap receipt
 seed journal; backup verification checks receipt schema and identity again. Local-only projection
 rebuild does not renew worker heartbeat or live RPC freshness.
 
-For this pre-commit R25 workspace, `pnpm verify` passed 58 unit/component files (394 tests),
+For the R25 commit `be88e9e`, `pnpm verify` passed 58 unit/component files (394 tests),
 17 integration files (73 tests), and the production build. `pnpm test:e2e` passed 8 Playwright
 scenarios on a harness-owned loopback Anvil stack. The temporary provider and filesystem fixtures
 do not constitute real wallet, public-chain, or hardware power-loss evidence. The source revision
-and fingerprint are in `docs/evidence/verification.json`; remote CI remains pending until the R25
-commit is pushed.
+and fingerprint are in `docs/evidence/verification.json`. Remote CI run
+[35835549975](https://github.com/herefindalex/motor-cove/actions/runs/35835549975) completed
+successfully for that commit.
+
+## Post-R25 database documentation and R26 audit
+
+DB-DOC-2 (`b18e941`) reconciled all 13 migrated tables with explicit authority, identity,
+restore, and temporal contracts. It added a generated table contract and timestamp-field drift
+checks without changing the physical schema. R26 (`e2a7830`) found that a future persisted worker
+heartbeat was incorrectly presented as fresh; the real SQLite/API regression failed on the old
+reader and passed after `UNKNOWN` freshness and null lag replaced that claim. Catalog no-op seed
+timestamp behavior is also pinned by a regression. R26 accepted no schema migration; its
+[matrix and decisions](database/audits/r26/02_Temporal_Semantics_Matrix.md) explain each candidate.
+
+Both stages passed local `pnpm verify` and `pnpm test:e2e`. Remote CI completed successfully for
+[DB-DOC-2](https://github.com/herefindalex/motor-cove/actions/runs/35838072123) and
+[R26](https://github.com/herefindalex/motor-cove/actions/runs/35840091000), including `docs:smoke`,
+`pnpm verify`, and `pnpm test:e2e`. These local and CI runs use synthetic loopback chain evidence;
+manual wallet-provider and public-network behavior remain outside their scope.

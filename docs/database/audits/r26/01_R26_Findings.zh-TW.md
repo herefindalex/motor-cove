@@ -1,5 +1,7 @@
 # R26 資料庫時間語意與 Schema 完整性稽核
 
+[简体中文](01_R26_Findings.zh-CN.md) · [English matrix](02_Temporal_Semantics_Matrix.md)
+
 ## 範圍與結論
 
 本次以 DB-DOC-2 提交 `b18e9416894c924a04ebe550ad97eb22134a9899` 為基線，檢查現行

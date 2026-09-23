@@ -1,6 +1,6 @@
 # Demo walkthrough
 
-[繁體中文](walkthrough.zh-TW.md)
+[繁體中文](walkthrough.zh-TW.md) · [简体中文](walkthrough.zh-CN.md)
 
 This guide covers the normal transaction path, recovery evidence, and team delivery boundaries. Use
 a fresh owned environment from the [local development runbook](../runbooks/local-development.md).

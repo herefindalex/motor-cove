@@ -565,6 +565,54 @@
       "result": "Future-heartbeat real SQLite/API regression failed on the pre-fix reader (FRESH, age 0, lag 0) and passed after correction (UNKNOWN, null age and lag). API reader and catalog seed focused tests passed; docs:check and full verify exited 0; local Playwright E2E passed 8 scenarios. The migrated schema remains at fingerprint 55da2994016edf47d7184d0c705a744b201b40927b4f6d58d5495ea7c6061790.",
       "limitations": "Audit based on DB-DOC-2 commit b18e9416894c924a04ebe550ad97eb22134a9899, current source review, controlled clocks, local SQLite, and harness-owned loopback Anvil. No new migration was justified or executed against an existing user environment. No real wallet extension, public RPC, public-chain asset, or hardware power-loss test was used.",
       "executedAt": "2026-09-23T08:55:46Z"
+    },
+    {
+      "id": "RUN-R24-CI",
+      "scenarios": [],
+      "level": "REMOTE-CI",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35831204946)",
+      "workingDirectory": "GitHub-hosted ubuntu-latest runner",
+      "status": "executed/pass",
+      "result": "Completed successfully for source 47defaab752941ce26dc9cbe8e436ac588f5b4c1.",
+      "limitations": "GitHub Actions metadata confirms success; this record does not replace local scenario evidence or claim manual wallet/public-network validation.",
+      "executedAt": "2026-09-23T07:25:05Z",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35831204946"
+    },
+    {
+      "id": "RUN-R25-CI",
+      "scenarios": [],
+      "level": "REMOTE-CI",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35835549975)",
+      "workingDirectory": "GitHub-hosted ubuntu-latest runner",
+      "status": "executed/pass",
+      "result": "Completed successfully for source be88e9ee92b056e39efb0d0489034c7a2f721cd4.",
+      "limitations": "GitHub Actions metadata confirms success; no manual wallet, public-network, or hardware power-loss test is implied.",
+      "executedAt": "2026-09-23T08:14:20Z",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35835549975"
+    },
+    {
+      "id": "RUN-DB-DOC-2-CI",
+      "scenarios": [],
+      "level": "REMOTE-CI",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35838072123)",
+      "workingDirectory": "GitHub-hosted ubuntu-latest runner",
+      "status": "executed/pass",
+      "result": "docs:smoke, pnpm verify, and pnpm test:e2e steps completed successfully for source b18e9416894c924a04ebe550ad97eb22134a9899.",
+      "limitations": "GitHub-hosted deterministic local stack; no existing user database, manual wallet, or public network was used.",
+      "executedAt": "2026-09-23T08:41:07Z",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35838072123"
+    },
+    {
+      "id": "RUN-R26-CI",
+      "scenarios": [],
+      "level": "REMOTE-CI",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35840091000)",
+      "workingDirectory": "GitHub-hosted ubuntu-latest runner",
+      "status": "executed/pass",
+      "result": "docs:smoke, pnpm verify, and pnpm test:e2e steps completed successfully for source e2a7830a7470a30e11e12234a8de55114f202d4e.",
+      "limitations": "GitHub-hosted deterministic local stack; no existing user database, manual wallet, or public network was used.",
+      "executedAt": "2026-09-23T09:02:08Z",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35840091000"
     }
   ]
 }
