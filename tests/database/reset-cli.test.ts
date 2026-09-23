@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -98,12 +98,16 @@ describe('local reset CLI refusal matrix', () => {
     const paths = environmentPaths(root, 'reset-cli');
     initializeOwnedEnvironment(paths);
     let resetCalls = 0;
+    let resetMarkerDuringRpc: unknown;
     const server = createServer((request, response) => {
       let body = '';
       request.on('data', (chunk: Buffer) => (body += chunk.toString()));
       request.on('end', () => {
         const method = (JSON.parse(body) as { method: string }).method;
-        if (method === 'anvil_reset') resetCalls += 1;
+        if (method === 'anvil_reset') {
+          resetCalls += 1;
+          resetMarkerDuringRpc = JSON.parse(readFileSync(paths.maintenancePath, 'utf8'));
+        }
         response.setHeader('content-type', 'application/json');
         response.end(
           JSON.stringify({
@@ -146,6 +150,11 @@ describe('local reset CLI refusal matrix', () => {
       const allowed = await runReset(environment);
       expect(allowed.code).toBe(0);
       expect(resetCalls).toBe(1);
+      expect(resetMarkerDuringRpc).toMatchObject({
+        operationType: 'RESET',
+        stage: 'PREPARED',
+        resetPhase: 'PREPARED',
+      });
     } finally {
       await new Promise<void>((resolveClose, reject) =>
         server.close((error) => (error ? reject(error) : resolveClose())),

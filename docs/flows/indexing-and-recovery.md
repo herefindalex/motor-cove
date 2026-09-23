@@ -57,6 +57,12 @@ missing checkpoint block is integrity evidence, changes health to `RECOVERY_REQU
 ingestion. The local supervisor leaves API and Web running if the Indexer exits so stale state and
 the recovery reason remain inspectable.
 
+Indexing depth is an eligibility policy, not only a next-poll offset. If configuration changes make
+the durable checkpoint greater than `head - indexingDepth`, normal ingestion marks
+`CHECKPOINT_EXCEEDS_ELIGIBLE_TARGET` and stops. It does not publish `CURRENT` with blocks inside the
+new holdback window and does not silently rewind. Stop runtime writers and run the existing explicit
+reindex workflow to the eligible target. Decreasing depth continues by ordinary forward catch-up.
+
 See [projection runbook](../runbooks/projection-rebuild-and-reindex.md) and
 [backup/recovery runbook](../runbooks/backup-restore-and-recovery.md).
 

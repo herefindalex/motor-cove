@@ -46,8 +46,12 @@ const ownership = await acquireBootstrapOwnership(config.environment);
 try {
   const locks = await acquireMaintenanceLocks(config.environment);
   try {
-    await rpcRequest('anvil_reset');
-    const result = await resetEnvironment(config.environment, true, { locksAlreadyHeld: true });
+    const result = await resetEnvironment(config.environment, true, {
+      locksAlreadyHeld: true,
+      resetChain: async () => {
+        await rpcRequest('anvil_reset');
+      },
+    });
     console.log(
       JSON.stringify({
         service: 'reset',

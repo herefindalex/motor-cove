@@ -96,13 +96,20 @@ export async function ingestRange(
   const head = await readChain('chain head', () => chain.getHead());
   store.observe?.(head.number);
   if (head.number < indexingDepth) {
-    if (checkpoint) await store.markCurrent?.(head.number);
+    if (checkpoint) {
+      await store.markRecoveryRequired('CHECKPOINT_EXCEEDS_ELIGIBLE_TARGET');
+      throw new Error('RECOVERY_REQUIRED: checkpoint exceeds eligible indexing target');
+    }
     return;
   }
   const eligibleTarget = head.number - indexingDepth;
   const target =
     maximumTarget !== undefined && maximumTarget < eligibleTarget ? maximumTarget : eligibleTarget;
   const from = checkpoint ? checkpoint.number + 1n : startBlock;
+  if (checkpoint && checkpoint.number > target) {
+    await store.markRecoveryRequired('CHECKPOINT_EXCEEDS_ELIGIBLE_TARGET');
+    throw new Error('RECOVERY_REQUIRED: checkpoint exceeds eligible indexing target');
+  }
   if (from > target) {
     await store.markCurrent?.(head.number);
     return;

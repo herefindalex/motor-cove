@@ -194,6 +194,7 @@ const requiredScenarios = [
   'IDX-002',
   'IDX-003',
   'IDX-004',
+  'IDX-005',
   'REC-001',
   'ARCH-001',
   'REL-001',
@@ -208,7 +209,7 @@ function validateCapabilities(file: string, scenarioText: string) {
     fail(`${file}: expected CAP-01 through CAP-18 in order`);
   const known = new Set([
     ...requiredScenarios,
-    ...Array.from({ length: 72 }, (_, i) => `DB-${String(i + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 73 }, (_, i) => `DB-${String(i + 1).padStart(2, '0')}`),
   ]);
   for (const item of data.capabilities) {
     for (const code of item.code)

@@ -60,6 +60,12 @@ Reindex captures `head - indexingDepth` and its hash as the completion target. A
 not wait for an ineligible live head, and an idle chain does not need an extra transaction to finish.
 If the target hash changes while it is captured, reindex stops before the maintenance rewind.
 
+If an operator increases indexing depth after the database has already projected newer blocks,
+normal ingestion stops with `CHECKPOINT_EXCEEDS_ELIGIBLE_TARGET`. Run reindex from the deployment scan
+start so its fixed eligible target and rebuilt projection enforce the new holdback. Do not clear the
+recovery reason or lower the checkpoint by hand. Decreasing depth needs no rebuild and catches up
+forward normally.
+
 Runtime startup rejects projector or log-scope mismatches. Maintenance accepts only explicitly
 supported prior projector versions. A scope change is allowed only when reindex starts at the
 deployment scan-start block.

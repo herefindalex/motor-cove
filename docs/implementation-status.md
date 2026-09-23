@@ -13,22 +13,22 @@ verification JSON are the machine-readable sources; this page is the human summa
 
 ## Current executed gates
 
-R20 hardening is implemented in the working source. Standard backups hold shared bootstrap
-ownership, restores hold exclusive bootstrap ownership, and migration safety backups reuse the
-ownership already held by bootstrap. Deployed backups require a complete seed-journal and receipt
-pair. Restore compares all bootstrap sidecars before quarantine. Reconciliation samples the head
-again at publication so an anchored match cannot publish stale `CURRENT` freshness.
+R21 hardening is implemented in the working source. Reset now persists a durable `PREPARED` intent
+before the chain reset, records `CHAIN_RESET` before deleting generated local state, and only lets
+recovery finish local cleanup after the chain side effect is known to have completed. Indexing now
+fails closed when a retained checkpoint is ahead of the eligible target after an indexing-depth
+increase; explicit reindex remains the convergence path.
 
 - `pnpm verify`: generation, database contract, formatting, docs, architecture, type checking, lint,
-  13 Foundry tests, 47 unit/component/database files with 314 tests, 14 integration files with 60
+  13 Foundry tests, 47 unit/component/database files with 323 tests, 14 integration files with 60
   tests, and all 7 workspace builds passed.
 - `pnpm test:e2e`: 8 local Playwright scenarios passed against harness-owned Anvil, managed SQLite,
   API, Indexer, and Web.
-- Focused R20 coverage passed 52 backup, restore, migration, and reconciliation tests. They exercise
-  real advisory-lock contention, complete sidecar pairs, pre-quarantine generation checks, a caller
-  that already owns bootstrap, publication-time head advancement, and publication-head failure.
+- Focused R21 coverage passed all reset, recovery, indexing-depth, reindex, and managed-node checks:
+  22 focused reset/indexing tests, the 41-test database lane, and 23 focused
+  indexer/reindex/managed-node tests. The command groups overlap by design.
 - Documentation checks generated 18 capabilities and 48 commands, validated database acceptance IDs
-  through DB-72, and rejected all 8 negative fixtures.
+  through DB-73, and rejected all 8 negative fixtures.
 
 Exact commands, timestamps, environment, source fingerprint, and limitations are recorded in the
 [verification records](evidence/verification.json), the

@@ -43,6 +43,7 @@ export interface MaintenanceMarker {
   readonly targetBlock?: string;
   readonly targetHash?: string;
   readonly projectionPhase?: 'PREPARING' | 'CATCHING_UP';
+  readonly resetPhase?: 'PREPARED' | 'CHAIN_RESET' | 'LOCAL_STATE_CLEARED';
   readonly backupId?: string;
   readonly transitionedFromOperationId?: string;
   readonly transitionedFromOperationType?: string;

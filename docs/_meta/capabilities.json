@@ -129,7 +129,7 @@
     {
       "id": "CAP-10",
       "name": "Event-driven backend",
-      "behavior": "Observes headers before requesting logs by exact block hash, orders events, applies pure projectors, and atomically advances source and checkpoint state. Verifies bound raw and decoded source evidence before rebuild and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse their verified captured target and durable catch-up checkpoint without repeating the source rewind. Source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert. Reconciliation refreshes the latest head after anchored comparison so publication freshness cannot reuse a stale pre-comparison sample.",
+      "behavior": "Observes headers before requesting logs by exact block hash, orders events, applies pure projectors, and atomically advances source and checkpoint state. Verifies bound raw and decoded source evidence before rebuild and labels retained events with canonical and source-scan evidence. Resumed reindex operations reuse their verified captured target and durable catch-up checkpoint without repeating the source rewind. Source-refreshing reindex requires a verified backup, and an explicit source-incomplete rebuild transition records lineage before a full scan-start reindex. Classifies contradictory source content for verified archive and scan-start reacquisition while leaving pure missing rows on rewind/reinsert. Reconciliation refreshes the latest head after anchored comparison so publication freshness cannot reuse a stale pre-comparison sample. A checkpoint above the current indexing-depth eligible target fails closed until explicit reindex convergence.",
       "implementation": "implemented",
       "code": [
         "apps/indexer/src/application/ingest-range.ts",
@@ -142,16 +142,26 @@
         "docs/adr/0018-in-flight-intent-and-source-identity.md",
         "apps/indexer/src/cli/reconcile.ts",
         "tests/integration/reconciliation-head-failure.test.ts",
-        "docs/adr/0022-bootstrap-snapshots-and-reconciliation-publication.md"
+        "docs/adr/0022-bootstrap-snapshots-and-reconciliation-publication.md",
+        "docs/adr/0023-reset-intent-and-indexing-depth-convergence.md"
       ],
-      "scenarios": ["IDX-001", "IDX-002", "IDX-003", "IDX-004", "DB-56", "DB-62", "DB-72"],
+      "scenarios": [
+        "IDX-001",
+        "IDX-002",
+        "IDX-003",
+        "IDX-004",
+        "IDX-005",
+        "DB-56",
+        "DB-62",
+        "DB-72"
+      ],
       "verification": ["RUN-INDEXER-UNIT", "RUN-INDEXER-KILL", "RUN-INTEGRATION"],
       "limits": "Automatic recovery across arbitrary canonical branch changes remains outside scope; incomplete rebuild source requires explicit reindex."
     },
     {
       "id": "CAP-11",
       "name": "Database lifecycle",
-      "behavior": "Uses native Drizzle history, bundle-bound resumable migration markers, verified pre-migration backup proof, fresh-only environment ownership, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, explicit deployed or predeployment backup identity, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership. Recovery completion acquires maintenance ownership and rereads the current operation marker before choosing or mutating recovery state. Marker updates use unique temporary files so unpublished crash residue cannot strand a matching resume. Backup records source readiness and projection evidence; maintenance archives are evidence-only and normal restore accepts only ready snapshots. Standard snapshots share bootstrap lifecycle ownership, restore owns it exclusively, and database-only restore rejects incomplete or changed bootstrap sidecars before quarantine.",
+      "behavior": "Uses native Drizzle history, bundle-bound resumable migration markers, verified pre-migration backup proof, fresh-only environment ownership, managed environments, connection roles, signal-safe lock cleanup, incomplete-maintenance mutation gates, catalog seed, explicit deployed or predeployment backup identity, generation-safe restore recovery, and shared bootstrap/reset lifecycle ownership. Recovery completion acquires maintenance ownership and rereads the current operation marker before choosing or mutating recovery state. Marker updates use unique temporary files so unpublished crash residue cannot strand a matching resume. Backup records source readiness and projection evidence; maintenance archives are evidence-only and normal restore accepts only ready snapshots. Standard snapshots share bootstrap lifecycle ownership, restore owns it exclusively, and database-only restore rejects incomplete or changed bootstrap sidecars before quarantine. Reset persists intent before chain mutation and recovers only from explicit reset phase evidence.",
       "implementation": "partial",
       "code": [
         "packages/database",
@@ -171,7 +181,8 @@
         "tests/integration/database-real-recovery.test.ts",
         "docs/adr/0018-in-flight-intent-and-source-identity.md",
         "docs/adr/0019-maintenance-marker-and-snapshot-readiness.md",
-        "docs/adr/0022-bootstrap-snapshots-and-reconciliation-publication.md"
+        "docs/adr/0022-bootstrap-snapshots-and-reconciliation-publication.md",
+        "docs/adr/0023-reset-intent-and-indexing-depth-convergence.md"
       ],
       "scenarios": [
         "DB-01",
@@ -213,7 +224,8 @@
         "DB-68",
         "DB-69",
         "DB-70",
-        "DB-71"
+        "DB-71",
+        "DB-73"
       ],
       "verification": [
         "RUN-DB-MIGRATIONS",

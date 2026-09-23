@@ -97,6 +97,10 @@ fixture when introducing a new dependency rule.
   before quarantine.
 - Reconciliation freshness comes from a latest-head read after the anchored comparison. Head
   movement produces projection lag; an unavailable publication head is unknown, never `CURRENT`.
+- Publish `RESET / PREPARED` before `anvil_reset`, preserve the reset phase on failure, and complete
+  reset recovery only from phase evidence. A structurally valid old database is not reset completion.
+- If a durable checkpoint is above `head - indexingDepth`, fail closed and require the existing
+  explicit reindex path. Never mark a projection current while it contains newly held-back blocks.
 - Create `owner.json` only for a genuinely empty managed environment. Existing database files,
   sidecars, symlinks, or unknown files without ownership are preserved and rejected, never adopted.
 - A maintenance completion command must acquire ownership and then reread the current marker before

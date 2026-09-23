@@ -116,6 +116,60 @@ describe('ingestRange', () => {
     expect(target.current).toEqual([9n]);
   });
 
+  it('requires explicit recovery when increased indexing depth excludes the checkpoint', async () => {
+    const durable = header(100n);
+    const chain: ChainReader = {
+      getHead: async () => header(100n),
+      getBlock: async (number) => header(number),
+      getEvents: async () => [],
+    };
+    const target = store(durable);
+
+    await expect(ingestRange(chain, target.unit, 100n, 0n, 10n)).rejects.toThrow(
+      'RECOVERY_REQUIRED: checkpoint exceeds eligible indexing target',
+    );
+
+    expect(target.commits).toHaveLength(0);
+    expect(target.current).toEqual([]);
+    expect(target.recoveries).toEqual(['CHECKPOINT_EXCEEDS_ELIGIBLE_TARGET']);
+  });
+
+  it('catches forward when decreased indexing depth expands the eligible range', async () => {
+    const durable = header(90n);
+    const ranges: string[] = [];
+    const chain: ChainReader = {
+      getHead: async () => header(100n),
+      getBlock: async (number) => header(number),
+      getEvents: async (headers) => {
+        ranges.push(`${headers[0]?.number}:${headers.at(-1)?.number}`);
+        return [];
+      },
+    };
+    const target = store(durable);
+
+    await ingestRange(chain, target.unit, 100n, 0n, 2n);
+
+    expect(ranges).toEqual(['91:98']);
+    expect(target.commits[0]?.checkpoint.number).toBe(98n);
+    expect(target.recoveries).toEqual([]);
+  });
+
+  it('requires recovery when no block is eligible but a checkpoint exists', async () => {
+    const durable = header(1n);
+    const chain: ChainReader = {
+      getHead: async () => header(1n),
+      getBlock: async (number) => header(number),
+      getEvents: async () => [],
+    };
+    const target = store(durable);
+
+    await expect(ingestRange(chain, target.unit, 100n, 0n, 2n)).rejects.toThrow(
+      'RECOVERY_REQUIRED: checkpoint exceeds eligible indexing target',
+    );
+    expect(target.recoveries).toEqual(['CHECKPOINT_EXCEEDS_ELIGIBLE_TARGET']);
+    expect(target.current).toEqual([]);
+  });
+
   it('binds event reads to headers captured after the head changes branches', async () => {
     const branchHash = (number: bigint, branch: bigint) => hash(number * 10n + branch);
     const branchHeader = (number: bigint, branch: bigint): BlockHeader => ({

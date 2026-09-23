@@ -1,10 +1,14 @@
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { acquireMaintenanceLocks } from '../connection/flock.js';
+import {
+  acquireBootstrapOwnership,
+  acquireMaintenanceLocks,
+  type AdvisoryLock,
+} from '../connection/flock.js';
 import { verifyOwnedEnvironment } from '../connection/environment.js';
 import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
-import { clearMaintenanceMarker } from './marker.js';
+import { clearMaintenanceMarker, writeMaintenanceMarker } from './marker.js';
 import {
   assertKnownHistory,
   finalizeDatabaseContract,
@@ -14,6 +18,7 @@ import {
   verifyDatabase,
   verifyKnownSourceDatabase,
 } from './migrations.js';
+import { clearResetGeneratedState } from './reset.js';
 
 const sqliteSidecars = ['-wal', '-shm'] as const;
 
@@ -56,8 +61,12 @@ export async function recoverEnvironment(paths: EnvironmentPaths, complete = fal
     return { changed: false, status: 'RECOVERY_REQUIRED', marker };
   }
 
-  const locks = await acquireMaintenanceLocks(paths);
+  const initialMarker = readMaintenanceMarker(paths.maintenancePath);
+  const bootstrapOwnership =
+    initialMarker?.operationType === 'RESET' ? await acquireBootstrapOwnership(paths) : undefined;
+  let locks: AdvisoryLock | undefined;
   try {
+    locks = await acquireMaintenanceLocks(paths);
     const marker = readMaintenanceMarker(paths.maintenancePath);
     if (!marker) return { changed: false, status: 'NO_RECOVERY_REQUIRED' };
     if (
@@ -70,6 +79,46 @@ export async function recoverEnvironment(paths: EnvironmentPaths, complete = fal
         marker,
         action: 'RERUN_MATCHING_PROJECTION_OPERATION',
       };
+    }
+    if (marker.operationType === 'RESET') {
+      const contract = loadSchemaContract();
+      if (
+        marker.environmentId !== paths.environmentId ||
+        marker.targetDatabase !== paths.databasePath ||
+        marker.expectedSchemaContract !== contract.contractVersion
+      )
+        throw new Error('RECOVERY_REQUIRED: reset identity mismatch');
+      if (marker.resetPhase !== 'CHAIN_RESET' && marker.resetPhase !== 'LOCAL_STATE_CLEARED')
+        return {
+          changed: false,
+          status: 'ACTION_REQUIRED',
+          marker,
+          action: 'RERUN_MATCHING_RESET',
+        };
+      try {
+        const removed = clearResetGeneratedState(paths);
+        const completedMarker: MaintenanceMarker = {
+          ...marker,
+          stage: 'LOCAL_STATE_CLEARED',
+          resetPhase: 'LOCAL_STATE_CLEARED',
+        };
+        writeMaintenanceMarker(paths.maintenancePath, completedMarker);
+        clearMaintenanceMarker(paths.maintenancePath);
+        return {
+          changed: true,
+          status: 'RECOVERED',
+          operationId: marker.operationId,
+          removed,
+        };
+      } catch (error) {
+        writeMaintenanceMarker(paths.maintenancePath, {
+          ...marker,
+          stage: 'FAILED',
+          resetPhase: marker.resetPhase,
+          lastError: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
     }
     if (marker.operationType === 'MIGRATE') {
       const contract = loadSchemaContract();
@@ -131,6 +180,10 @@ export async function recoverEnvironment(paths: EnvironmentPaths, complete = fal
     clearMaintenanceMarker(paths.maintenancePath);
     return { changed: true, status: 'RECOVERED', operationId: marker.operationId };
   } finally {
-    await locks.release();
+    try {
+      await locks?.release();
+    } finally {
+      await bootstrapOwnership?.release();
+    }
   }
 }

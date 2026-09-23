@@ -95,6 +95,12 @@ older snapshot fails with `BACKUP_REQUIRES_MIGRATION` before the active database
 through the migration workflow instead of bypassing the guard. An interrupted projection rebuild or
 reindex remains `ACTION_REQUIRED` until the matching projection command completes.
 
+RESET has its own completion contract. `PREPARED` means the chain result is not proven and returns
+`ACTION_REQUIRED / RERUN_MATCHING_RESET`; recovery does not inspect the old database and call that
+success. `CHAIN_RESET` or `LOCAL_STATE_CLEARED` permits recovery to finish generated-state deletion
+under exclusive bootstrap and maintenance ownership. Backups, managed-node binding, ownership, and
+stable lock files remain outside that deletion set.
+
 ## Deployment and sidecar identity
 
 Backup format 3 records an explicit deployment state. `DEPLOYED` snapshots bind the database

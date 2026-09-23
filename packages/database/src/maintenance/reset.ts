@@ -7,53 +7,72 @@ import type { EnvironmentPaths, MaintenanceMarker } from '../types/index.js';
 import { clearMaintenanceMarker, writeMaintenanceMarker } from './marker.js';
 import { loadSchemaContract } from './migrations.js';
 
+export interface ResetEnvironmentOptions {
+  readonly locksAlreadyHeld?: boolean;
+  readonly resetChain: () => Promise<void>;
+}
+
+export function clearResetGeneratedState(paths: EnvironmentPaths): readonly string[] {
+  const targets = [
+    paths.databasePath,
+    `${paths.databasePath}-wal`,
+    `${paths.databasePath}-shm`,
+    paths.deploymentPath,
+    paths.bootstrapReceiptPath,
+    paths.seedJournalPath,
+  ];
+  const removed: string[] = [];
+  for (const target of targets) {
+    if (!existsSync(target)) continue;
+    rmSync(target, { force: true });
+    removed.push(target);
+  }
+  for (const entry of readdirSync(paths.reportsDir)) {
+    const report = resolve(paths.reportsDir, entry);
+    rmSync(report, { force: true, recursive: true });
+    removed.push(report);
+  }
+  return removed;
+}
+
 export async function resetEnvironment(
   paths: EnvironmentPaths,
   confirmed: boolean,
-  options: { locksAlreadyHeld?: boolean } = {},
+  options: ResetEnvironmentOptions,
 ): Promise<{ operationId: string; removed: readonly string[] }> {
   if (!confirmed) throw new Error('CONFIRMATION_REQUIRED');
   verifyOwnedEnvironment(paths);
   const locks = options.locksAlreadyHeld ? undefined : await acquireMaintenanceLocks(paths);
   const operationId = randomUUID();
-  const marker: MaintenanceMarker = {
+  let marker: MaintenanceMarker = {
     operationId,
     operationType: 'RESET',
     stage: 'PREPARED',
     environmentId: paths.environmentId,
     targetDatabase: paths.databasePath,
     expectedSchemaContract: loadSchemaContract().contractVersion,
+    resetPhase: 'PREPARED',
     startedAt: new Date().toISOString(),
   };
+  let markerOwned = false;
   try {
     writeMaintenanceMarker(paths.maintenancePath, marker);
-    const targets = [
-      paths.databasePath,
-      `${paths.databasePath}-wal`,
-      `${paths.databasePath}-shm`,
-      paths.deploymentPath,
-      paths.bootstrapReceiptPath,
-      paths.seedJournalPath,
-    ];
-    const removed: string[] = [];
-    for (const target of targets) {
-      if (!existsSync(target)) continue;
-      rmSync(target, { force: true });
-      removed.push(target);
-    }
-    for (const entry of readdirSync(paths.reportsDir)) {
-      const report = resolve(paths.reportsDir, entry);
-      rmSync(report, { force: true, recursive: true });
-      removed.push(report);
-    }
+    markerOwned = true;
+    await options.resetChain();
+    marker = { ...marker, stage: 'CHAIN_RESET', resetPhase: 'CHAIN_RESET' };
+    writeMaintenanceMarker(paths.maintenancePath, marker);
+    const removed = clearResetGeneratedState(paths);
+    marker = { ...marker, stage: 'LOCAL_STATE_CLEARED', resetPhase: 'LOCAL_STATE_CLEARED' };
+    writeMaintenanceMarker(paths.maintenancePath, marker);
     clearMaintenanceMarker(paths.maintenancePath);
     return { operationId, removed };
   } catch (error) {
-    writeMaintenanceMarker(paths.maintenancePath, {
-      ...marker,
-      stage: 'FAILED',
-      lastError: error instanceof Error ? error.message : String(error),
-    });
+    if (markerOwned)
+      writeMaintenanceMarker(paths.maintenancePath, {
+        ...marker,
+        stage: 'FAILED',
+        lastError: error instanceof Error ? error.message : String(error),
+      });
     throw error;
   } finally {
     await locks?.release();
