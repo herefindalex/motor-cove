@@ -1,6 +1,6 @@
 # Implementation status
 
-Status captured on 2026-09-22 from the current pre-commit workspace. Capability metadata and the
+Status captured on 2026-09-23 from the current pre-commit workspace. Capability metadata and the
 verification JSON are the machine-readable sources; this page is the human summary.
 
 | Area      | Required behavior                                                                                                                                                         | Implemented                                                                                                                                                                                           | Current local evidence                                                                                                                                                                                                                  |
@@ -13,22 +13,24 @@ verification JSON are the machine-readable sources; this page is the human summa
 
 ## Current executed gates
 
-R21 hardening is implemented in the working source. Reset now persists a durable `PREPARED` intent
-before the chain reset, records `CHAIN_RESET` before deleting generated local state, and only lets
-recovery finish local cleanup after the chain side effect is known to have completed. Indexing now
-fails closed when a retained checkpoint is ahead of the eligible target after an indexing-depth
-increase; explicit reindex remains the convergence path.
+Current hardening is implemented in the working source. Transaction submission keeps durable
+same-intent ownership after a hash is returned and after journal reload until the attempt reaches a
+terminal outcome; wallet rejection and explicit retry retain their defined recovery paths. Each
+VehicleNFT deployment binds once to its MotorCoveEscrow, direct safe and unsafe deposits into the
+escrow are rejected, and legitimate `createSale` custody remains available. Existing local
+deployments without that immutable binding require an explicit demo reset before reuse.
 
 - `pnpm verify`: generation, database contract, formatting, docs, architecture, type checking, lint,
-  13 Foundry tests, 47 unit/component/database files with 323 tests, 14 integration files with 60
+  17 Foundry tests, 47 unit/component/database files with 325 tests, 14 integration files with 61
   tests, and all 7 workspace builds passed.
 - `pnpm test:e2e`: 8 local Playwright scenarios passed against harness-owned Anvil, managed SQLite,
   API, Indexer, and Web.
-- Focused R21 coverage passed all reset, recovery, indexing-depth, reindex, and managed-node checks:
-  22 focused reset/indexing tests, the 41-test database lane, and 23 focused
-  indexer/reindex/managed-node tests. The command groups overlap by design.
+- Focused coverage passed 24 Web submission/coordinator/gateway tests, 17 Foundry tests, and 5
+  fresh-Anvil bootstrap/ownership/settlement tests. The command groups overlap with the complete
+  verification lanes by design.
 - Documentation checks generated 18 capabilities and 48 commands, validated database acceptance IDs
-  through DB-73, and rejected all 8 negative fixtures.
+  through DB-73, rejected all 8 documentation negative fixtures, and rejected all 10 architecture
+  negative fixtures.
 
 Exact commands, timestamps, environment, source fingerprint, and limitations are recorded in the
 [verification records](evidence/verification.json), the

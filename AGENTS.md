@@ -173,3 +173,14 @@ fresh harness-owned Anvil, managed environment, Indexer, API, and Web through `p
 - A change is ready only when affected provider-consumer contracts, recovery impact, migration and
   data-retention impact, generated artifacts, focused tests, full required gates, and documentation
   evidence have been reviewed.
+
+## Durable submission and custody admission
+
+- Treat a returned transaction hash as the end of the wallet request, not the end of the attempt.
+  Before creating another operation, reload the journal and reject the same immutable intent while
+  its prior attempt is unresolved. Keep explicit retries as separate rows linked with `retryOf`.
+- Fresh bootstrap must finalize `VehicleNFT.motorCoveEscrow` before minting or listing. Only the bound
+  escrow may authorize an ERC-721 transfer into itself; direct `transferFrom` and direct
+  `safeTransferFrom` deposits must remain rejected.
+- The contracts are non-upgradeable. Never mutate, reset, or replace an existing environment to
+  apply a bytecode change without the operator's explicit reset command.

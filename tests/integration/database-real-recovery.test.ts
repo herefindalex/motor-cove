@@ -126,7 +126,8 @@ describe('real database recovery against a local chain', () => {
     anvil = spawn(
       'anvil',
       ['--host', '127.0.0.1', '--port', '18548', '--chain-id', '31337', '--silent'],
-      { cwd: projectRoot, env: environment, stdio: 'pipe' },
+      // Do not leave Anvil output on unread pipes: once their buffers fill, RPC handling stalls.
+      { cwd: projectRoot, env: environment, stdio: 'ignore' },
     );
     await waitForRpc();
     execFileSync('corepack', ['pnpm', '--filter', '@motorcove/indexer', 'bootstrap'], {

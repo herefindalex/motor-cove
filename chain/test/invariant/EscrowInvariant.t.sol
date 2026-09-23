@@ -115,16 +115,19 @@ contract EscrowHandler {
 }
 
 contract EscrowInvariantTest is TestBase {
+    VehicleNFT internal nft;
     MotorCoveEscrow internal escrow;
     EscrowHandler internal handler;
+    uint256 internal tokenId;
     address[] internal invariantTargets;
 
     function setUp() public {
         address seller = vm.addr(10);
         address buyer = vm.addr(11);
-        VehicleNFT nft = new VehicleNFT(address(this));
+        nft = new VehicleNFT(address(this));
         escrow = new MotorCoveEscrow(address(nft), 300, keccak256("invariant-deployment"));
-        uint256 tokenId = nft.mint(seller);
+        nft.setEscrow(address(escrow));
+        tokenId = nft.mint(seller);
         handler = new EscrowHandler(nft, escrow, seller, buyer, tokenId);
         invariantTargets.push(address(handler));
     }
@@ -157,5 +160,14 @@ contract EscrowInvariantTest is TestBase {
 
     function invariantSuccessfulTransitionsDoNotExceedCalls() public view {
         require(handler.successfulTransitions() <= handler.calls(), "invalid transition counters");
+    }
+
+    function invariantEveryEscrowOwnedTokenHasTrackedCustody() public view {
+        if (nft.ownerOf(tokenId) != address(escrow)) return;
+
+        uint256 saleId = escrow.custodySaleId(tokenId);
+        require(saleId != 0, "escrow-owned token has no custody sale");
+        IMotorCoveEscrow.Sale memory sale = escrow.getSale(saleId);
+        require(sale.tokenId == tokenId, "custody sale references another token");
     }
 }

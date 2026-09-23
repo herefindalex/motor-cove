@@ -76,6 +76,16 @@ describe('real Anvil → indexer → SQLite flow', () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
+  it('binds the vehicle NFT to the deployed escrow before seeding custody', async () => {
+    const publicClient = createPublicClient({ transport: http(rpcUrl) });
+    const boundEscrow = await publicClient.readContract({
+      address: manifest.nft.address as Address,
+      abi: vehicleNftAbi,
+      functionName: 'motorCoveEscrow',
+    });
+    expect(boundEscrow.toLowerCase()).toBe(manifest.escrow.address.toLowerCase());
+  });
+
   it('admits only one of two concurrent full bootstrap processes', async () => {
     const beforeBlock = await rpcValue('eth_blockNumber');
     const beforeJournal = readFileSync(managedPaths.seedJournalPath, 'utf8');

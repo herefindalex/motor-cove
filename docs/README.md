@@ -112,6 +112,7 @@ identity are recorded in
 - [Cross-tab submission and volatile rebase decision](adr/0021-cross-tab-submission-and-volatile-rebase.md)
 - [Bootstrap snapshot and reconciliation publication decision](adr/0022-bootstrap-snapshots-and-reconciliation-publication.md)
 - [Reset intent and indexing-depth convergence decision](adr/0023-reset-intent-and-indexing-depth-convergence.md)
+- [Durable attempt ownership and escrow admission decision](adr/0024-durable-attempt-ownership-and-escrow-admission.md)
 - [Indexing and recovery flow](flows/indexing-and-recovery.md)
 - [API](reference/api.md), [protocol artifacts](reference/protocol-artifacts.md), and
   [database schema](reference/database-schema.md)

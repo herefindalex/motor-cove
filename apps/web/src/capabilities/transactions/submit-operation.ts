@@ -51,6 +51,36 @@ function sameSubmissionIntent(left: JournalEntry, right: JournalEntry): boolean 
   );
 }
 
+function sameImmutableIntent(
+  entry: JournalEntry,
+  context: SubmissionContext,
+  action: SubmissionAction,
+): boolean {
+  return (
+    entry.deploymentId.toLowerCase() === context.deploymentId.toLowerCase() &&
+    entry.chainId === context.chainId &&
+    entry.account.toLowerCase() === context.account.toLowerCase() &&
+    entry.protocolVersion === context.protocolVersion &&
+    entry.action === action.name &&
+    entry.saleId === (action.saleId === undefined ? undefined : String(action.saleId)) &&
+    entry.tokenId === (action.tokenId === undefined ? undefined : String(action.tokenId)) &&
+    entry.intendedContract.toLowerCase() === action.contract.toLowerCase() &&
+    entry.intendedCalldata.toLowerCase() === action.calldata.toLowerCase() &&
+    entry.valueWei === String(action.value)
+  );
+}
+
+function attemptStillOwnsIntent(entry: JournalEntry): boolean {
+  return (
+    entry.status === 'PREPARING' ||
+    entry.status === 'AWAITING_WALLET' ||
+    entry.status === 'SUBMITTED' ||
+    entry.status === 'UNKNOWN' ||
+    entry.status === 'INCLUDED_SUCCESS' ||
+    entry.status === 'ORPHANED'
+  );
+}
+
 async function persistReturnedHash(
   journal: TransactionJournal,
   submitted: JournalEntry,
@@ -166,6 +196,11 @@ async function submitOwnedOperation(
   action: SubmissionAction,
   journal: TransactionJournal,
 ): Promise<SubmissionResult> {
+  const unresolved = journal
+    .load(context.deploymentId)
+    .find((entry) => sameImmutableIntent(entry, context, action) && attemptStillOwnsIntent(entry));
+  if (unresolved) throw new Error('OPERATION_ATTEMPT_UNRESOLVED');
+
   const createdAt = new Date().toISOString();
   let base: JournalEntry = {
     schemaVersion: 1,

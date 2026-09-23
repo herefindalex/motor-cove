@@ -90,3 +90,17 @@ waits for the saved hash and does not call submit again. A failure before any ha
 Journal regression tests inject one transient post-hash write fault and prove that the reopened
 journal verifies the original hash without a second submit. Hashless submission failures, stranded
 `PREPARED` steps, changed intent, and changed receipt evidence remain fail-closed.
+
+## Escrow binding step
+
+Fresh bootstrap deploys `VehicleNFT`, deploys `MotorCoveEscrow`, and then records the
+`bind-vehicle-nft-escrow` transaction before minting demo tokens. The binding is one-time and the
+transaction receipt is part of the chain seed journal. Verify it by reading
+`VehicleNFT.motorCoveEscrow()` and comparing the result with the manifest escrow address.
+An existing manifest is accepted only when that on-chain binding still matches; a missing getter or
+different address returns `DEPLOYMENT_MISMATCH` before database bootstrap.
+
+An environment created with contract bytecode from before this binding cannot be upgraded in place;
+the contracts are non-upgradeable. Keep that environment for inspection or run the explicit local
+reset workflow before bootstrapping a fresh deployment. Bootstrap never resets or replaces an
+existing environment implicitly.

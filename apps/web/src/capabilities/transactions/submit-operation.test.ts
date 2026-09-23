@@ -108,6 +108,37 @@ describe('submitOperation', () => {
     expect(store.entries).toHaveLength(1);
   });
 
+  it('blocks a sequential same-intent submission while the durable hash is unresolved', async () => {
+    const store = journal();
+    const first = fixture();
+    await expect(submitOperation(first.context, first.action, store.port)).resolves.toMatchObject({
+      kind: 'submitted',
+      hash,
+    });
+
+    const second = fixture({ simulate: vi.fn() });
+    await expect(submitOperation(second.context, second.action, store.port)).rejects.toThrow(
+      'OPERATION_ATTEMPT_UNRESOLVED',
+    );
+    expect(second.action.simulate).not.toHaveBeenCalled();
+    expect(second.submit).not.toHaveBeenCalled();
+    expect(store.entries).toHaveLength(1);
+  });
+
+  it('rebuilds same-intent protection from the durable journal after reload', async () => {
+    const store = journal();
+    const first = fixture();
+    await submitOperation(first.context, first.action, store.port);
+
+    const reloadedJournal: TransactionJournal = { ...store.port };
+    const second = fixture();
+    await expect(submitOperation(second.context, second.action, reloadedJournal)).rejects.toThrow(
+      'OPERATION_ATTEMPT_UNRESOLVED',
+    );
+    expect(second.submit).not.toHaveBeenCalled();
+    expect(store.entries).toHaveLength(1);
+  });
+
   it('honors shared ownership before creating a journal operation', async () => {
     const store = journal();
     const current = fixture({ simulate: vi.fn() });
@@ -162,7 +193,7 @@ describe('submitOperation', () => {
     expect(store.entries[0]?.status).toBe('FAILED_BEFORE_SUBMIT');
   });
 
-  it('records an explicit wallet rejection', async () => {
+  it('records an explicit wallet rejection and allows a fresh attempt', async () => {
     const store = journal();
     const { action, context } = fixture({
       submit: async () => {
@@ -177,6 +208,12 @@ describe('submitOperation', () => {
       status: 'REJECTED',
       walletRequestOutcome: 'REJECTED',
     });
+    const fresh = fixture();
+    await expect(submitOperation(fresh.context, fresh.action, store.port)).resolves.toMatchObject({
+      kind: 'submitted',
+    });
+    expect(fresh.submit).toHaveBeenCalledOnce();
+    expect(store.entries).toHaveLength(2);
   });
 
   it('merges a wallet rejection after hashless observation advances the revision', async () => {
@@ -442,6 +479,11 @@ describe('submitOperation', () => {
     const firstId = store.entries[0]?.clientOperationId;
     expect(firstId).toBeDefined();
     if (!firstId) throw new Error('first operation was not saved');
+    store.entries[0] = {
+      ...store.entries[0]!,
+      status: 'INCLUDED_REVERTED',
+      receiptStatus: 'REVERTED',
+    };
     const retry = fixture({ retryOf: firstId });
     await submitOperation(retry.context, retry.action, store.port);
     expect(store.entries).toHaveLength(2);

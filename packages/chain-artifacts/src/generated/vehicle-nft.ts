@@ -112,6 +112,19 @@ export const vehicleNftAbi = [
   },
   {
     "type": "function",
+    "name": "motorCoveEscrow",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "name",
     "inputs": [],
     "outputs": [
@@ -239,6 +252,19 @@ export const vehicleNftAbi = [
         "name": "approved",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setEscrow",
+    "inputs": [
+      {
+        "name": "escrow",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -530,6 +556,16 @@ export const vehicleNftAbi = [
   },
   {
     "type": "error",
+    "name": "EscrowAlreadyBound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidEscrow",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "OwnableInvalidOwner",
     "inputs": [
       {
@@ -545,6 +581,17 @@ export const vehicleNftAbi = [
     "inputs": [
       {
         "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnauthorizedEscrowTransfer",
+    "inputs": [
+      {
+        "name": "operator",
         "type": "address",
         "internalType": "address"
       }

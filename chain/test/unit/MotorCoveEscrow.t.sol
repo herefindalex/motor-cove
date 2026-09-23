@@ -46,6 +46,7 @@ contract MotorCoveEscrowTest is TestBase {
         vm.deal(buyer, 20 ether);
         nft = new VehicleNFT(address(this));
         escrow = new MotorCoveEscrow(address(nft), 300, keccak256("deployment-test"));
+        nft.setEscrow(address(escrow));
         tokenId = nft.mint(seller);
     }
 
@@ -208,8 +209,34 @@ contract MotorCoveEscrowTest is TestBase {
 
     function testDirectSafeTransferIsRejected() public {
         vm.prank(seller);
-        vm.expectRevert(MotorCoveEscrow.UnexpectedNftTransfer.selector);
+        vm.expectRevert(abi.encodeWithSelector(VehicleNFT.UnauthorizedEscrowTransfer.selector, seller));
         nft.safeTransferFrom(seller, address(escrow), tokenId);
+    }
+
+    function testDirectUnsafeTransferIsRejectedWithoutStrandingToken() public {
+        vm.prank(seller);
+        vm.expectRevert(abi.encodeWithSelector(VehicleNFT.UnauthorizedEscrowTransfer.selector, seller));
+        nft.transferFrom(seller, address(escrow), tokenId);
+
+        assertEq(nft.ownerOf(tokenId), seller, "seller retains rejected direct transfer");
+        assertEq(escrow.custodySaleId(tokenId), 0, "no untracked custody entry");
+    }
+
+    function testOrdinaryTransferOutsideEscrowRemainsAvailable() public {
+        vm.prank(seller);
+        nft.transferFrom(seller, outsider, tokenId);
+        assertEq(nft.ownerOf(tokenId), outsider, "ordinary transfer reaches recipient");
+    }
+
+    function testUnexpectedReceiverCallbackRemainsRejected() public {
+        vm.expectRevert(MotorCoveEscrow.UnexpectedNftTransfer.selector);
+        escrow.onERC721Received(address(escrow), seller, tokenId, "");
+    }
+
+    function testEscrowBindingCannotBeChanged() public {
+        vm.expectRevert(VehicleNFT.EscrowAlreadyBound.selector);
+        nft.setEscrow(outsider);
+        assertEq(nft.motorCoveEscrow(), address(escrow), "escrow binding remains final");
     }
 
     function testFuzzFundedBalanceCoversLiability(uint96 rawPrice) public {

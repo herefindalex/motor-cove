@@ -180,6 +180,8 @@ async function bootstrap(): Promise<void> {
   }
 
   if (existsSync(config.manifestPath)) {
+    const deploymentMismatch =
+      'DEPLOYMENT_MISMATCH: run pnpm demo:reset --yes before replacing local state';
     const manifest = deploymentManifestSchema.parse(
       JSON.parse(readFileSync(config.manifestPath, 'utf8')),
     );
@@ -187,10 +189,19 @@ async function bootstrap(): Promise<void> {
       publicClient.getCode({ address: manifest.nft.address as Address }),
       publicClient.getCode({ address: manifest.escrow.address as Address }),
     ]);
-    const onChainId = await publicClient.readContract({
-      address: manifest.escrow.address as Address,
-      abi: motorCoveEscrowAbi,
-      functionName: 'deploymentId',
+    const [onChainId, boundEscrow] = await Promise.all([
+      publicClient.readContract({
+        address: manifest.escrow.address as Address,
+        abi: motorCoveEscrowAbi,
+        functionName: 'deploymentId',
+      }),
+      publicClient.readContract({
+        address: manifest.nft.address as Address,
+        abi: vehicleNftAbi,
+        functionName: 'motorCoveEscrow',
+      }),
+    ]).catch(() => {
+      throw new Error(deploymentMismatch);
     });
     if (
       manifest.chainId !== String(chainId) ||
@@ -198,11 +209,10 @@ async function bootstrap(): Promise<void> {
       code[1] === undefined ||
       keccak256(code[0]) !== manifest.nft.runtimeCodeHash ||
       keccak256(code[1]) !== manifest.escrow.runtimeCodeHash ||
-      onChainId !== manifest.deploymentId
+      onChainId !== manifest.deploymentId ||
+      boundEscrow.toLowerCase() !== manifest.escrow.address.toLowerCase()
     )
-      throw new Error(
-        'DEPLOYMENT_MISMATCH: run pnpm demo:reset --yes before replacing local state',
-      );
+      throw new Error(deploymentMismatch);
     const result = await completeDatabaseBootstrap(manifest);
     console.log(
       JSON.stringify({
@@ -269,6 +279,23 @@ async function bootstrap(): Promise<void> {
   );
   if (!escrowReceipt.contractAddress) throw new Error('Escrow deployment had no contract address');
   const escrowAddress = escrowReceipt.contractAddress;
+
+  await seedJournal.transaction(
+    'bind-vehicle-nft-escrow',
+    transactionIntent({
+      operation: 'bindVehicleNftEscrow',
+      nftAddress: nftAddress.toLowerCase(),
+      escrowAddress: escrowAddress.toLowerCase(),
+    }),
+    () =>
+      wallet.writeContract({
+        address: nftAddress,
+        abi: vehicleNftAbi,
+        functionName: 'setEscrow',
+        args: [escrowAddress],
+      }),
+    waitForJournalReceipt,
+  );
 
   for (let token = 1; token <= 4; token += 1) {
     await seedJournal.transaction(

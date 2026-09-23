@@ -84,7 +84,7 @@
         "apps/web/src/integrations/persistence/browser-submission-coordinator.ts",
         "docs/adr/0021-cross-tab-submission-and-volatile-rebase.md"
       ],
-      "scenarios": ["TX-001", "TX-002", "TX-003", "TX-004", "TX-005", "TX-006", "TX-007"],
+      "scenarios": ["TX-001", "TX-002", "TX-003", "TX-004", "TX-005", "TX-006", "TX-007", "TX-008"],
       "verification": ["RUN-TRANSACTION-RECOVERY", "RUN-INTEGRATION", "RUN-E2E"],
       "limits": "Non-durable known-hash tracking survives client-side route changes and storage read denial only in the current tab; reload or tab close loses it. Local non-final observation is not a public-network finality claim. Cross-tab observation and submission ownership require Web Locks; their fallbacks coordinate one JavaScript realm only. Cross-device journal coordination and manual MetaMask response-loss testing are not claimed."
     },
@@ -108,7 +108,7 @@
       "behavior": "Escrows ERC-721 assets, separates completion, pull claims, refunds, withdrawal, and token reclaim, and checks recorded liability against independently summed outstanding obligations.",
       "implementation": "implemented",
       "code": ["chain/src/MotorCoveEscrow.sol", "chain/src/VehicleNFT.sol"],
-      "scenarios": ["SALE-001", "SALE-002", "SALE-003", "SALE-004", "SALE-005"],
+      "scenarios": ["SALE-001", "SALE-002", "SALE-003", "SALE-004", "SALE-005", "SALE-006"],
       "verification": ["RUN-CONTRACTS"],
       "limits": "Local test assets and test ETH only; contracts have not received an external security audit."
     },
@@ -339,7 +339,7 @@
     {
       "id": "CAP-16",
       "name": "Roadmap and dependency management",
-      "behavior": "Maps P0\u2013P5, D0\u2013D5, DOC-P0\u2013P5, blockers, and provider-consumer exit gates without inventing delivery metrics.",
+      "behavior": "Maps P0–P5, D0–D5, DOC-P0–P5, blockers, and provider-consumer exit gates without inventing delivery metrics.",
       "implementation": "implemented",
       "code": ["docs/implementation-plan.md", "docs/collaboration/delivery-workflow.md"],
       "scenarios": ["SALE-002", "REL-001"],

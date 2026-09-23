@@ -39,3 +39,14 @@ requested-height block hash, and deployment identity; do not pay again.
 Code: `apps/web/src/integrations/evm/use-escrow-gateway.ts`,
 `chain/src/MotorCoveEscrow.sol`, `apps/indexer/src/domain/projectors/sale-projector.ts`.
 Verification is recorded separately in [evidence](../evidence/verification.json).
+
+## Admission and duplicate-submission invariants
+
+Bootstrap binds `VehicleNFT` to the deployed escrow before demo assets are minted. The NFT rejects
+any direct safe or unsafe transfer into that address unless the escrow is the authorized operator
+performing `createSale`. This prevents an escrow-owned token from existing without a tracked Sale.
+
+After a funding wallet request returns a hash, the durable journal continues to own the complete
+funding intent while inclusion and projection are unresolved. A sequential click or reload cannot
+open a second wallet request for the same calldata and value. A different Sale or another immutable
+intent remains independent.

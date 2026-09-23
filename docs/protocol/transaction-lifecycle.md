@@ -173,13 +173,21 @@ path never opens a wallet request.
 
 ## Same-intent submission ownership
 
-The application acquires exclusive ownership for the complete immutable intent before simulation,
-journal persistence, or any other awaited step. The key binds deployment, chain, account, protocol,
-action, sale/token identity, contract, calldata, and value. In browsers, a Web Lock carries that
-ownership across tabs through the returned-hash persistence path. A second activation of the same
-intent while the first is pending returns `OPERATION_ALREADY_IN_FLIGHT` before it can create another
-journal entry, simulate, or open a wallet request. A different intent remains independent. The
-module-level fallback covers one JavaScript realm only when Web Locks are unavailable.
+The application acquires exclusive call-stack ownership for the complete immutable intent before
+simulation, journal persistence, or any other awaited step. The key binds deployment, chain,
+account, protocol, action, sale/token identity, contract, calldata, and value. In browsers, a Web
+Lock carries that ownership across tabs through the returned-hash persistence path. A concurrent
+activation returns `OPERATION_ALREADY_IN_FLIGHT` before it can create another journal entry,
+simulate, or open a wallet request. A different intent remains independent. The module-level
+fallback covers one JavaScript realm only when Web Locks are unavailable.
+
+Returning a transaction hash ends the wallet request, but it does not resolve the attempt. Before a
+new operation is created, the capability reloads the journal and rejects the same immutable intent
+with `OPERATION_ATTEMPT_UNRESOLVED` while an earlier row is `PREPARING`, `AWAITING_WALLET`,
+`SUBMITTED`, `UNKNOWN`, `INCLUDED_SUCCESS`, or `ORPHANED`. This durable check survives reloads and
+tab changes. A proved pre-submit rejection or failure permits a fresh operation. A retry after a
+proved chain outcome is a separate operation and records `retryOf`; a pending or unknown attempt
+cannot be bypassed by setting `retryOf`.
 
 If a returned hash exists only in the volatile overlay and another tab advances the durable row
 without transaction evidence, durability retry may rebase that unique hash onto the newer revision.
@@ -188,5 +196,6 @@ association, event, or projection evidence makes the retry fail closed; no evide
 and no wallet request is repeated.
 
 The marketplace mirrors this capability rule with a per-action pending key. The matching control is
-disabled and exposes `aria-busy` until the operation settles; ownership is released on both success
-and failure. This UI state improves feedback but does not replace the capability-level invariant.
+disabled and exposes `aria-busy` until the gateway call settles. The durable journal guard continues
+after that UI pending state ends, so a returned hash cannot reopen a second wallet request. This UI
+state improves feedback but does not replace the capability-level invariant.
