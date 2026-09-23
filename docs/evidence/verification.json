@@ -1,10 +1,10 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "5df9e8e04e9a64be879022f3fb23d2656c39306e",
+    "revision": "d63fc98665392f116fc4b84898f6cddef7d9b2b3",
     "dirty": true,
-    "capturedAt": "2026-09-23T02:20:04Z",
-    "sourceFingerprint": "sha256:2b1a271fde850ccf6a9499234a5f48d6e8e0454c47358d30c51ac02514f54118",
+    "capturedAt": "2026-09-23T03:11:12Z",
+    "sourceFingerprint": "sha256:1481a797cfa3265a667b05b8a4521a35d26c44157f281f29662588f73bb17b53",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
     "limits": "R20 verification used same-host advisory locks, harness-owned temporary SQLite environments, controlled chain clients, loopback Anvil, synthetic accounts, Chromium, and GitHub-hosted CI. It does not claim distributed bootstrap ownership, public-network provider behavior, manual MetaMask, cross-device coordination, or hardware power-loss durability.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
@@ -411,18 +411,28 @@
       "limitations": "Ownership evidence is same-host advisory flock; SQLite fixtures are harness-owned. Reconciliation uses a controlled chain client for exact head timing. No distributed lock, public RPC timing, or hardware power loss was exercised.",
       "executedAt": "2026-09-23T02:20:04Z"
     },
-
+    {
+      "id": "RUN-R21-FOCUSED",
+      "scenarios": ["IDX-005", "DB-73"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm exec vitest run apps/indexer/src/application/ingest-range.test.ts tests/database/reset.test.ts tests/database/reset-cli.test.ts; pnpm test:db; pnpm exec vitest run apps/indexer/src/application/ingest-range.test.ts apps/indexer/src/application/reindex-target.test.ts apps/indexer/src/application/reindex-catchup.test.ts tests/integration/managed-node-reset.test.ts; pnpm test:integration; pnpm verify; pnpm test:e2e",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Durable reset-intent and indexing-depth regression groups passed (22 focused reset/indexing tests, 41 database-lane tests, and 23 focused indexer/reindex/managed-node tests; groups overlap). The full gate passed 13 Foundry tests, 47 unit/component/database files with 323 tests, 14 integration files with 60 tests, all 7 workspace builds, and 8 Playwright E2E scenarios.",
+      "limitations": "Process-death coverage uses a harness-owned detached child and synthetic chain-generation file; chain-reset failure timing is controlled. Local E2E uses loopback Anvil, synthetic accounts, managed SQLite, and no browser extension wallet, public RPC, distributed host, or hardware power loss.",
+      "executedAt": "2026-09-23T03:11:12Z"
+    },
     {
       "id": "RUN-CI",
-      "scenarios": ["REL-001", "ARCH-001", "DB-71", "DB-72"],
+      "scenarios": ["REL-001", "ARCH-001", "IDX-005", "DB-73"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35809479117)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35812921736)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/pass",
-      "result": "GitHub Actions run 35809479117 completed successfully for R20 source 5df9e8e04e9a64be879022f3fb23d2656c39306e: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
-      "executedAt": "2026-09-23T02:18:37Z",
+      "result": "GitHub Actions run 35812921736 completed successfully for R21 source d63fc98665392f116fc4b84898f6cddef7d9b2b3: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
+      "executedAt": "2026-09-23T03:09:57Z",
       "limitations": "GitHub-hosted deterministic local stack only; distributed ownership, branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35809479117"
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35812921736"
     }
   ]
 }
