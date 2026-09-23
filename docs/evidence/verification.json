@@ -543,6 +543,17 @@
       "result": "Playwright passed all 8 scenarios on a fresh harness-owned local Anvil, API, Indexer, Web, and managed database.",
       "limitations": "No real wallet extension, public RPC, public-chain asset, cross-device coordination, or hardware power-loss test. pnpm emitted WebServer teardown messages after tests passed; command exit code was 0.",
       "executedAt": "2026-09-23T08:07:28Z"
+    },
+    {
+      "id": "RUN-DB-DOC-2",
+      "scenarios": [],
+      "level": "DOC-TEST",
+      "command": "pnpm exec vitest run tooling/docs/database-docs.test.ts; pnpm docs:check; pnpm verify; pnpm test:e2e",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Four database documentation tests passed; docs:check, full verify, and local E2E all exited 0 against the post-R25 database contract (schema fingerprint 55da2994016edf47d7184d0c705a744b201b40927b4f6d58d5495ea7c6061790).",
+      "limitations": "Candidate based on be88e9ee92b056e39efb0d0489034c7a2f721cd4. Generated schema inspection used an isolated in-memory SQLite database; no existing managed environment, public RPC, or real wallet was used. This is documentation and model reconciliation, not an R26 schema audit.",
+      "executedAt": "2026-09-23T08:33:56Z"
     }
   ]
 }

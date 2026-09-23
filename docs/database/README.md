@@ -28,6 +28,8 @@ managed environment.
   writer, recovery source, backup, and reorg matrix plus interpretation rules.
 - [Recovery semantics](recovery-semantics.md): the effects of migration, rebuild, reindex, backup,
   restore, and reset.
+- [Temporal semantics](temporal-semantics.md): business, chain, observation, verification,
+  process-liveness, and local-mutation time and what each existing field proves.
 - [Database architecture](../architecture/database.md): process and package boundaries.
 - [Database acceptance matrix](../testing/database-acceptance-matrix.md): implemented and executed
   verification evidence.

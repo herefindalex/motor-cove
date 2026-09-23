@@ -76,6 +76,50 @@ reindex when local source completeness, canonical identity, decoder compatibilit
 cannot be trusted. Use restore for a verified compatible snapshot. Use reset only for an explicitly
 disposable owned local environment. None of these paths authorizes resubmitting a wallet operation.
 
+## Backup purpose and restore policy
+
+The manifest's restore policy and a maintenance archive's purpose answer different questions:
+
+| Evidence                   | Purpose                                                                                                                      | Normal `db:restore` eligibility                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `STANDARD` backup          | Complete snapshot of a ready source; a deployed snapshot also binds deployment, seed-journal, and bootstrap-receipt evidence | A deployed snapshot is eligible after verification and active-generation checks; predeployment restore is unsupported |
+| `EVIDENCE_ONLY` backup     | Preserve bytes when source readiness or maintenance state prevents a normal restore claim                                    | Ineligible                                                                                                            |
+| `MIGRATION_SAFETY` archive | Bind the pre-migration snapshot to the migration operation and its resume proof                                              | Ineligible as a normal restore source                                                                                 |
+| `SOURCE_REFRESH_ARCHIVE`   | Preserve suspect or displaced source before a source-refresh reindex                                                         | Ineligible as a normal restore source                                                                                 |
+
+The latter two are operation purposes recorded within evidence-only archives; they are not extra
+normal restore policies. A standard backup holds shared bootstrap ownership. A deployed standard
+snapshot requires the seed journal and bootstrap receipt as a pair. Their presence alone is not
+completion proof: `bootstrap-receipt.json` is atomically published and validated for
+`formatVersion`, `environmentId`, `deploymentId`, `targetBlock`, `targetHash`,
+`projectionBuildId`, and `completedAt`. Backup and restore validate the copied receipt against the
+snapshot's identity; a half-published bootstrap is not accepted as a ready snapshot.
+
+## What a restore establishes
+
+Restore holds exclusive bootstrap ownership before maintenance locks. It verifies the selected
+standard backup and active sidecars, copies the database to staging, compares the staged bytes to
+the manifest checksum, and checks the staged schema, history, integrity, and deployment identity
+before quarantining the active database and installing the candidate. It rejects a different active
+bootstrap generation instead of combining its sidecars with a restored database. A failed
+pre-quarantine check leaves the active database in place and records the failed maintenance state.
+
+A successful restore establishes compatible, checked local bytes and schema. It does not establish
+that the chain head has not advanced, that the saved projection is caught up, that a historical
+reconciliation report is current, or that the saved worker heartbeat is fresh. Those claims require
+subsequent live observation or the appropriate explicit recovery operation.
+
+## Eligible target and live currentness
+
+At live runtime, `eligibleTarget = observedHead - indexingDepth` when a target exists. `CURRENT`
+requires a verified checkpoint at that eligible target; committing one batch is not enough if more
+eligible blocks remain. A fixed maintenance reindex target is its catch-up completion condition,
+while later live `CURRENT` still depends on the worker's actual head observation. A checkpoint
+above the eligible target requires explicit reindex rather than an ordinary `CURRENT` transition.
+
+The last-known projection status and observation freshness presented to readers are distinct; see
+[temporal semantics](temporal-semantics.md).
+
 ## Recovery status and observation time
 
 `RECOVERY_REQUIRED` is durable integrity evidence. Ordinary Indexer startup, commit, stale, and

@@ -11,8 +11,11 @@ const migrationsFolder = resolve(workspace, 'packages/database/drizzle');
 const schemaContractPath = resolve(workspace, 'packages/database/schema-contract.json');
 const schemaReferencePath = resolve(workspace, 'docs/database/schema-reference.generated.md');
 const authorityPath = resolve(workspace, 'docs/database/authority-and-lifecycle.md');
+const modelPath = resolve(workspace, 'docs/database/database-model.md');
 const authorityStart = '<!-- GENERATED:DATABASE-AUTHORITY:START -->';
 const authorityEnd = '<!-- GENERATED:DATABASE-AUTHORITY:END -->';
+const modelStart = '<!-- GENERATED:DATABASE-TABLE-CONTRACTS:START -->';
+const modelEnd = '<!-- GENERATED:DATABASE-TABLE-CONTRACTS:END -->';
 
 interface ColumnRow {
   readonly cid: number;
@@ -218,11 +221,60 @@ function renderAuthorityMatrix(): string {
   ].join('\n');
 }
 
-function replaceGeneratedRegion(current: string, body: string): string {
-  const start = current.indexOf(authorityStart);
-  const end = current.indexOf(authorityEnd);
-  if (start < 0 || end < start) throw new Error(`GENERATED_MARKER_MISSING: ${authorityPath}`);
-  return `${current.slice(0, start + authorityStart.length)}\n${body}\n${current.slice(end)}`;
+function renderTableContracts(): string {
+  return Object.entries(databaseModel)
+    .map(([name, model]) => {
+      const rows = [
+        ['Purpose', model.purpose],
+        ['Category', model.category],
+        ['Authority', model.authority],
+        ['Identity', model.identity],
+        ['Writers', model.writers.join('; ')],
+        ['Readers', model.readers.join('; ')],
+        ['Derived', model.derived ? 'yes' : 'no'],
+        ['Rebuildable', model.rebuildable ? 'yes' : 'no'],
+        ['Recovery source', model.recoverySource],
+        ['Backup requirement', model.backupRequirement],
+        ['Restore requirement', model.restoreRequirement],
+        ['Reorg semantics', model.reorgSemantics],
+        ['Lifecycle', model.lifecycle],
+      ];
+      const temporal = model.temporalSemantics.length
+        ? [
+            '| Field | Time class | Meaning |',
+            '| --- | --- | --- |',
+            ...model.temporalSemantics.map(
+              (entry) =>
+                `| ${quote(entry.field)} | ${quote(entry.category)} | ${escapeCell(entry.meaning)} |`,
+            ),
+          ]
+        : ['No physical timestamp or block-time field is recorded in this table.'];
+      return [
+        `### ${quote(name)}`,
+        '',
+        '| Property | Contract |',
+        '| --- | --- |',
+        ...rows.map(([label, value]) => `| ${label} | ${escapeCell(value)} |`),
+        '',
+        '#### Temporal semantics',
+        '',
+        ...temporal,
+        '',
+        model.temporalNote,
+      ].join('\n');
+    })
+    .join('\n\n');
+}
+
+function replaceGeneratedRegion(
+  current: string,
+  body: string,
+  markers: { start: string; end: string; path: string },
+): string {
+  const start = current.indexOf(markers.start);
+  const end = current.indexOf(markers.end);
+  if (start < 0 || end < start) throw new Error(`GENERATED_MARKER_MISSING: ${markers.path}`);
+  return `${current.slice(0, start + markers.start.length)}\n${body}\n${current.slice(end)}`;
 }
 
 async function writeOrCheck(path: string, next: string, check: boolean): Promise<void> {
@@ -241,11 +293,39 @@ export async function generateDatabaseDocumentation(
   check = false,
 ): Promise<{ readonly tables: number }> {
   const snapshot = readDatabaseDocumentationSnapshot();
+  for (const table of snapshot.tables) {
+    const model = databaseModel[table.name as DatabaseTableName];
+    const classified = new Set(model.temporalSemantics.map((temporal) => temporal.field));
+    for (const temporal of model.temporalSemantics) {
+      if (!table.columns.some((column) => column.name === temporal.field)) {
+        throw new Error(`DATABASE_MODEL_TEMPORAL_FIELD_DRIFT: ${table.name}.${temporal.field}`);
+      }
+    }
+    for (const column of table.columns) {
+      if (/(?:_at|_timestamp)$/.test(column.name) && !classified.has(column.name)) {
+        throw new Error(`DATABASE_MODEL_TEMPORAL_FIELD_UNCLASSIFIED: ${table.name}.${column.name}`);
+      }
+    }
+  }
   await writeOrCheck(schemaReferencePath, renderSchemaReference(snapshot), check);
   const authorityCurrent = readFileSync(authorityPath, 'utf8');
   await writeOrCheck(
     authorityPath,
-    replaceGeneratedRegion(authorityCurrent, renderAuthorityMatrix()),
+    replaceGeneratedRegion(authorityCurrent, renderAuthorityMatrix(), {
+      start: authorityStart,
+      end: authorityEnd,
+      path: authorityPath,
+    }),
+    check,
+  );
+  const modelCurrent = readFileSync(modelPath, 'utf8');
+  await writeOrCheck(
+    modelPath,
+    replaceGeneratedRegion(modelCurrent, renderTableContracts(), {
+      start: modelStart,
+      end: modelEnd,
+      path: modelPath,
+    }),
     check,
   );
   return { tables: snapshot.tables.length };
