@@ -74,6 +74,7 @@
 
 - [實作狀態](implementation-status.zh-TW.md)與[實作計畫](implementation-plan.zh-TW.md)
 - [文件驗收矩陣](testing/documentation-acceptance-matrix.zh-TW.md)
+- [交易介面的瀏覽器測試涵蓋範圍](testing/transaction-ux-e2e-coverage.zh-TW.md)
 - [資料庫驗收矩陣](testing/database-acceptance-matrix.zh-TW.md)
 - [機器可讀驗證紀錄](evidence/verification.json)
 - [實測工具鏈](toolchain.zh-TW.md)
