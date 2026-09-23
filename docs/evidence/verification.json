@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "d63fc98665392f116fc4b84898f6cddef7d9b2b3",
+    "revision": "9ad26931b2ee3e355eab325bdc74dac6a9b05637",
     "dirty": true,
-    "capturedAt": "2026-09-23T03:11:12Z",
-    "sourceFingerprint": "sha256:1481a797cfa3265a667b05b8a4521a35d26c44157f281f29662588f73bb17b53",
+    "capturedAt": "2026-09-23T04:28:44Z",
+    "sourceFingerprint": "sha256:b6bf194d4a9ef7909f8d71e8c32787999a7e5271ba78c2386a6250176153571c",
     "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "R20 verification used same-host advisory locks, harness-owned temporary SQLite environments, controlled chain clients, loopback Anvil, synthetic accounts, Chromium, and GitHub-hosted CI. It does not claim distributed bootstrap ownership, public-network provider behavior, manual MetaMask, cross-device coordination, or hardware power-loss durability.",
+    "limits": "R22 verification used same-host coordination, harness-owned temporary SQLite environments, loopback Anvil, synthetic accounts, Chromium, and GitHub-hosted CI. It does not claim deployed-contract upgrade, public-network provider behavior, manual MetaMask, cross-device coordination, or hardware power-loss durability.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -423,16 +423,27 @@
       "executedAt": "2026-09-23T03:11:12Z"
     },
     {
+      "id": "RUN-R22-FOCUSED",
+      "scenarios": ["TX-008", "SALE-006"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm exec vitest run apps/web/src/capabilities/transactions/submit-operation.test.ts apps/web/src/integrations/persistence/browser-submission-coordinator.test.ts apps/web/src/integrations/evm/use-escrow-gateway.test.tsx; pnpm test:contracts; pnpm exec vitest run tests/integration/real-stack.test.ts tests/integration/bootstrap-ownership.test.ts; pnpm test:integration; pnpm verify; pnpm test:e2e",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Durable-attempt and escrow-admission focused checks passed: 24 Web tests across 3 files, 17 Foundry tests including 4 invariant properties over 128 runs and 4096 calls, and 5 fresh-Anvil integration tests across 2 files. The complete gate passed 17 Foundry tests, 47 unit/component/database files with 325 tests, 14 integration files with 61 tests, all 7 workspace builds, and 8 Playwright E2E scenarios.",
+      "limitations": "Wallet and chain checks used synthetic accounts and harness-owned loopback Anvil. No browser-extension wallet, public RPC, deployed-contract upgrade, cross-device journal, or hardware power-loss path was exercised. Existing non-upgradeable local deployments require an explicit owner-triggered reset before adopting the escrow binding.",
+      "executedAt": "2026-09-23T04:28:44Z"
+    },
+    {
       "id": "RUN-CI",
-      "scenarios": ["REL-001", "ARCH-001", "IDX-005", "DB-73"],
+      "scenarios": ["REL-001", "ARCH-001", "TX-008", "SALE-006"],
       "level": "REMOTE-CI",
-      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35812921736)",
+      "command": "GitHub Actions workflow .github/workflows/ci.yml (run 35818144829)",
       "workingDirectory": "GitHub-hosted ubuntu-latest runner",
       "status": "executed/pass",
-      "result": "GitHub Actions run 35812921736 completed successfully for R21 source d63fc98665392f116fc4b84898f6cddef7d9b2b3: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
-      "executedAt": "2026-09-23T03:09:57Z",
-      "limitations": "GitHub-hosted deterministic local stack only; distributed ownership, branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
-      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35812921736"
+      "result": "GitHub Actions run 35818144829 completed successfully for R22 source 9ad26931b2ee3e355eab325bdc74dac6a9b05637: dependency installation, docs:smoke, pnpm verify, and pnpm test:e2e all passed.",
+      "executedAt": "2026-09-23T04:27:49Z",
+      "limitations": "GitHub-hosted deterministic local stack only; deployed-contract upgrade, branch protection, reviewer identity, public networks, manual MetaMask, hardware power loss, and cross-device coordination remain outside this run.",
+      "url": "https://github.com/herefindalex/motor-cove/actions/runs/35818144829"
     }
   ]
 }
