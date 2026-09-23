@@ -10,9 +10,23 @@ export const databaseCategories = [
 
 export type DatabaseCategory = (typeof databaseCategories)[number];
 export type BackupRequirement = 'CRITICAL' | 'PREFER' | 'CONVENIENCE' | 'NONE';
+export type TemporalCategory =
+  | 'BUSINESS_TIME'
+  | 'CHAIN_TIME'
+  | 'OBSERVATION_TIME'
+  | 'VERIFICATION_TIME'
+  | 'PROCESS_LIVENESS_TIME'
+  | 'LOCAL_MUTATION_TIME';
+
+export interface DatabaseTemporalField {
+  readonly field: string;
+  readonly category: TemporalCategory;
+  readonly meaning: string;
+}
 
 export interface DatabaseTableModel {
   readonly purpose: string;
+  readonly identity: string;
   readonly category: DatabaseCategory;
   readonly authority: string;
   readonly writers: readonly string[];
@@ -21,8 +35,11 @@ export interface DatabaseTableModel {
   readonly rebuildable: boolean;
   readonly recoverySource: string;
   readonly backupRequirement: BackupRequirement;
+  readonly restoreRequirement: string;
   readonly reorgSemantics: string;
   readonly lifecycle: string;
+  readonly temporalSemantics: readonly DatabaseTemporalField[];
+  readonly temporalNote: string;
 }
 
 /**
@@ -44,6 +61,17 @@ export const databaseModel = {
     backupRequirement: 'CRITICAL',
     reorgSemantics: 'Not chain-dependent.',
     lifecycle: 'Created and appended only by ordered migrations; existing rows are immutable.',
+    identity: 'id',
+    restoreRequirement:
+      'Restore the exact native migration ledger with its database; never infer applied SQL from a newer checkout.',
+    temporalSemantics: [
+      {
+        field: 'created_at',
+        category: 'LOCAL_MUTATION_TIME',
+        meaning: 'Local migration ledger insertion time, not a chain observation.',
+      },
+    ],
+    temporalNote: 'Migration ordering and SQL hashes, not wall-clock recency, determine validity.',
   },
   db_contract: {
     purpose: 'Attestation that the database matches one repository schema contract.',
@@ -57,6 +85,17 @@ export const databaseModel = {
     backupRequirement: 'CONVENIENCE',
     reorgSemantics: 'Not chain-dependent.',
     lifecycle: 'Updated only after the complete migration and schema verification transaction.',
+    identity: 'singleton contract row',
+    restoreRequirement:
+      'Reverify the schema contract and history against this source revision after restore.',
+    temporalSemantics: [
+      {
+        field: 'verified_at',
+        category: 'VERIFICATION_TIME',
+        meaning: 'Time migration finalization published the verified schema contract.',
+      },
+    ],
+    temporalNote: 'A newer timestamp cannot substitute for a matching schema fingerprint.',
   },
   deployments: {
     purpose:
@@ -73,6 +112,18 @@ export const databaseModel = {
       'Deployment block hashes are identity evidence and must not be silently replaced.',
     lifecycle:
       'Inserted once for a managed deployment generation; replacement requires a new environment generation.',
+    identity: 'deployment_id',
+    restoreRequirement:
+      'Restore only with compatible active deployment manifest and bootstrap generation evidence.',
+    temporalSemantics: [
+      {
+        field: 'registered_at',
+        category: 'LOCAL_MUTATION_TIME',
+        meaning: 'Local registration time after deployment identity checks.',
+      },
+    ],
+    temporalNote:
+      'Deployment blocks and hashes are chain anchors; registered_at is not deployment time on-chain.',
   },
   catalog_vehicles: {
     purpose: 'MotorCove product metadata that has no complete on-chain representation.',
@@ -86,6 +137,23 @@ export const databaseModel = {
     backupRequirement: 'CRITICAL',
     reorgSemantics: 'Catalog rows are independent of chain canonicality.',
     lifecycle: 'Seeded idempotently and updated only under exclusive maintenance ownership.',
+    identity: 'catalog_id',
+    restoreRequirement:
+      'Restore authoritative catalog rows from a verified compatible backup or exact catalog input.',
+    temporalSemantics: [
+      {
+        field: 'created_at',
+        category: 'LOCAL_MUTATION_TIME',
+        meaning: 'Local catalog row creation time.',
+      },
+      {
+        field: 'updated_at',
+        category: 'LOCAL_MUTATION_TIME',
+        meaning: 'Last local catalog mutation time.',
+      },
+    ],
+    temporalNote:
+      'Seed set identity and version govern authority; timestamps alone do not prove catalog content.',
   },
   catalog_asset_bindings: {
     purpose: 'Binds local catalog identity to a token in one deployment and collection.',
@@ -99,6 +167,12 @@ export const databaseModel = {
     backupRequirement: 'CRITICAL',
     reorgSemantics: 'Bindings remain deployment-scoped; a reorg does not rewrite catalog intent.',
     lifecycle: 'Created idempotently after both deployment and catalog rows exist.',
+    identity: 'deployment_id + collection_address + token_id',
+    restoreRequirement:
+      'Restore bindings with the same deployment and catalog generation; chain replay cannot recreate catalog intent.',
+    temporalSemantics: [],
+    temporalNote:
+      'No wall-clock column; deployment, token identity, binding source, and seed version carry lifecycle meaning.',
   },
   indexed_blocks: {
     purpose: 'Block identity, canonicality, scan completeness, and observed-log digest evidence.',
@@ -114,6 +188,18 @@ export const databaseModel = {
       'Competing hashes may be retained; exactly one canonical row may exist per deployment and height.',
     lifecycle:
       'Inserted during ingestion, canonicality changes atomically with event and projection updates.',
+    identity: 'deployment_id + block_hash; one canonical hash per height',
+    restoreRequirement:
+      'Retain verified source evidence when possible; otherwise reacquire through explicit reindex.',
+    temporalSemantics: [
+      {
+        field: 'block_timestamp',
+        category: 'CHAIN_TIME',
+        meaning: 'Timestamp supplied by the observed block header.',
+      },
+    ],
+    temporalNote:
+      'Canonicality and scan completeness are branch evidence, not a live observation timestamp.',
   },
   chain_events: {
     purpose: 'Raw and decoded contract-log evidence retained before projection interpretation.',
@@ -129,6 +215,18 @@ export const databaseModel = {
       'Historical noncanonical events remain auditable and are interpreted through indexed_blocks canonicality.',
     lifecycle:
       'Inserted with source digests in the same unit of work as block and checkpoint evidence.',
+    identity: 'deployment_id + block_hash + log_index',
+    restoreRequirement:
+      'Retain verified raw event evidence when possible; reacquire only through explicit reindex.',
+    temporalSemantics: [
+      {
+        field: 'first_seen_at',
+        category: 'OBSERVATION_TIME',
+        meaning: 'First local observation of this raw log.',
+      },
+    ],
+    temporalNote:
+      'Block hash, transaction index, and log index identify chain position; first_seen_at does not establish canonicality.',
   },
   indexer_checkpoint: {
     purpose: 'Committed cursor and projection-generation identity for incremental ingestion.',
@@ -143,6 +241,18 @@ export const databaseModel = {
     reorgSemantics: 'Checkpoint block and hash must remain an inseparable canonical anchor.',
     lifecycle:
       'Advances only in the atomic event/projection commit and may rewind only under explicit recovery.',
+    identity: 'deployment_id',
+    restoreRequirement:
+      'Restore with matching source and projection generation; verify its block anchor before normal ingestion.',
+    temporalSemantics: [
+      {
+        field: 'updated_at',
+        category: 'LOCAL_MUTATION_TIME',
+        meaning: 'Local atomic checkpoint update or maintenance rewind time.',
+      },
+    ],
+    temporalNote:
+      'last_scanned_block/hash are chain anchors; updated_at alone cannot prove current chain head.',
   },
   sales: {
     purpose: 'Query-efficient projection of escrow sale state.',
@@ -158,6 +268,33 @@ export const databaseModel = {
     reorgSemantics:
       'Rows follow the canonical event sequence and roll back atomically with checkpoint changes.',
     lifecycle: 'Created by SaleCreated and advanced only by valid sale-state transitions.',
+    identity: 'deployment_id + sale_id',
+    restoreRequirement:
+      'Restore as a derived convenience only; verify canonical source or explicitly reindex.',
+    temporalSemantics: [
+      {
+        field: 'funded_at',
+        category: 'BUSINESS_TIME',
+        meaning: 'Contract-funded timestamp used to derive the payment deadline.',
+      },
+      {
+        field: 'expires_at',
+        category: 'BUSINESS_TIME',
+        meaning: 'Contract-derived sale expiry deadline.',
+      },
+      {
+        field: 'created_block',
+        category: 'CHAIN_TIME',
+        meaning: 'Canonical creation block height.',
+      },
+      {
+        field: 'updated_block',
+        category: 'CHAIN_TIME',
+        meaning: 'Canonical last transition block height.',
+      },
+    ],
+    temporalNote:
+      'Block/hash/log provenance and contract deadlines are more meaningful than a local row update clock.',
   },
   payment_claims: {
     purpose: 'Projection of pull-payment claims and withdrawal state.',
@@ -173,6 +310,23 @@ export const databaseModel = {
     reorgSemantics: 'Claim state follows canonical creation and withdrawal events.',
     lifecycle:
       'Created with a claim event and marked withdrawn only by its matching canonical event.',
+    identity: 'deployment_id + sale_id',
+    restoreRequirement:
+      'Restore as a derived convenience only; verify claim creation and withdrawal source evidence.',
+    temporalSemantics: [
+      {
+        field: 'creation_block_hash',
+        category: 'CHAIN_TIME',
+        meaning: 'Block anchor of the canonical claim creation event.',
+      },
+      {
+        field: 'withdrawal_block_hash',
+        category: 'CHAIN_TIME',
+        meaning: 'Optional block anchor of the canonical withdrawal event.',
+      },
+    ],
+    temporalNote:
+      'Log indexes pair with block hashes; no local wall-clock timestamp is needed to identify claim order.',
   },
   token_ownership: {
     purpose: 'Current ERC-721 ownership projection independent of historical sale buyer identity.',
@@ -187,6 +341,23 @@ export const databaseModel = {
     reorgSemantics: 'Ownership follows the canonical transfer sequence at the checkpoint.',
     lifecycle:
       'Upserted for every canonical mint or transfer; never inferred from sale history alone.',
+    identity: 'deployment_id + collection_address + token_id',
+    restoreRequirement:
+      'Restore as a derived convenience only; verify canonical transfer evidence or reindex.',
+    temporalSemantics: [
+      {
+        field: 'updated_block',
+        category: 'CHAIN_TIME',
+        meaning: 'Canonical block height of the last reflected transfer.',
+      },
+      {
+        field: 'last_transfer_block_hash',
+        category: 'CHAIN_TIME',
+        meaning: 'Block anchor of the last reflected transfer.',
+      },
+    ],
+    temporalNote:
+      'Block hash and log index, not a local update time, establish transfer provenance.',
   },
   indexer_runtime_status: {
     purpose:
@@ -203,6 +374,28 @@ export const databaseModel = {
       'A detected conflict moves health toward recovery; maintenance must not invent live freshness.',
     lifecycle:
       'Updated by observation, commit, failure, and recovery transitions without replacing historical chain evidence.',
+    identity: 'deployment_id',
+    restoreRequirement:
+      'Treat restored status and heartbeat as last-known evidence; require a new live observation for freshness.',
+    temporalSemantics: [
+      {
+        field: 'worker_heartbeat_at',
+        category: 'PROCESS_LIVENESS_TIME',
+        meaning: 'Last worker liveness write; local rebuild does not renew it.',
+      },
+      {
+        field: 'last_rpc_success_at',
+        category: 'OBSERVATION_TIME',
+        meaning: 'Last successful live RPC observation by the worker.',
+      },
+      {
+        field: 'last_observed_at',
+        category: 'OBSERVATION_TIME',
+        meaning: 'Time the recorded chain head was observed.',
+      },
+    ],
+    temporalNote:
+      'projection_status and recovery_reason are durable state claims; CURRENT alone does not prove current freshness.',
   },
   reconciliation_runs: {
     purpose: 'Historical report of a projection-to-chain comparison at explicit anchors.',
@@ -217,6 +410,22 @@ export const databaseModel = {
     reorgSemantics:
       'A report remains tied to its historical anchors and never inherits current canonicality.',
     lifecycle: 'Append-only report publication after the comparison result is fully determined.',
+    identity: 'id; each report also binds deployment and comparison anchor',
+    restoreRequirement:
+      'Preserve each historical report with its original scope, block/hash, and projection build.',
+    temporalSemantics: [
+      {
+        field: 'created_at',
+        category: 'VERIFICATION_TIME',
+        meaning: 'Time this anchored comparison report was published.',
+      },
+      {
+        field: 'block_hash',
+        category: 'CHAIN_TIME',
+        meaning: 'Chain anchor against which this report compared projections.',
+      },
+    ],
+    temporalNote: 'A report never inherits a later checkpoint, scope, or chain head.',
   },
 } as const satisfies Record<string, DatabaseTableModel>;
 

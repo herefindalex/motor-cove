@@ -1,5 +1,7 @@
 # Contributing to MotorCove
 
+[繁體中文](CONTRIBUTING.zh-TW.md) · [简体中文](CONTRIBUTING.zh-CN.md)
+
 MotorCove accepts changes that preserve its local-only safety boundary and explicit
 provider-consumer contracts. The repository is licensed under the Apache License 2.0; review
 [LICENSE](LICENSE) before submitting external work.

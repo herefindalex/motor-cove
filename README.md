@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/herefindalex/motor-cove/actions/workflows/ci.yml/badge.svg)](https://github.com/herefindalex/motor-cove/actions/workflows/ci.yml)
 
-[繁體中文](README.zh-TW.md)
+[繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md)
 
 MotorCove is a deliberately small EVM engineering sandbox for an ERC-721 vehicle collectible sale.
 It shows how a React frontend, user wallet, Solidity protocol, event Indexer, SQLite projection, and

@@ -35,6 +35,32 @@ describe('catalog seed semantics', () => {
     db.close();
   });
 
+  it('preserves catalog creation and mutation times on a no-op seed rerun', async () => {
+    const { root, paths } = await databaseFixture('seed-temporal-noop');
+    roots.push(root);
+    await seedCatalog(paths, seed());
+    const originalCreated = '2020-01-01T00:00:00.000Z';
+    const originalUpdated = '2021-01-01T00:00:00.000Z';
+    const db = new Database(paths.databasePath);
+    db.prepare('UPDATE catalog_vehicles SET created_at=?,updated_at=? WHERE catalog_id=?').run(
+      originalCreated,
+      originalUpdated,
+      'apex',
+    );
+    db.close();
+
+    expect((await seedCatalog(paths, seed())).changed).toBe(false);
+    const reopened = new Database(paths.databasePath);
+    expect(
+      reopened
+        .prepare(
+          'SELECT created_at AS createdAt,updated_at AS updatedAt FROM catalog_vehicles WHERE catalog_id=?',
+        )
+        .get('apex'),
+    ).toEqual({ createdAt: originalCreated, updatedAt: originalUpdated });
+    reopened.close();
+  });
+
   it('rejects catalog writes while an incomplete maintenance marker exists', async () => {
     const { root, paths } = await databaseFixture('seed-maintenance-incomplete');
     roots.push(root);

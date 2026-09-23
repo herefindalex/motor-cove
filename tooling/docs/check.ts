@@ -110,13 +110,18 @@ function validateDiscoverability(files: string[], entries: string[]) {
   }
 }
 
-function validateReadmeParity(englishFile: string, chineseFile: string) {
+function validateReadmeParity(englishFile: string, chineseFile: string, simplifiedFile?: string) {
   const english = readFileSync(englishFile, 'utf8');
   const chinese = readFileSync(chineseFile, 'utf8');
+  const simplified = simplifiedFile ? readFileSync(simplifiedFile, 'utf8') : null;
 
   if (!english.includes('(README.zh-TW.md)'))
     fail(`${englishFile}: missing Traditional Chinese link`);
   if (!chinese.includes('(README.md)')) fail(`${chineseFile}: missing English link`);
+  if (simplifiedFile && !english.includes('(README.zh-CN.md)'))
+    fail(`${englishFile}: missing Simplified Chinese link`);
+  if (simplifiedFile && !simplified?.includes('(README.md)'))
+    fail(`${simplifiedFile}: missing English link`);
 
   const requiredLinks = [
     'docs/implementation-status.md',
@@ -140,12 +145,18 @@ function validateReadmeParity(englishFile: string, chineseFile: string) {
     'pnpm demo:reset -- --yes',
   ];
 
-  for (const [label, source, file] of [
-    ['English', english, englishFile],
-    ['Traditional Chinese', chinese, chineseFile],
-  ] as const) {
+  const versions: [string, string, string, string | null][] = [
+    ['English', english, englishFile, null],
+    ['Traditional Chinese', chinese, chineseFile, 'zh-TW'],
+  ];
+  if (simplifiedFile && simplified) {
+    versions.push(['Simplified Chinese', simplified, simplifiedFile, 'zh-CN']);
+  }
+  for (const [label, source, file, locale] of versions) {
     for (const link of requiredLinks) {
-      if (!source.includes(link)) fail(`${file}: ${label} README missing required route ${link}`);
+      const localizedLink = locale ? link.replace(/\.md$/, `.${locale}.md`) : link;
+      if (!source.includes(localizedLink) && !source.includes(link))
+        fail(`${file}: ${label} README missing required route ${link}`);
     }
     for (const command of requiredCommands) {
       if (!source.includes(command))
@@ -153,8 +164,21 @@ function validateReadmeParity(englishFile: string, chineseFile: string) {
     }
   }
 
-  if (chinese.includes('pnpm demo:reset --yes')) {
-    fail(`${chineseFile}: reset confirmation must be forwarded as pnpm demo:reset -- --yes`);
+  for (const [, source, file] of versions.slice(1)) {
+    if (source.includes('pnpm demo:reset --yes')) {
+      fail(`${file}: reset confirmation must be forwarded as pnpm demo:reset -- --yes`);
+    }
+  }
+}
+
+function validatePublicLocalizations(markdown: string[]) {
+  const knownFiles = new Set(markdown);
+  for (const file of markdown) {
+    if (file.endsWith('/AGENTS.md') || /\.zh-(?:TW|CN)\.md$/.test(file)) continue;
+    for (const locale of ['zh-TW', 'zh-CN']) {
+      const localized = file.replace(/\.md$/, `.${locale}.md`);
+      if (!knownFiles.has(localized)) fail(`${file}: missing ${locale} public translation`);
+    }
   }
 }
 
@@ -313,18 +337,26 @@ if (fixtureIndex >= 0) {
   const markdown = [
     resolve(workspace, 'README.md'),
     resolve(workspace, 'README.zh-TW.md'),
+    resolve(workspace, 'README.zh-CN.md'),
     resolve(workspace, 'AGENTS.md'),
     resolve(workspace, 'CONTRIBUTING.md'),
+    resolve(workspace, 'CONTRIBUTING.zh-TW.md'),
+    resolve(workspace, 'CONTRIBUTING.zh-CN.md'),
     ...walk(resolve(workspace, 'docs')).filter(
       (file) => file.endsWith('.md') && !file.includes('/internal/'),
     ),
   ];
   markdownLinks(workspace, markdown);
+  validatePublicLocalizations(markdown);
   validateDiscoverability(markdown, [
     resolve(workspace, 'README.md'),
     resolve(workspace, 'AGENTS.md'),
   ]);
-  validateReadmeParity(resolve(workspace, 'README.md'), resolve(workspace, 'README.zh-TW.md'));
+  validateReadmeParity(
+    resolve(workspace, 'README.md'),
+    resolve(workspace, 'README.zh-TW.md'),
+    resolve(workspace, 'README.zh-CN.md'),
+  );
   validateCommands(
     resolve(workspace, 'docs/_meta/commands.json'),
     resolve(workspace, 'package.json'),

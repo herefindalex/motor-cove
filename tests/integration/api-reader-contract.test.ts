@@ -126,6 +126,37 @@ describe('API with the real SQLite reader', () => {
     await app.close();
   });
 
+  it('does not treat a future worker heartbeat as fresh observation', async () => {
+    const { root, paths } = await databaseFixture('api-future-heartbeat');
+    roots.push(root);
+    const now = new Date('2026-09-22T00:00:00.000Z');
+    const future = new Date(now.getTime() + 60_000);
+    const db = new Database(paths.databasePath);
+    db.prepare(
+      `UPDATE indexer_runtime_status
+       SET projection_status='CURRENT',last_observed_head=1,
+           last_observed_at=?,last_rpc_success_at=?,worker_heartbeat_at=?,recovery_reason=NULL
+       WHERE deployment_id=?`,
+    ).run(future.toISOString(), future.toISOString(), future.toISOString(), hashes.deployment);
+    db.close();
+
+    const app = await createApp(
+      await createReadOnlyReader(paths, hashes.deployment, { now: () => now }),
+      config,
+    );
+    const response = await app.inject({ method: 'GET', url: '/v1/system/status' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      data: {
+        projectionStatus: 'CURRENT',
+        observationFreshness: 'UNKNOWN',
+        observationAgeSeconds: null,
+        lagBlocks: null,
+      },
+    });
+    await app.close();
+  });
+
   it('does not clear recovery-required when its observation heartbeat is stale', async () => {
     const { root, paths } = await databaseFixture('api-stale-recovery');
     roots.push(root);

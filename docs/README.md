@@ -1,5 +1,7 @@
 # MotorCove documentation
 
+[繁體中文](README.zh-TW.md) · [简体中文](README.zh-CN.md)
+
 This index gives a 5-minute route into the repository and a 30-minute route to implementation and
 evidence. Internal Chinese handoff specifications under `internal/` define requirements; public
 pages describe the inspected implementation and recorded verification separately.

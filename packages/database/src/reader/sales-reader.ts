@@ -98,9 +98,11 @@ function readSystemRecord(
   const heartbeatTime = status.workerHeartbeatAt
     ? Date.parse(status.workerHeartbeatAt)
     : Number.NaN;
-  const heartbeatAgeMs = Number.isFinite(heartbeatTime)
-    ? Math.max(0, now.getTime() - heartbeatTime)
-    : null;
+  const nowTime = now.getTime();
+  const heartbeatAgeMs =
+    Number.isFinite(heartbeatTime) && Number.isFinite(nowTime) && heartbeatTime <= nowTime
+      ? nowTime - heartbeatTime
+      : null;
   const observationFreshness =
     heartbeatAgeMs === null
       ? 'UNKNOWN'
