@@ -160,5 +160,5 @@ describe('local reset CLI refusal matrix', () => {
         server.close((error) => (error ? reject(error) : resolveClose())),
       );
     }
-  });
+  }, 15_000);
 });

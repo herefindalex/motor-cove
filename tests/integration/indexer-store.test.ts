@@ -65,7 +65,7 @@ async function fixture() {
     chainId: '31337',
     nftAddress: nft,
     escrowAddress: escrow,
-    protocolVersion: '0.1.0',
+    protocolVersion: '0.2.0',
     abiBundleHash: hex('2', 32),
     scanStartBlock: 1,
     nftDeploymentBlock: 1,
@@ -149,6 +149,13 @@ describe('Indexer store', () => {
     let writer = await openProjectionWriter(paths);
     let store = new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash);
     await store.commit([first, second], events, second);
+    expect(
+      writer.database
+        .prepare(
+          'SELECT allowed_buyer AS allowedBuyer FROM sales WHERE deployment_id=? AND sale_id=?',
+        )
+        .get(deploymentId, '1'),
+    ).toEqual({ allowedBuyer: buyer });
     await store.commit([first, second], events, second);
 
     const changedIdentity = [
@@ -294,17 +301,23 @@ describe('Indexer store', () => {
     await writer.close();
   });
 
-  it('blocks incremental ingestion when the stored projector version differs', async () => {
-    const paths = await fixture();
-    const writer = await openProjectionWriter(paths);
-    writer.database
-      .prepare('UPDATE indexer_checkpoint SET projector_version=? WHERE deployment_id=?')
-      .run('incompatible-projector', deploymentId);
-    expect(() => new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash)).toThrow(
-      'PROJECTION_CONTRACT_MISMATCH',
-    );
-    await writer.close();
-  });
+  it.each(['1', 'incompatible-projector'])(
+    'blocks incremental ingestion with stored projector version %s',
+    async (version) => {
+      const paths = await fixture();
+      const writer = await openProjectionWriter(paths);
+      writer.database
+        .prepare('UPDATE indexer_checkpoint SET projector_version=? WHERE deployment_id=?')
+        .run(version, deploymentId);
+      expect(
+        () => new SqliteProjectionStore(writer.database, deploymentId, nft, scopeHash),
+      ).toThrow('PROJECTION_CONTRACT_MISMATCH');
+      expect(writer.database.prepare('SELECT COUNT(*) AS count FROM sales').get()).toEqual({
+        count: 0,
+      });
+      await writer.close();
+    },
+  );
 
   it('refuses rebuild when a completed block is missing a source event and preserves projection', async () => {
     const paths = await fixture();

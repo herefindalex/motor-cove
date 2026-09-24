@@ -123,6 +123,12 @@ Polygon   → 必须有 finalized RPC 证据
 
 若产品需要接近链头的状态、finalized 延迟无法接受，且具备可逆投影设计与维运资源，重新评估 finalized-only。新增链有具体需求时，先文件化其最终性及供应商语意，再新增 profile。供应商分歧频繁，或安全关键流程需要多方读取共识时，重新评估单一主要来源。若产品加入公开刊登、拍卖或竞价，重新评估预留买家。若实测延迟要求即时链头，重新评估轮询。若产品要求非托管的离链刊登，重新评估 escrow 保管。
 
+## 此实现的兼容性契约
+
+Web 构建只选用一个明确配置的链 profile 和 RPC transport；Anvil 演示连接器不会注册到 Ethereum 或 Polygon。主要 ingestion 与只读次要审计共用事件 selector 范围：NFT `Transfer` 和八种 MotorCove escrow 生命周期事件。`logScopeHash` 绑定范围版本、链、部署、扫描起点、来源角色、地址及事件 selector；过滤契约改变时必须产生新的 hash。decoder 和 projector 的兼容性另由 projector 版本管控。
+
+预留买家的 `createSale` 和 `SaleCreated` 是不兼容的协议变更。此实现在 manifest、API 配置、浏览器交易意图身份及发布 metadata 使用 `protocolVersion=0.2.0`；ABI 和 runtime code hash 仍独立绑定合约。Migration `0003` 保留旧 projector-v1 Sale，并将 `allowed_buyer` 设为 `NULL`，不猜测买家。旧 checkpoint 不能继续 projector-v2 增量 ingestion。本地演示环境须经过明确的受管环境 reset 和重新部署；未来正式环境的转换须另行规定 replay 或 migration 流程。
+
 ## 验证
 
 测试须覆盖：不支援链拒绝、finalized-only 目标、供应商能力不足时拒绝、已包含与已 finalized 的不同状态、finalized anchor 矛盾进入恢复、次要来源 `MATCH`／`MISMATCH`／身份矛盾／不可用、合约强制预留买家与 outsider 拒绝、投影／API／UI／E2E 预留买家流程、escrow 保管不变条件、没有新 WebSocket 路径，以及历史回归。

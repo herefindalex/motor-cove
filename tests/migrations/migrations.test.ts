@@ -30,6 +30,7 @@ import {
   verifyBackup,
 } from '@motorcove/database/maintenance';
 import { databaseFixture, hashes } from '../helpers/database.js';
+import { PROJECTOR_VERSION } from '@motorcove/database/types';
 const roots: string[] = [];
 
 function downgradeToPriorMigration(db: Database.Database): void {
@@ -127,6 +128,60 @@ function downgradeToFirstMigration(databasePath: string): void {
 }
 
 describe('native migration path', () => {
+  it('requires the same projector version as the runtime', () => {
+    expect(loadSchemaContract().requiredProjectorVersion).toBe(PROJECTOR_VERSION);
+  });
+
+  it('preserves a projector-v1 sale without inventing a reserved buyer', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const db = new Database(paths.databasePath);
+    db.prepare(
+      `INSERT INTO sales(deployment_id,sale_id,collection_address,token_id,seller,price_wei,status,created_block,updated_block,last_event_block_hash,last_event_log_index,token_reclaimed)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,0)`,
+    ).run(
+      hashes.deployment,
+      '7',
+      hashes.address,
+      '9',
+      hashes.address,
+      '100',
+      'LISTED',
+      1,
+      1,
+      hashes.block,
+      0,
+    );
+    downgradeToPriorMigration(db);
+    db.prepare('UPDATE indexer_checkpoint SET projector_version=? WHERE deployment_id=?').run(
+      '1',
+      hashes.deployment,
+    );
+    db.close();
+
+    expect((await migrateEnvironment(paths)).changed).toBe(true);
+    const upgraded = new Database(paths.databasePath);
+    expect(
+      upgraded
+        .prepare(
+          'SELECT sale_id AS saleId,token_id AS tokenId,price_wei AS priceWei,allowed_buyer AS allowedBuyer FROM sales WHERE deployment_id=? AND sale_id=?',
+        )
+        .get(hashes.deployment, '7'),
+    ).toEqual({
+      saleId: '7',
+      tokenId: '9',
+      priceWei: '100',
+      allowedBuyer: null,
+    });
+    expect(
+      upgraded
+        .prepare(
+          'SELECT projector_version AS projectorVersion FROM indexer_checkpoint WHERE deployment_id=?',
+        )
+        .get(hashes.deployment),
+    ).toEqual({ projectorVersion: '1' });
+    upgraded.close();
+  });
   it('DB-01/02 creates a fresh database and reruns as a no-op', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);

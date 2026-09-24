@@ -1,5 +1,4 @@
 export const PROJECTOR_VERSION = '2';
-export const LOG_SCOPE_VERSION = 'motorcove-v1';
 
 export interface ProjectionProvenance {
   readonly deploymentId: string;

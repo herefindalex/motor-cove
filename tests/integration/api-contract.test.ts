@@ -38,7 +38,7 @@ const reader: ReadModelReader = {
     chainId: '31337',
     nftAddress: `0x${'4'.repeat(40)}`,
     escrowAddress: `0x${'5'.repeat(40)}`,
-    protocolVersion: '0.1.0',
+    protocolVersion: '0.2.0',
     abiBundleHash: `0x${'6'.repeat(64)}`,
     scanStartBlock: 1,
     nftDeploymentBlock: 1,
@@ -137,7 +137,7 @@ const reader: ReadModelReader = {
 const config = publicConfigSchema.parse({
   deploymentId,
   chainId: '31337',
-  protocolVersion: '0.1.0',
+  protocolVersion: '0.2.0',
   nftAddress: `0x${'4'.repeat(40)}`,
   escrowAddress: `0x${'5'.repeat(40)}`,
   fundingPeriodSeconds: '300',

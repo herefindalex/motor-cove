@@ -1,9 +1,15 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { keccak256, type PublicClient } from 'viem';
+import { keccak256, toEventSelector, type PublicClient } from 'viem';
 import type { DeploymentManifest } from '@motorcove/chain-artifacts/manifest';
 import { chainProfileForId } from '@motorcove/chain-artifacts/profiles';
+import { LOG_SCOPE_VERSION, motorCoveSourceScope } from '@motorcove/chain-artifacts/source-scope';
 import type { ReadModelReader, SourceAuditBlock } from '@motorcove/database/reader';
-import { evidenceDigest } from '../../domain/source-evidence.js';
+import {
+  evidenceDigest,
+  eventEnvelope,
+  type RawEventIdentity,
+} from '../../domain/source-evidence.js';
 import { runSourceAudit } from './run-source-audit.js';
 import { logScopeHash } from '../../runtime/config.js';
 
@@ -72,7 +78,56 @@ const options = (rpc = secondary()) => ({
   now: () => new Date('2026-09-23T00:00:00.000Z'),
 });
 
+function saleEvidence() {
+  const sale: RawEventIdentity = {
+    blockNumber: 5n,
+    blockHash: hash('5'),
+    transactionHash: hash('7'),
+    transactionIndex: 0,
+    logIndex: 1,
+    contractAddress: escrow,
+    topics: [toEventSelector('SaleCreated(uint256,uint256,address,address,uint256)')],
+    data: '0x1234',
+  };
+  const block: SourceAuditBlock = {
+    ...localBlock,
+    observedLogCount: 1,
+    observedLogDigest: evidenceDigest([eventEnvelope(sale)]),
+    events: [
+      {
+        blockNumber: '5',
+        blockHash: sale.blockHash,
+        transactionHash: sale.transactionHash,
+        transactionIndex: sale.transactionIndex,
+        logIndex: sale.logIndex,
+        contractAddress: sale.contractAddress,
+        topics: sale.topics,
+        data: sale.data,
+      },
+    ],
+  };
+  const localReader = {
+    ...reader(),
+    sourceAuditRange: () =>
+      ({
+        data: [block],
+        provenance: { indexedBlockNumber: '5', logScopeHash: block.logScopeHash },
+      }) as unknown as ReturnType<ReadModelReader['sourceAuditRange']>,
+  } satisfies Pick<ReadModelReader, 'deploymentDescriptor' | 'sourceAuditRange'>;
+  return { sale, localReader };
+}
+
 describe('read-only secondary source audit', () => {
+  it('hashes the shared source scope version and event selectors', () => {
+    const scope = JSON.stringify({
+      version: LOG_SCOPE_VERSION,
+      deploymentId: manifest.deploymentId.toLowerCase(),
+      chainId: manifest.chainId,
+      scanStartBlock: manifest.scanStartBlock,
+      sources: motorCoveSourceScope(manifest.nft.address, manifest.escrow.address),
+    });
+    expect(logScopeHash(manifest)).toBe(`0x${createHash('sha256').update(scope).digest('hex')}`);
+  });
   it('reports MATCH from independent block-hash reads', async () => {
     const rpc = secondary();
     const report = await runSourceAudit(options(rpc));
@@ -83,6 +138,117 @@ describe('read-only secondary source audit', () => {
       blockHash: hash('5'),
     });
     expect(JSON.stringify(report)).not.toContain('secret');
+  });
+
+  it('ignores an Approval-only block in the same way as primary ingestion', async () => {
+    const approval = {
+      address,
+      blockNumber: 5n,
+      blockHash: hash('5'),
+      transactionHash: hash('8'),
+      transactionIndex: 0,
+      logIndex: 0,
+      topics: [toEventSelector('Approval(address,address,uint256)')],
+      data: '0x',
+    };
+    const report = await runSourceAudit(
+      options(secondary({ getLogs: vi.fn(async () => [approval]) })),
+    );
+    expect(report.result).toBe('MATCH');
+  });
+
+  it('compares SaleCreated while excluding Approval in a mixed block', async () => {
+    const sale: RawEventIdentity = {
+      blockNumber: 5n,
+      blockHash: hash('5'),
+      transactionHash: hash('7'),
+      transactionIndex: 0,
+      logIndex: 1,
+      contractAddress: escrow,
+      topics: [toEventSelector('SaleCreated(uint256,uint256,address,address,uint256)')],
+      data: '0x1234',
+    };
+    const approval = {
+      address,
+      blockNumber: 5n,
+      blockHash: hash('5'),
+      transactionHash: hash('8'),
+      transactionIndex: 0,
+      logIndex: 0,
+      topics: [toEventSelector('Approval(address,address,uint256)')],
+      data: '0x',
+    };
+    const block: SourceAuditBlock = {
+      ...localBlock,
+      observedLogCount: 1,
+      observedLogDigest: evidenceDigest([eventEnvelope(sale)]),
+      events: [
+        {
+          blockNumber: '5',
+          blockHash: sale.blockHash,
+          transactionHash: sale.transactionHash,
+          transactionIndex: sale.transactionIndex,
+          logIndex: sale.logIndex,
+          contractAddress: sale.contractAddress,
+          topics: sale.topics,
+          data: sale.data,
+        },
+      ],
+    };
+    const localReader = {
+      ...reader(),
+      sourceAuditRange: () =>
+        ({
+          data: [block],
+          provenance: { indexedBlockNumber: '5', logScopeHash: block.logScopeHash },
+        }) as unknown as ReturnType<ReadModelReader['sourceAuditRange']>,
+    } as Pick<ReadModelReader, 'deploymentDescriptor' | 'sourceAuditRange'>;
+    const secondaryLogs = [
+      approval,
+      {
+        ...sale,
+        address: sale.contractAddress,
+      },
+    ];
+    const report = await runSourceAudit({
+      ...options(secondary({ getLogs: vi.fn(async () => secondaryLogs) })),
+      reader: localReader,
+    });
+    expect(report.result).toBe('MATCH');
+  });
+
+  it('reports a missing scoped SaleCreated as MISMATCH', async () => {
+    const { localReader } = saleEvidence();
+    const report = await runSourceAudit({ ...options(), reader: localReader });
+    expect(report.result).toBe('MISMATCH');
+    expect(report.mismatches.length).toBeGreaterThan(0);
+  });
+
+  it('reports changed raw event data as MISMATCH', async () => {
+    const { sale, localReader } = saleEvidence();
+    const report = await runSourceAudit({
+      ...options(
+        secondary({
+          getLogs: vi.fn(async () => [{ ...sale, address: escrow, data: '0x5678' }]),
+        }),
+      ),
+      reader: localReader,
+    });
+    expect(report.result).toBe('MISMATCH');
+  });
+
+  it.each([
+    ['block hash', hash('9'), hash('4')],
+    ['parent hash', hash('5'), hash('9')],
+  ])('reports a changed %s as MISMATCH', async (_name, blockHash, parentHash) => {
+    const report = await runSourceAudit(
+      options(
+        secondary({
+          getBlock: vi.fn(async () => ({ number: 5n, hash: blockHash, parentHash })),
+        }),
+      ),
+    );
+    expect(report.result).toBe('MISMATCH');
   });
 
   it('rejects the same normalized primary and secondary endpoint before source reads', async () => {

@@ -43,7 +43,7 @@ describe('R24 late submission environment verification', () => {
       deploymentId,
       chainId: 31_337,
       account,
-      protocolVersion: '0.1.0',
+      protocolVersion: '0.2.0',
       contextStillCurrent: () => current,
     };
 
@@ -83,7 +83,7 @@ describe('R24 late submission environment verification', () => {
       deploymentId,
       chainId: 31_337,
       account,
-      protocolVersion: '0.1.0',
+      protocolVersion: '0.2.0',
       contextStillCurrent: () => true,
     };
 

@@ -15,6 +15,7 @@ import { createReadOnlyReader } from '@motorcove/database/reader';
 import { localCatalogSeed } from '@motorcove/database/seeds';
 import {
   deploymentManifestSchema,
+  protocolVersion,
   type DeploymentManifest,
 } from '@motorcove/chain-artifacts/manifest';
 import { motorCoveEscrowAbi, vehicleNftAbi } from '@motorcove/chain-artifacts';
@@ -370,7 +371,7 @@ async function bootstrap(): Promise<void> {
     manifestVersion: 1 as const,
     deploymentId,
     chainId: String(chainId),
-    protocolVersion: '0.1.0' as const,
+    protocolVersion,
     compiler: 'solc 0.8.24',
     buildId: 'foundry-1.8.3',
     scanStartBlock: nftReceipt.blockNumber,

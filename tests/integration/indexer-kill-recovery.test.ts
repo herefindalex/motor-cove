@@ -77,7 +77,7 @@ async function fixture() {
     chainId: '31337',
     nftAddress: nft,
     escrowAddress: escrow,
-    protocolVersion: '0.1.0',
+    protocolVersion: '0.2.0',
     abiBundleHash: hex('2', 32),
     scanStartBlock: 1,
     nftDeploymentBlock: 1,

@@ -375,6 +375,23 @@ Revisit escrow custody if:
 
 Each trigger requires a new ADR; none is an implementation-detail exception to this decision.
 
+## Implementation compatibility contract
+
+The Web build selects exactly one configured chain profile and RPC transport. Its Anvil demo
+connectors are never registered for Ethereum or Polygon. Primary ingestion and the secondary
+read-only audit both retain NFT `Transfer` and the eight MotorCove escrow lifecycle events from
+the same shared selector scope. `logScopeHash` binds the scope version, chain, deployment, scan
+start, source roles, addresses, and event selectors; changing that contract requires a new scope
+hash. Decoder and projector compatibility remain separately gated by the projector version.
+
+Reserved-buyer `createSale` and `SaleCreated` are a breaking protocol change. This implementation
+uses `protocolVersion=0.2.0` in manifests, API configuration, browser intent identity, and release
+metadata. ABI and runtime code hashes still independently bind the deployed contracts. Migration
+`0003` preserves historical projector-v1 Sale rows with `allowed_buyer=NULL`; it does not invent a
+buyer. An old checkpoint cannot resume projector-v2 incremental ingestion. Local demo operators
+must use an explicit owned-environment reset and redeploy; any future production transition needs
+a separately specified replay or migration procedure.
+
 ## Verification
 
 The implementation that follows this ADR must include evidence for:

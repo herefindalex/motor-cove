@@ -38,7 +38,7 @@ Anvil准备好后，终端2：
 nvm use
 export MOTORCOVE_ENV=demo-local
 pnpm dev:bootstrap
-VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
+VITE_MOTORCOVE_CHAIN_ID=31337 VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545 VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
 ```
 
 打开<http://127.0.0.1:5173>。显式演示标志添加了 **使用本地卖家** 和 **使用本地买家** 连接器。他们使用解锁的Anvil账户，并通过Wagmi和Viem发送真实交易。仅 Vite 开发服务器遵循该标志，如果其 RPC 不是环回，则启动失败。捆绑包中仅存在公共测试地址；没有嵌入私钥。

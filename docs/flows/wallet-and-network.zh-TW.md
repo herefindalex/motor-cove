@@ -10,6 +10,8 @@
 
 本地演示可以明確設定 `VITE_MOTORCOVE_DEMO_WALLET=1`。然后，前端添加两个由解锁的 Anvil 卖家和买家地址支持的 Wagmi 模拟连接器。此模式仅限于 Vite 开发服务器和环回 RPC。它嵌入公共測試地址，而不是私鑰。连接器仍然向 Anvil 提交真实的 JSON-RPC 交易。
 
+`VITE_MOTORCOVE_CHAIN_ID` 只選擇一個 Wagmi 鏈設定：Anvil `31337`、Ethereum `1` 或 Polygon `137`。公開鏈設定須明確提供 `VITE_MOTORCOVE_RPC_URL`；不支援的鏈 ID 會使 Web 啟動失敗。即使啟用演示旗標，本地演示連接器也只在 Anvil 設定中可用。錢包請求前仍須通過 API 部署描述與錢包／提供者身分檢查。
+
 ## 流量
 
 1. `WagmiProvider` 公開注入的連接器，並在明確啟用時公開本地演示

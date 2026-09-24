@@ -60,7 +60,7 @@ export async function databaseFixture(environmentId = 'test') {
     '31337',
     hashes.address,
     hashes.escrow,
-    '0.1.0',
+    '0.2.0',
     hashes.code,
     1,
     1,

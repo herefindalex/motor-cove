@@ -14,7 +14,7 @@ afterEach(() => {
 const config = publicConfigSchema.parse({
   deploymentId: hashes.deployment,
   chainId: '31337',
-  protocolVersion: '0.1.0',
+  protocolVersion: '0.2.0',
   nftAddress: hashes.address,
   escrowAddress: hashes.escrow,
   fundingPeriodSeconds: '300',

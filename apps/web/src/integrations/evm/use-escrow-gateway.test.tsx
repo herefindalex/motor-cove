@@ -34,7 +34,7 @@ vi.mock('wagmi', () => ({
 const config = (digit: string): PublicConfig => ({
   deploymentId: `0x${digit.repeat(64)}`,
   chainId: '31337',
-  protocolVersion: '0.1.0',
+  protocolVersion: '0.2.0',
   nftAddress: `0x${digit.repeat(40)}`,
   escrowAddress: `0x${digit.repeat(40)}`,
   fundingPeriodSeconds: '300',

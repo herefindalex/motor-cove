@@ -15,7 +15,7 @@ const deploymentId = `0x${'1'.repeat(64)}`;
 const config: PublicConfig = {
   deploymentId,
   chainId: '31337',
-  protocolVersion: '0.1.0',
+  protocolVersion: '0.2.0',
   nftAddress: `0x${'2'.repeat(40)}`,
   escrowAddress: `0x${'3'.repeat(40)}`,
   fundingPeriodSeconds: '300',
@@ -28,7 +28,7 @@ const entry: JournalEntry = {
   deploymentId,
   chainId: 31_337,
   account: `0x${'4'.repeat(40)}`,
-  protocolVersion: '0.1.0',
+  protocolVersion: '0.2.0',
   action: 'APPROVE_TOKEN',
   tokenId: '7',
   intendedContract: config.nftAddress,

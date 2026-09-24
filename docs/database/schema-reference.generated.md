@@ -8,7 +8,7 @@
 - Migration bundle digest: `2d9c41c7733c1c7352147258b99ed04c10f2a7e45c8801d662ed6df851ce3ce1`
 - Schema fingerprint: `ec08b7af1b752c54d6b36ef1533877a86a898ab4e7b81e0fb17fdef81b1a6f42`
 - Schema source digest: `8c22742b2157e71bea2e575aab2ac766c394e0fee5314e08f6f4745d8068b9ed`
-- Required projector version: `1`
+- Required projector version: `2`
 - Repository-managed tables: 13
 
 ## `__drizzle_migrations`

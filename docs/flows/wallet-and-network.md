@@ -12,6 +12,12 @@ Wagmi mock connectors backed by unlocked Anvil seller and buyer addresses. This 
 the Vite development server and a loopback RPC. It embeds public test addresses, never private keys.
 The connectors still submit real JSON-RPC transactions to Anvil.
 
+`VITE_MOTORCOVE_CHAIN_ID` selects the single Wagmi chain profile: Anvil `31337`, Ethereum `1`, or
+Polygon `137`. A public profile requires an explicit `VITE_MOTORCOVE_RPC_URL`; unsupported IDs stop
+Web startup. The local demo connectors are available only with the Anvil profile, even when the demo
+flag is set. The API deployment descriptor and wallet/provider identity checks still govern each
+transaction before a wallet request.
+
 ## Flow
 
 1. `WagmiProvider` exposes the injected connector and, when explicitly enabled, local demo

@@ -1,5 +1,9 @@
 import { keccak256, type PublicClient } from 'viem';
 import { motorCoveEscrowAbi } from '@motorcove/chain-artifacts';
+import {
+  isMotorCoveSourceLog,
+  motorCoveSourceScope,
+} from '@motorcove/chain-artifacts/source-scope';
 import type { DeploymentManifest } from '@motorcove/chain-artifacts/manifest';
 import type { ChainProfile } from '@motorcove/chain-artifacts/profiles';
 import type { ReadModelReader } from '@motorcove/database/reader';
@@ -103,6 +107,7 @@ export async function runSourceAudit(options: {
       return unverifiable('IDENTITY_MISMATCH: chain id');
     const escrow = manifest.escrow.address as `0x${string}`;
     const nft = manifest.nft.address as `0x${string}`;
+    const sourceScope = motorCoveSourceScope(nft, escrow);
     const [deploymentId, nftCode, escrowCode] = await Promise.all([
       secondary.readContract({
         address: escrow,
@@ -138,27 +143,29 @@ export async function runSourceAudit(options: {
       const block = await secondary.getBlock({ blockNumber: number });
       const hash = requireHash(block.hash, 'SECONDARY_BLOCK_UNAVAILABLE');
       const logs = await secondary.getLogs({ address: [nft, escrow], blockHash: hash });
-      const events: RawEventIdentity[] = logs.map((log) => {
-        if (
-          log.blockNumber !== number ||
-          log.blockHash?.toLowerCase() !== hash.toLowerCase() ||
-          log.transactionHash === null ||
-          log.transactionIndex === null ||
-          log.logIndex === null ||
-          ![nft.toLowerCase(), escrow.toLowerCase()].includes(log.address.toLowerCase())
-        )
-          throw new Error('SECONDARY_LOG_IDENTITY_INVALID');
-        return {
-          blockNumber: number,
-          blockHash: hash,
-          transactionHash: log.transactionHash,
-          transactionIndex: log.transactionIndex,
-          logIndex: log.logIndex,
-          contractAddress: log.address,
-          topics: log.topics,
-          data: log.data,
-        };
-      });
+      const events: RawEventIdentity[] = logs
+        .filter((log) => isMotorCoveSourceLog(sourceScope, log))
+        .map((log) => {
+          if (
+            log.blockNumber !== number ||
+            log.blockHash?.toLowerCase() !== hash.toLowerCase() ||
+            log.transactionHash === null ||
+            log.transactionIndex === null ||
+            log.logIndex === null ||
+            ![nft.toLowerCase(), escrow.toLowerCase()].includes(log.address.toLowerCase())
+          )
+            throw new Error('SECONDARY_LOG_IDENTITY_INVALID');
+          return {
+            blockNumber: number,
+            blockHash: hash,
+            transactionHash: log.transactionHash,
+            transactionIndex: log.transactionIndex,
+            logIndex: log.logIndex,
+            contractAddress: log.address,
+            topics: log.topics,
+            data: log.data,
+          };
+        });
       secondaryBlocks.push({ number, hash, parentHash: block.parentHash, events });
     }
     const comparison = compareSourceEvidence(

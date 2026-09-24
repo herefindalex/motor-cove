@@ -345,6 +345,9 @@ importers:
 
   packages/chain-artifacts:
     dependencies:
+      viem:
+        specifier: 2.56.8
+        version: 2.56.8(typescript@5.9.3)(zod@4.6.5)
       zod:
         specifier: 4.6.5
         version: 4.6.5

@@ -21,7 +21,7 @@ vi.mock('@tanstack/react-query', () => ({
         data: {
           deploymentId,
           chainId: '31337',
-          protocolVersion: '0.1.0',
+          protocolVersion: '0.2.0',
           nftAddress: `0x${'5'.repeat(40)}`,
           escrowAddress: `0x${'6'.repeat(40)}`,
           fundingPeriodSeconds: '300',

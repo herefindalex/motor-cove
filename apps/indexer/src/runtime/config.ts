@@ -7,6 +7,7 @@ import {
   deploymentManifestSchema,
   type DeploymentManifest,
 } from '@motorcove/chain-artifacts/manifest';
+import { LOG_SCOPE_VERSION, motorCoveSourceScope } from '@motorcove/chain-artifacts/source-scope';
 
 export interface RuntimeConfig {
   readonly rpcUrl: string;
@@ -41,10 +42,11 @@ export function paths() {
 
 export function logScopeHash(manifest: DeploymentManifest): `0x${string}` {
   const scope = JSON.stringify({
-    version: 'motorcove-v2',
+    version: LOG_SCOPE_VERSION,
     deploymentId: manifest.deploymentId.toLowerCase(),
+    chainId: manifest.chainId,
     scanStartBlock: manifest.scanStartBlock,
-    addresses: [manifest.nft.address.toLowerCase(), manifest.escrow.address.toLowerCase()].sort(),
+    sources: motorCoveSourceScope(manifest.nft.address, manifest.escrow.address),
   });
   return `0x${createHash('sha256').update(scope).digest('hex')}`;
 }
