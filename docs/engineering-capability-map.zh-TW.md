@@ -4,6 +4,8 @@
 
 該圖回答了存在哪些可觀察的工程行為、它們的實現位置、已執行的內容以及仍然存在哪些限制。 `_meta/capabilities.json`中的元資料擁有狀態欄位； `docs:generate` 擁有下表。
 
+下表的 `RUN-PUBLIC-CHAIN-*` 項目是未提交候選版本的歷史結果。已提交審查修正的驗證請參閱[獨立的精確 revision 紀錄](evidence/public-chain-review-closure.json)。
+
 <!-- GENERATED:CAPABILITIES:START -->
 
 | 身分證號 | 能力                      | 實施   | 證據                                                                                                                                                                                                                                                                                                                               | 主要限制                                                                                                                                                                                                                                                                      |

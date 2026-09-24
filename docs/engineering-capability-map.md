@@ -4,6 +4,9 @@ This map answers which observable engineering behaviors exist, where their imple
 what has been executed, and which limits remain. Metadata in `_meta/capabilities.json` owns the
 status fields; `docs:generate` owns the table below.
 
+The `RUN-PUBLIC-CHAIN-*` entries in the generated table are historical dirty-candidate results.
+For committed review-closure verification, use the [separate exact-revision record](evidence/public-chain-review-closure.json).
+
 <!-- GENERATED:CAPABILITIES:START -->
 | ID | Capability | Implementation | Evidence | Main limit |
 | --- | --- | --- | --- | --- |

@@ -4,6 +4,8 @@
 
 该图回答了存在哪些可观察的工程行为、它们的实现位置、已执行的内容以及仍然存在哪些限制。 `_meta/capabilities.json`中的元数据拥有状态字段； `docs:generate` 拥有下表。
 
+下表的 `RUN-PUBLIC-CHAIN-*` 项目是未提交候选版本的历史结果。已提交审查修正的验证请参阅[独立的精确 revision 记录](evidence/public-chain-review-closure.json)。
+
 <!-- GENERATED:CAPABILITIES:START -->
 
 | 身份证号 | 能力                      | 实施   | 证据                                                                                                                                                                                                                                                                                                                                                                              | 主要限制                                                                                                                                                                                                                                                                      |

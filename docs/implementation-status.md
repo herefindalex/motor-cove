@@ -16,6 +16,15 @@ been exercised; executed gate results are recorded in the verification JSON.
 | Indexer   | Ordered source evidence, atomic commit, catch-up, replay, rebuild/reindex, version gates, and interpretable raw history                                                   | Pure projectors plus EVM and SQLite adapters; rebuild source preflight; fixed-target reindex resume; explicit failed-rebuild to full-reindex transition; verified pre-refresh evidence archives                                             | SQLite and loopback Anvil tests cover replay, reorg, source reacquisition, long catch-up, and restart boundaries. Public archive-provider behavior remains unverified.                                                                                                      |
 | Database  | Native migration history, operation markers, owned maintenance, seed/bootstrap lifecycle, backup/restore identity, and generation-safe recovery                           | `@motorcove/database`; bootstrap-owned snapshots and restores; post-lock destructive-path containment; staged-copy checksum verification; unique marker publication temps; source-ready standard backups; operation-bound evidence archives | Real temporary-filesystem tests reject reset child symlinks before chain mutation and preserve lock reuse. Real SQLite fixtures reject changed backup bytes before active quarantine. Hardware power loss remains unverified.                                               |
 
+## Public-chain review closure evidence
+
+The public-chain run entries in [historical verification records](evidence/verification.json) were
+captured from a dirty candidate based on `327fcd2`; their counts are historical, not proof for the
+current branch head. The separate [review closure record](evidence/public-chain-review-closure.json)
+identifies the clean implementation revision, executed gates, and limits. The current code uses one
+source-log scope, projector version `2`, and reserved-buyer protocol version `0.2.0`. Public-chain
+behavior remains verified only with loopback and controlled providers.
+
 ## Current executed gates
 
 Current hardening is implemented in the working source. Transaction submission keeps durable
