@@ -61,12 +61,7 @@ describe('source audit read-only SQLite snapshot', () => {
       };
       expect((await runSourceAudit(options)).result).toBe('MATCH');
 
-      vi.mocked(secondary.getBlock).mockResolvedValueOnce({
-        number: 1n,
-        hash: hashes.block,
-        parentHash: hashes.parent,
-      } as Awaited<ReturnType<PublicClient['getBlock']>>);
-      vi.mocked(secondary.getBlock).mockResolvedValueOnce({
+      vi.mocked(secondary.getBlock).mockResolvedValue({
         number: 1n,
         hash: `0x${'a'.repeat(64)}`,
         parentHash: hashes.parent,
@@ -74,6 +69,16 @@ describe('source audit read-only SQLite snapshot', () => {
       expect(await runSourceAudit(options)).toMatchObject({
         result: 'MISMATCH',
         mismatches: [{ blockNumber: '1', reason: 'BLOCK_HASH_MISMATCH' }],
+      });
+
+      vi.mocked(secondary.getBlock).mockResolvedValueOnce({
+        number: 1n,
+        hash: hashes.block,
+        parentHash: hashes.parent,
+      } as Awaited<ReturnType<PublicClient['getBlock']>>);
+      expect(await runSourceAudit(options)).toMatchObject({
+        result: 'UNVERIFIABLE',
+        reason: 'FINALIZED_BLOCK_HASH_CHANGED',
       });
     } finally {
       await reader.close();

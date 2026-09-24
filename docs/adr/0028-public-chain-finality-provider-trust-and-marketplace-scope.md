@@ -230,7 +230,15 @@ An included receipt can still become orphaned before finality.
 A finalized receipt no longer requires ordinary shallow-reorg polling. A contradiction to finalized
 evidence is treated as an integrity incident.
 
+Browser automatic observation may reuse finalized receipt evidence only while the attempt remains
+included. A noncanonical observation preserves historical evidence but disables that shortcut, so
+the next automatic poll must obtain live evidence before it can restore an included status.
+
 ## Source audit
+
+The secondary provider must return the requested block number. The audit validates its fixed
+finalized anchor by number before and after collecting logs; contradictory anchor hashes or block
+identities produce `UNVERIFIABLE`, even when local evidence agrees with one of the responses.
 
 MotorCove will add a read-only operator audit for finalized ranges.
 

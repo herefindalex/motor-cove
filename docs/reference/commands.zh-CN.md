@@ -11,8 +11,8 @@
 | `pnpm doctor`                                                | 已实施 | 只读诊断                                                                | 安装工作区依赖项                            |
 | `pnpm dev:chain`                                             | 已实施 | 开始环回 Anvil                                                          | 8545端口空闲                                |
 | `pnpm dev:bootstrap`                                         | 已实施 | 部署合约、注册部署、播种目录数据并赶上投影                              | 环回 Anvil 和选定的拥有环境                 |
-| `pnpm dev:full`                                              | 已实施 | 启动 API、Indexer 和 Web                                                | 所选环境的引导完成                          |
-| `pnpm dev:ui`                                                | 已实施 | 仅启动 Vite Web 进程                                                    | 所选环境的引导完成                          |
+| `pnpm dev:full`                                              | 已实施 | 启动 API、Indexer 和 Web                                                | 所选环境的引导完成；Web 设置见下文          |
+| `pnpm dev:ui`                                                | 已实施 | 仅启动 Vite Web 进程                                                    | 所选环境的引导完成；Web 设置见下文          |
 | `pnpm dev:api`                                               | 已实施 | 仅启动只读 API 进程                                                     | 初始化拥有的环境                            |
 | `pnpm dev:indexer`                                           | 已实施 | 仅启动普通的 Indexer 编写器                                             | 引导完成；无需维护操作                      |
 | `pnpm storybook`                                             | 已实施 | 启动隔离的 UI 开发服务器                                                | 安装工作区依赖项                            |
@@ -65,6 +65,8 @@
 - `gap`：脚本不在下游或不符合其记录的合约。
 
 `db:restore` 和 `demo:reset` 是破坏性命令。记录的 `--yes` 标志仅是操作员确认；它绝不能绕过本地链、所有权、身份或路径保护。快速入门不应在现有环境中使用它们。
+
+运行 `dev:full` 或 `dev:ui` 前，请明确设置 `VITE_MOTORCOVE_CHAIN_ID=31337` 和 `VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545`。
 
 `dev:full`独立监管API、Indexer和Web。致命的 Indexer 完整性错误不会终止只读 API 或 Web 进程；检查系统状态，停止剩余服务，然后运行记录的恢复命令。 `ops:rebuild` 和 `ops:reindex` 需要独占维护访问权限，并在中断时留下失败标记。
 

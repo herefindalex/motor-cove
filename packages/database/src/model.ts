@@ -396,7 +396,7 @@ export const databaseModel = {
       {
         field: 'last_head_advanced_at',
         category: 'OBSERVATION_TIME',
-        meaning: 'Last live observation when the eligible chain head advanced.',
+        meaning: 'Last live observation when the latest observed chain head advanced.',
       },
     ],
     temporalNote:

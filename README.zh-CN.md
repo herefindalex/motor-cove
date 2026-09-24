@@ -90,7 +90,7 @@ Anvil ready 后，在第二个 terminal：
 nvm use
 export MOTORCOVE_ENV=demo-local
 pnpm dev:bootstrap
-VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
+VITE_MOTORCOVE_CHAIN_ID=31337 VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545 VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
 ```
 
 打开 <http://127.0.0.1:5173>，选择 **Use local buyer** 或 **Use local seller**。此开发模式只

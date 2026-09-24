@@ -81,7 +81,11 @@ Polygon   → 必须有 finalized RPC 证据
 
 包含与最终性依序为 `SUBMITTED → INCLUDED → FINALIZED`；执行结果则是 `SUCCESS` 或 `REVERTED`。已包含但尚未 finalized 的收据仍可能成为 orphan。已 finalized 的证据若发生矛盾，视为完整性事件并进入恢复，而不是当作一般浅层 reorg。
 
+浏览器自动观察只能在操作仍处于 included 状态时重用 finalized 收据证据。非 canonical 判定会保留历史证据，但停用这条捷径；下一轮自动观察必须取得即时证据，才能恢复 included 状态。
+
 ## 来源稽核
+
+次要供应商必须返回要求的区块号码。稽核会在收集 log 前后，按固定区块号码重新核对 finalized anchor；anchor hash 或区块身份矛盾时返回 `UNVERIFIABLE`，即使本地证据与其中一次响应相符也一样。
 
 操作员可对 finalized 范围执行唯读稽核，至少比对区块号码、区块与父区块 hash、MotorCove log scope、范围内 log 数量与 digest，以及本地保留的原始 event identity。结果为 `MATCH`、`MISMATCH` 或 `UNVERIFIABLE`；后者绝不视为 `MATCH`。稽核不送交易、不清除恢复证据，也不自动改写投影。
 

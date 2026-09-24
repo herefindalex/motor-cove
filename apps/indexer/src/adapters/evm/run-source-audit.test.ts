@@ -118,6 +118,57 @@ function saleEvidence() {
 }
 
 describe('read-only secondary source audit', () => {
+  it('revalidates the fixed finalized anchor after collecting source evidence', async () => {
+    let evidenceRead = false;
+    const rpc = secondary({
+      getBlock: vi.fn(async () => ({
+        number: 5n,
+        hash: evidenceRead ? hash('9') : hash('5'),
+        parentHash: hash('4'),
+      })),
+      getLogs: vi.fn(async () => {
+        evidenceRead = true;
+        return [];
+      }),
+    });
+    expect(await runSourceAudit(options(rpc))).toMatchObject({
+      result: 'UNVERIFIABLE',
+      reason: 'FINALIZED_BLOCK_HASH_CHANGED',
+    });
+    expect(rpc.getLogs).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a numbered block that contradicts the finalized anchor', async () => {
+    const rpc = secondary({
+      getBlock: vi.fn(async (params: { blockTag?: string; blockNumber?: bigint }) => ({
+        number: 5n,
+        hash: params.blockTag === 'finalized' ? hash('9') : hash('5'),
+        parentHash: hash('4'),
+      })),
+    });
+    const report = await runSourceAudit(options(rpc));
+    expect(report).toMatchObject({
+      result: 'UNVERIFIABLE',
+      reason: 'FINALIZED_BLOCK_HASH_CHANGED',
+    });
+  });
+
+  it('rejects a provider block returned at the wrong height before reading its logs', async () => {
+    const rpc = secondary({
+      getBlock: vi.fn(async (params: { blockTag?: string; blockNumber?: bigint }) => ({
+        number: params.blockNumber === 5n ? 4n : 6n,
+        hash: params.blockNumber === 5n ? hash('5') : hash('6'),
+        parentHash: hash('4'),
+      })),
+    });
+    const report = await runSourceAudit(options(rpc));
+    expect(report).toMatchObject({
+      result: 'UNVERIFIABLE',
+      reason: 'SECONDARY_BLOCK_IDENTITY_INVALID',
+    });
+    expect(rpc.getLogs).not.toHaveBeenCalled();
+  });
+
   it('hashes the shared source scope version and event selectors', () => {
     const scope = JSON.stringify({
       version: LOG_SCOPE_VERSION,

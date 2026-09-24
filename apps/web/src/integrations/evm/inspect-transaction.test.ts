@@ -94,6 +94,33 @@ describe('createTransactionChainReader', () => {
     await reader.inspectTransaction(finalizedEntry, transactionHash, 'MANUAL');
     expect(rpc.getTransaction).toHaveBeenCalled();
   });
+  it('rechecks contradicted finalized evidence during automatic recovery', async () => {
+    const orphanedEntry: JournalEntry = {
+      ...entry('COMPLETE_SALE'),
+      chainId: 1,
+      status: 'ORPHANED',
+      receiptStatus: 'SUCCESS',
+      receiptBlockNumber: '12',
+      receiptBlockHash: blockHash,
+      finalityStatus: 'FINALIZED',
+      finalizedHeadNumber: '105',
+      finalizedHeadHash: blockHash,
+      lastErrorCategory: 'RECEIPT_BLOCK_NONCANONICAL',
+    };
+    const rpc = client(orphanedEntry, { chainId: 1 });
+    vi.mocked(rpc.getBlock).mockResolvedValue({
+      hash: `0x${'7'.repeat(64)}`,
+    } as Awaited<ReturnType<PublicClient['getBlock']>>);
+    const reader = createTransactionChainReader(rpc, { ...verificationContext, chainId: 1 });
+
+    expect(await reader.inspectTransaction(orphanedEntry, transactionHash, 'AUTOMATIC')).toEqual({
+      kind: 'NONCANONICAL',
+      transactionHash,
+    });
+    expect(rpc.getTransaction).toHaveBeenCalled();
+    expect(rpc.getBlock).toHaveBeenCalled();
+  });
+
   it('requires a finalized head and matching receipt block on a public profile', async () => {
     const publicEntry = { ...entry('COMPLETE_SALE'), chainId: 1 };
     const context = { ...verificationContext, chainId: 1 };

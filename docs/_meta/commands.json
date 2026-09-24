@@ -30,7 +30,7 @@
       "command": "pnpm dev:full",
       "status": "implemented",
       "effect": "starts API, Indexer, and Web",
-      "prerequisite": "bootstrap complete for the selected environment",
+      "prerequisite": "bootstrap complete for the selected environment; VITE_MOTORCOVE_CHAIN_ID=31337 and VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545",
       "runbook": "../runbooks/local-development.md"
     },
     {
@@ -38,7 +38,7 @@
       "command": "pnpm dev:ui",
       "status": "implemented",
       "effect": "starts only the Vite Web process",
-      "prerequisite": "bootstrap complete for the selected environment",
+      "prerequisite": "bootstrap complete for the selected environment; VITE_MOTORCOVE_CHAIN_ID=31337 and VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545",
       "runbook": "../runbooks/local-development.md"
     },
     {

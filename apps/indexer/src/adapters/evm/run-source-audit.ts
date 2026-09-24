@@ -131,6 +131,15 @@ export async function runSourceAudit(options: {
     );
     const finalizedHash = requireHash(finalized.hash, 'FINALIZED_HEAD_UNAVAILABLE');
     if (toBlock > finalized.number) return unverifiable('AUDIT_RANGE_NOT_FINALIZED');
+    const readBlock = async (number: bigint) => {
+      const block = await secondary.getBlock({ blockNumber: number });
+      if (block.number !== number) throw new Error('SECONDARY_BLOCK_IDENTITY_INVALID');
+      const hash = requireHash(block.hash, 'SECONDARY_BLOCK_UNAVAILABLE');
+      if (number === finalized.number && hash.toLowerCase() !== finalizedHash.toLowerCase())
+        throw new Error('FINALIZED_BLOCK_HASH_CHANGED');
+      return { block, hash };
+    };
+    await readBlock(finalized.number);
     const snapshot = reader.sourceAuditRange(fromBlock.toString(), toBlock.toString());
     if (BigInt(snapshot.provenance.indexedBlockNumber) < toBlock)
       return unverifiable('LOCAL_CHECKPOINT_BEFORE_AUDIT_RANGE');
@@ -140,8 +149,7 @@ export async function runSourceAudit(options: {
 
     const secondaryBlocks: SecondaryAuditBlock[] = [];
     for (let number = fromBlock; number <= toBlock; number += 1n) {
-      const block = await secondary.getBlock({ blockNumber: number });
-      const hash = requireHash(block.hash, 'SECONDARY_BLOCK_UNAVAILABLE');
+      const { block, hash } = await readBlock(number);
       const logs = await secondary.getLogs({ address: [nft, escrow], blockHash: hash });
       const events: RawEventIdentity[] = logs
         .filter((log) => isMotorCoveSourceLog(sourceScope, log))
@@ -168,6 +176,7 @@ export async function runSourceAudit(options: {
         });
       secondaryBlocks.push({ number, hash, parentHash: block.parentHash, events });
     }
+    await readBlock(finalized.number);
     const comparison = compareSourceEvidence(
       snapshot.data,
       secondaryBlocks,
@@ -186,7 +195,9 @@ export async function runSourceAudit(options: {
   } catch (error) {
     const stableReasons = new Set([
       'FINALIZED_HEAD_UNAVAILABLE',
+      'FINALIZED_BLOCK_HASH_CHANGED',
       'SECONDARY_BLOCK_UNAVAILABLE',
+      'SECONDARY_BLOCK_IDENTITY_INVALID',
       'SECONDARY_LOG_IDENTITY_INVALID',
     ]);
     const reason =

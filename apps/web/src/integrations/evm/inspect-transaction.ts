@@ -106,6 +106,7 @@ export function createTransactionChainReader(
           return mismatch(transactionHash, 'FUNDING_SALE_ID_MISSING');
         if (
           mode === 'AUTOMATIC' &&
+          (entry.status === 'INCLUDED_SUCCESS' || entry.status === 'INCLUDED_REVERTED') &&
           entry.finalityStatus === 'FINALIZED' &&
           entry.finalizedHeadNumber &&
           entry.finalizedHeadHash &&
