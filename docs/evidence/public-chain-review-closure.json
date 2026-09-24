@@ -1,0 +1,49 @@
+{
+  "formatVersion": 1,
+  "scope": "Public-chain readiness review closure: Web chain composition, shared source-log scope, version authority, and legacy compatibility",
+  "source": {
+    "revision": "0dbdcfea9fad773be003e87b9d82d3c6e829ffd0",
+    "tree": "35d202f73c577fe7bf8f2dda1f43525e3a448964",
+    "dirty": false,
+    "verifiedAt": "2026-09-24T01:45:51Z",
+    "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry/Anvil 1.8.3",
+    "environment": "Isolated worktree, synthetic accounts, loopback Anvil, temporary managed SQLite, controlled Ethereum/Polygon provider fixtures"
+  },
+  "runs": [
+    { "command": "pnpm test:contracts", "result": "pass", "count": "19 Foundry tests" },
+    { "command": "pnpm test:components", "result": "pass", "count": "2 files, 8 tests" },
+    { "command": "pnpm test:migrations", "result": "pass", "count": "1 file, 28 tests" },
+    { "command": "pnpm test:db", "result": "pass", "count": "6 files, 43 tests" },
+    { "command": "pnpm test:seeds", "result": "pass", "count": "1 file, 6 tests" },
+    { "command": "pnpm test:recovery", "result": "pass", "count": "2 files, 33 tests" },
+    { "command": "pnpm test:integration", "result": "pass", "count": "20 files, 82 tests" },
+    {
+      "command": "pnpm docs:check",
+      "result": "pass",
+      "count": "13 modeled database tables, 8 negative fixtures"
+    },
+    {
+      "command": "pnpm check:architecture",
+      "result": "pass",
+      "count": "187 source files, 10 negative fixtures"
+    },
+    {
+      "command": "pnpm verify",
+      "result": "pass",
+      "count": "19 Foundry tests, 63 unit files with 423 tests, 20 integration files with 82 tests, 6 workspace builds"
+    },
+    { "command": "pnpm test:e2e", "result": "pass", "count": "12 Playwright tests" }
+  ],
+  "historicalEvidence": {
+    "file": "docs/evidence/verification.json",
+    "revision": "327fcd2bae523220bc934517770ecb928d958085",
+    "dirty": true,
+    "relationship": "Previous public-chain candidate results; not exact-head evidence for this closure"
+  },
+  "limits": [
+    "No public RPC or public testnet/mainnet deployment was used.",
+    "No real wallet extension or valuable assets were used.",
+    "No external security audit was performed.",
+    "Playwright completed successfully with exit code 0 and printed WebServer process-teardown errors after the tests passed."
+  ]
+}

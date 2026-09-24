@@ -1,4 +1,6 @@
 import type { ChainReader, ProjectionUnitOfWork } from '../ports/index.js';
+import { chainProfileForId, type ChainProfile } from '@motorcove/chain-artifacts/profiles';
+import { readProjectionTarget } from './finality-target.js';
 
 export class ChainTransportUnavailableError extends Error {
   constructor(
@@ -70,6 +72,7 @@ export async function ingestRange(
   startBlock = 0n,
   indexingDepth = 0n,
   maximumTarget?: bigint,
+  profile: ChainProfile = chainProfileForId(31337),
 ): Promise<void> {
   if (batchSize < 1n) throw new Error('INDEX_BATCH_SIZE_INVALID');
   if (indexingDepth < 0n) throw new Error('INDEXING_DEPTH_INVALID');
@@ -84,25 +87,43 @@ export async function ingestRange(
         throw new ChainTransportUnavailableError('checkpoint block', error);
       }
       if (!isBlockNotFound(error)) throw error;
-      await store.markRecoveryRequired('CHECKPOINT_BLOCK_UNAVAILABLE');
+      await store.markRecoveryRequired(
+        profile.finality.kind === 'RPC_FINALIZED'
+          ? 'FINALIZED_BLOCK_HASH_CHANGED'
+          : 'CHECKPOINT_BLOCK_UNAVAILABLE',
+      );
       throw new Error('RECOVERY_REQUIRED: checkpoint block unavailable', { cause: error });
     }
     if (canonical.hash !== checkpoint.hash) {
-      await store.markRecoveryRequired('CHECKPOINT_HASH_CHANGED');
+      await store.markRecoveryRequired(
+        profile.finality.kind === 'RPC_FINALIZED'
+          ? 'FINALIZED_BLOCK_HASH_CHANGED'
+          : 'CHECKPOINT_HASH_CHANGED',
+      );
       throw new Error('RECOVERY_REQUIRED: checkpoint hash changed');
     }
   }
 
-  const head = await readChain('chain head', () => chain.getHead());
-  store.observe?.(head.number);
-  if (head.number < indexingDepth) {
+  const readTarget = async (operation: string) => {
+    try {
+      return await readChain(operation, () => readProjectionTarget(chain, profile, indexingDepth));
+    } catch (error) {
+      if (error instanceof Error && error.message === 'FINALIZED_BLOCK_HASH_CHANGED')
+        await store.markRecoveryRequired('FINALIZED_BLOCK_HASH_CHANGED');
+      throw error;
+    }
+  };
+  const observation = await readTarget('projection target');
+  const { observedHead: head, eligibleHead } = observation;
+  store.observe?.(head.number, eligibleHead?.number);
+  if (!eligibleHead) {
     if (checkpoint) {
       await store.markRecoveryRequired('CHECKPOINT_EXCEEDS_ELIGIBLE_TARGET');
       throw new Error('RECOVERY_REQUIRED: checkpoint exceeds eligible indexing target');
     }
     return;
   }
-  const eligibleTarget = head.number - indexingDepth;
+  const eligibleTarget = eligibleHead.number;
   const target =
     maximumTarget !== undefined && maximumTarget < eligibleTarget ? maximumTarget : eligibleTarget;
   const from = checkpoint ? checkpoint.number + 1n : startBlock;
@@ -111,7 +132,7 @@ export async function ingestRange(
     throw new Error('RECOVERY_REQUIRED: checkpoint exceeds eligible indexing target');
   }
   if (from > target) {
-    if (target === eligibleTarget) await store.markCurrent?.(head.number);
+    if (target === eligibleTarget) await store.markCurrent?.(head.number, eligibleTarget);
     return;
   }
 
@@ -183,5 +204,9 @@ export async function ingestRange(
     throw new Error('RECOVERY_REQUIRED: range anchor changed');
   }
   await store.commit(headers, orderedEvents, end);
-  if (end.number === eligibleTarget) await store.markCurrent?.(head.number);
+  if (end.number === eligibleTarget) {
+    const latest = await readTarget('latest projection target');
+    if (latest.eligibleHead?.number === end.number && latest.eligibleHead.hash === end.hash)
+      await store.markCurrent?.(latest.observedHead.number, latest.eligibleHead.number);
+  }
 }

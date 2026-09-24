@@ -57,3 +57,5 @@ flowchart LR
 單元測試涵蓋有界範圍行為和純投影器。 SQLite整合涵蓋了重疊、衝突和回滾。真實堆疊測試使用隔離的Anvil、託管的SQLite環境、實際的Indexer和只讀的API進行結算、重建和恢復。自動任意重組修復、不可用的存檔歷史記錄以及更廣泛的進程/檔案系統故障案例仍然超出了經過驗證的範圍。
 
 請參閱[索引與復原](../flows/indexing-and-recovery.zh-TW.md)、[資料庫所有權](database-ownership-and-dependencies.zh-TW.md) 和[測試策略](../testing/strategy.zh-TW.md)。
+
+鏈 profile 集中管理最終性與供應商要求：Anvil 31337 使用 loopback 立即可索引範圍；Ethereum 1 與 Polygon 137 要求 RPC finalized 鏈頭。啟動時先檢查鏈身分、block-hash log 篩選、最終性與歷史狀態能力，才開啟 writer。公鏈 profile 只投影 finalized 區塊。第二個供應商僅用於唯讀的有界來源稽核，不進入正常輪詢路徑。已觀察的 finalized hash 若矛盾，必須進入恢復。本專案尚未在公網實測這些 profile。

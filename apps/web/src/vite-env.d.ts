@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_MOTORCOVE_API_URL?: string;
   readonly VITE_MOTORCOVE_DEMO_WALLET?: string;
+  readonly VITE_MOTORCOVE_CHAIN_ID?: string;
   readonly VITE_MOTORCOVE_RPC_URL?: string;
 }
 

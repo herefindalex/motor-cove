@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { chainProfileForId } from '@motorcove/chain-artifacts/profiles';
 import type { OrderedEvent } from '../domain/events.js';
 import type { BlockHeader, ChainReader, ProjectionUnitOfWork } from '../ports/index.js';
 import { ChainTransportUnavailableError, ingestRange } from './ingest-range.js';
@@ -38,6 +39,38 @@ function store(checkpoint: BlockHeader | null = null) {
 }
 
 describe('ingestRange', () => {
+  it('projects only finalized blocks when the public chain tip is ahead', async () => {
+    const chain: ChainReader = {
+      getHead: async () => header(8n),
+      getFinalizedHead: async () => header(5n),
+      getBlock: async (number) => header(number),
+      getEvents: async () => [],
+    };
+    const target = store();
+    await ingestRange(chain, target.unit, 100n, 0n, 0n, undefined, chainProfileForId(1));
+    expect(target.commits).toHaveLength(1);
+    expect(target.commits[0]?.checkpoint.number).toBe(5n);
+    expect(target.commits[0]?.headers.every((item) => item.number <= 5n)).toBe(true);
+  });
+
+  it('requires recovery if finalized evidence contradicts the committed boundary', async () => {
+    let readsAtFive = 0;
+    const chain: ChainReader = {
+      getHead: async () => header(5n),
+      getFinalizedHead: async () => header(5n),
+      getBlock: async (number) => {
+        if (number === 5n && ++readsAtFive >= 4) return { ...header(number), hash: hash(999n) };
+        return header(number);
+      },
+      getEvents: async () => [],
+    };
+    const target = store();
+    await expect(
+      ingestRange(chain, target.unit, 100n, 0n, 0n, undefined, chainProfileForId(1)),
+    ).rejects.toThrow('FINALIZED_BLOCK_HASH_CHANGED');
+    expect(target.recoveries).toContain('FINALIZED_BLOCK_HASH_CHANGED');
+  });
+
   it('shrinks an RPC-limited range without skipping blocks', async () => {
     const attempts: string[] = [];
     const chain: ChainReader = {

@@ -21,10 +21,15 @@
       "id": "0002_reconciliation_sequence",
       "createdAt": 1790172299011,
       "hash": "642d35a098f83b950ad6238f4da2bb4cc8258586be0b4470cc8e17c8f762e517"
+    },
+    {
+      "id": "0003_public_chain_readiness",
+      "createdAt": 1790177397734,
+      "hash": "811db36169df347bf9c4a9828330b7fdcd5f2c2458460980e4606ec6c541b316"
     }
   ],
-  "migrationBundleDigest": "f8e66eb86ab23d0d723ce0137bb07b7f004f0764e968db57efa2ef1075e311cd",
-  "schemaFingerprint": "d1e8b464adc8e505e654a0f16b6519bc370d126a5808bcb088a80726706c442d",
-  "schemaSourceDigest": "566b94074412bb9090debbeddc96f6b83dd92cfca44d49e7801f59c6789331e8",
-  "requiredProjectorVersion": "1"
+  "migrationBundleDigest": "2d9c41c7733c1c7352147258b99ed04c10f2a7e45c8801d662ed6df851ce3ce1",
+  "schemaFingerprint": "ec08b7af1b752c54d6b36ef1533877a86a898ab4e7b81e0fb17fdef81b1a6f42",
+  "schemaSourceDigest": "8c22742b2157e71bea2e575aab2ac766c394e0fee5314e08f6f4745d8068b9ed",
+  "requiredProjectorVersion": "2"
 }

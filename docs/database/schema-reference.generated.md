@@ -5,10 +5,10 @@
 ## Schema contract
 
 - Contract version: `1`
-- Migration bundle digest: `f8e66eb86ab23d0d723ce0137bb07b7f004f0764e968db57efa2ef1075e311cd`
-- Schema fingerprint: `d1e8b464adc8e505e654a0f16b6519bc370d126a5808bcb088a80726706c442d`
-- Schema source digest: `566b94074412bb9090debbeddc96f6b83dd92cfca44d49e7801f59c6789331e8`
-- Required projector version: `1`
+- Migration bundle digest: `2d9c41c7733c1c7352147258b99ed04c10f2a7e45c8801d662ed6df851ce3ce1`
+- Schema fingerprint: `ec08b7af1b752c54d6b36ef1533877a86a898ab4e7b81e0fb17fdef81b1a6f42`
+- Schema source digest: `8c22742b2157e71bea2e575aab2ac766c394e0fee5314e08f6f4745d8068b9ed`
+- Required projector version: `2`
 - Repository-managed tables: 13
 
 ## `__drizzle_migrations`
@@ -400,15 +400,17 @@ CREATE TABLE `indexer_checkpoint` (
 
 ### Columns
 
-| Name                  | Declared type | Required | Default | Primary-key position |
-| --------------------- | ------------- | -------- | ------- | -------------------- |
-| `deployment_id`       | `TEXT`        | yes      | —       | 1                    |
-| `projection_status`   | `TEXT`        | yes      | —       | —                    |
-| `recovery_reason`     | `TEXT`        | no       | —       | —                    |
-| `worker_heartbeat_at` | `TEXT`        | no       | —       | —                    |
-| `last_rpc_success_at` | `TEXT`        | no       | —       | —                    |
-| `last_observed_head`  | `INTEGER`     | no       | —       | —                    |
-| `last_observed_at`    | `TEXT`        | no       | —       | —                    |
+| Name                    | Declared type | Required | Default | Primary-key position |
+| ----------------------- | ------------- | -------- | ------- | -------------------- |
+| `deployment_id`         | `TEXT`        | yes      | —       | 1                    |
+| `projection_status`     | `TEXT`        | yes      | —       | —                    |
+| `recovery_reason`       | `TEXT`        | no       | —       | —                    |
+| `worker_heartbeat_at`   | `TEXT`        | no       | —       | —                    |
+| `last_rpc_success_at`   | `TEXT`        | no       | —       | —                    |
+| `last_observed_head`    | `INTEGER`     | no       | —       | —                    |
+| `last_eligible_head`    | `INTEGER`     | no       | —       | —                    |
+| `last_head_advanced_at` | `TEXT`        | no       | —       | —                    |
+| `last_observed_at`      | `TEXT`        | no       | —       | —                    |
 
 ### Foreign keys
 
@@ -425,17 +427,20 @@ CREATE TABLE `indexer_checkpoint` (
 ### Executed table definition
 
 ```sql
-CREATE TABLE `indexer_runtime_status` (
+CREATE TABLE "indexer_runtime_status" (
 	`deployment_id` text PRIMARY KEY NOT NULL,
 	`projection_status` text NOT NULL,
 	`recovery_reason` text,
 	`worker_heartbeat_at` text,
 	`last_rpc_success_at` text,
 	`last_observed_head` integer,
+	`last_eligible_head` integer,
+	`last_head_advanced_at` text,
 	`last_observed_at` text,
 	FOREIGN KEY (`deployment_id`) REFERENCES `deployments`(`deployment_id`) ON UPDATE no action ON DELETE no action,
 	CONSTRAINT "runtime_projection_status_check" CHECK("indexer_runtime_status"."projection_status" IN ('UNINITIALIZED','SYNCING','CURRENT','STALE','REBUILD_REQUIRED','REBUILDING','RECOVERY_REQUIRED')),
-	CONSTRAINT "runtime_head_check" CHECK("indexer_runtime_status"."last_observed_head" IS NULL OR ("last_observed_head" >= 0 AND "last_observed_head" <= 9007199254740991))
+	CONSTRAINT "runtime_head_check" CHECK("indexer_runtime_status"."last_observed_head" IS NULL OR ("last_observed_head" >= 0 AND "last_observed_head" <= 9007199254740991)),
+	CONSTRAINT "runtime_eligible_head_check" CHECK("indexer_runtime_status"."last_eligible_head" IS NULL OR ("last_eligible_head" >= 0 AND "last_eligible_head" <= 9007199254740991))
 )
 ```
 
@@ -569,6 +574,7 @@ CREATE TABLE "reconciliation_runs" (
 | `collection_address`    | `TEXT`        | yes      | —       | —                    |
 | `token_id`              | `TEXT`        | yes      | —       | —                    |
 | `seller`                | `TEXT`        | yes      | —       | —                    |
+| `allowed_buyer`         | `TEXT`        | no       | —       | —                    |
 | `buyer`                 | `TEXT`        | no       | —       | —                    |
 | `price_wei`             | `TEXT`        | yes      | —       | —                    |
 | `status`                | `TEXT`        | yes      | —       | —                    |
@@ -596,12 +602,13 @@ CREATE TABLE "reconciliation_runs" (
 ### Executed table definition
 
 ```sql
-CREATE TABLE `sales` (
+CREATE TABLE "sales" (
 	`deployment_id` text NOT NULL,
 	`sale_id` text NOT NULL,
 	`collection_address` text NOT NULL,
 	`token_id` text NOT NULL,
 	`seller` text NOT NULL,
+	`allowed_buyer` text,
 	`buyer` text,
 	`price_wei` text NOT NULL,
 	`status` text NOT NULL,
@@ -629,6 +636,7 @@ CREATE TABLE `sales` (
 	CONSTRAINT "sale_status_check" CHECK("sales"."status" IN ('LISTED','FUNDED','COMPLETED','CANCELLED','EXPIRED')),
 	CONSTRAINT "sale_collection_check" CHECK(length("collection_address") = 42 AND substr("collection_address", 1, 2) = '0x' AND lower("collection_address") = "collection_address" AND substr("collection_address", 3) NOT GLOB '*[^0-9a-f]*'),
 	CONSTRAINT "sale_seller_check" CHECK(length("seller") = 42 AND substr("seller", 1, 2) = '0x' AND lower("seller") = "seller" AND substr("seller", 3) NOT GLOB '*[^0-9a-f]*'),
+	CONSTRAINT "sale_allowed_buyer_check" CHECK("sales"."allowed_buyer" IS NULL OR (length("allowed_buyer") = 42 AND substr("allowed_buyer", 1, 2) = '0x' AND lower("allowed_buyer") = "allowed_buyer" AND substr("allowed_buyer", 3) NOT GLOB '*[^0-9a-f]*')),
 	CONSTRAINT "sale_buyer_check" CHECK("sales"."buyer" IS NULL OR (length("sales"."buyer")=42 AND substr("sales"."buyer",1,2)='0x' AND lower("sales"."buyer")="sales"."buyer" AND substr("sales"."buyer",3) NOT GLOB '*[^0-9a-f]*')),
 	CONSTRAINT "sale_created_block_check" CHECK("created_block" >= 0 AND "created_block" <= 9007199254740991),
 	CONSTRAINT "sale_updated_block_check" CHECK("updated_block" >= 0 AND "updated_block" <= 9007199254740991),

@@ -118,3 +118,18 @@ projector-only integrity reason. Confirmed canonical or source suspicion require
 keeps that reason while its maintenance marker owns rewind, replay, and catch-up; the verified target
 releases the reason to `SYNCING`. The next live poll determines `CURRENT`. Local rebuild does not
 renew the worker heartbeat or the last successful RPC observation time.
+
+## Chain-profile eligibility
+
+Anvil (31337) treats the latest loopback block as immediately eligible. Ethereum (1) and Polygon
+(137) require a provider-confirmed finalized head; `indexingDepth` does not replace finality on
+those profiles. If a provider cannot prove the finalized target or a previously finalized anchor
+changes, ingestion fails closed and retains recovery evidence. Runtime uses one primary RPC;
+`pnpm ops:audit-source` compares a bounded finalized range against an independent secondary source
+without writing the projection. An included transaction may therefore precede the finalized
+marketplace projection. Public profiles have only loopback and mocked verification in this repo.
+
+The Web health selector uses each public profile's head-stall threshold and the persisted
+`lastHeadAdvancedAt` to show `CHAIN_HEAD_STALLED` when a still-reporting worker has not observed
+head progress. This describes observation liveness, not proof that chain data is wrong. Anvil idle
+heads are not marked stalled.

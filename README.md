@@ -94,7 +94,7 @@ After Anvil is ready, use a second terminal:
 nvm use
 export MOTORCOVE_ENV=demo-local
 pnpm dev:bootstrap
-VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
+VITE_MOTORCOVE_CHAIN_ID=31337 VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545 VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
 ```
 
 Open <http://127.0.0.1:5173> and choose **Use local buyer** or **Use local seller**. This explicit
@@ -136,8 +136,10 @@ runbooks before maintenance commands.
 ## Boundaries
 
 MotorCove has no physical title, delivery, financing, tax, authentication, SIWE, backend wallet
-custody, public-network deployment, or production database service. It supports one-host local
-SQLite and loopback Anvil only. The complete boundary and open product gaps are in
+custody, verified public-network deployment, or production database service. Explicit Anvil,
+Ethereum, and Polygon chain profiles and finalized-only public projection policy are implemented;
+public profiles have only loopback and mocked verification. The verified full stack remains one-host
+SQLite with loopback Anvil. Sales now require a seller-selected reserved buyer. The complete boundary and open product gaps are in
 [project scope](docs/project-scope.md).
 
 ## License

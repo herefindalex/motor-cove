@@ -1,4 +1,5 @@
 import type { SystemStatus } from '@motorcove/api-contracts';
+import { chainProfileForId } from '@motorcove/chain-artifacts/profiles';
 
 export interface ProjectionHealthPresentation {
   readonly healthy: boolean;
@@ -9,6 +10,7 @@ export function presentProjectionHealth(
   status: SystemStatus | undefined,
   indexedBlock: string | undefined,
   receiptLag: string | null,
+  context?: { chainId: string; now: Date },
 ): ProjectionHealthPresentation {
   const block = indexedBlock ?? 'unknown';
   if (!status)
@@ -27,6 +29,20 @@ export function presentProjectionHealth(
         `Indexer observation ${status.observationFreshness.toLowerCase()} · ` +
         `last known projection ${status.projectionStatus} · indexed ${block} · current lag unknown`,
     };
+  if (context && status.lastHeadAdvancedAt) {
+    const threshold = chainProfileForId(context.chainId).headStallThresholdMs;
+    const advancedAt = Date.parse(status.lastHeadAdvancedAt);
+    if (
+      threshold !== undefined &&
+      Number.isFinite(advancedAt) &&
+      context.now.getTime() - advancedAt > threshold
+    ) {
+      return {
+        healthy: false,
+        text: `CHAIN_HEAD_STALLED · no observed head advance · indexed ${block} · current lag unknown`,
+      };
+    }
+  }
   if (status.projectionStatus === 'CURRENT')
     return { healthy: true, text: `Indexed block ${block}` };
   return {

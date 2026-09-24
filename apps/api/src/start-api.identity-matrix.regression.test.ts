@@ -11,7 +11,7 @@ const manifest: DeploymentManifest = {
   manifestVersion: 1,
   deploymentId: hash('1'),
   chainId: '31337',
-  protocolVersion: '0.1.0',
+  protocolVersion: '0.2.0',
   compiler: 'solc 0.8.24',
   buildId: 'foundry-test',
   scanStartBlock: '1',

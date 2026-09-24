@@ -61,6 +61,7 @@ function observation(
 function ports(
   inspected: InspectedTransaction,
   response = observation('SCANNED', 'MATCHED', 'CONSISTENT'),
+  finality?: 'UNFINALIZED' | 'FINALIZED' | 'UNKNOWN',
 ) {
   const saved: JournalEntry[] = [];
   const journal: TransactionJournal = {
@@ -74,14 +75,22 @@ function ports(
     },
     subscribe: () => () => undefined,
   };
-  const chain = { inspectTransaction: vi.fn(async () => inspected) };
+  const finalitySpy = vi.fn(async () =>
+    finality === 'FINALIZED'
+      ? { status: 'FINALIZED' as const, headNumber: 105n, headHash: blockHash }
+      : { status: finality === 'UNFINALIZED' ? ('UNFINALIZED' as const) : ('UNKNOWN' as const) },
+  );
+  const chain = {
+    inspectTransaction: vi.fn(async () => inspected),
+    ...(finality ? { observeFinality: finalitySpy } : {}),
+  };
   const readObservation = vi.fn(async () => response);
   const recoveryPorts: RecoveryPorts = {
     chain,
     observation: { observeFunding: readObservation },
     journal,
   };
-  return { recoveryPorts, saved, chain, readObservation };
+  return { recoveryPorts, saved, chain, readObservation, finalitySpy };
 }
 
 const included: InspectedTransaction = {
@@ -95,6 +104,32 @@ const included: InspectedTransaction = {
 };
 
 describe('read-only transaction recovery', () => {
+  it('keeps public-chain inclusion separate from finality and projection convergence', async () => {
+    const fixture = ports(included, observation('SCANNED', 'MATCHED', 'CONSISTENT'), 'UNFINALIZED');
+    expect(
+      await resumeJournalEntry(entry({ chainId: 1, currentTxHash: hash }), fixture.recoveryPorts),
+    ).toEqual({ kind: 'INCLUDED' });
+    expect(fixture.saved[0]?.finalityStatus).toBe('UNFINALIZED');
+    expect(fixture.readObservation).not.toHaveBeenCalled();
+
+    fixture.finalitySpy.mockResolvedValue({
+      status: 'FINALIZED',
+      headNumber: 105n,
+      headHash: blockHash,
+    });
+    expect(await resumeJournalEntry(fixture.saved[0]!, fixture.recoveryPorts)).toEqual({
+      kind: 'REFLECTED',
+    });
+    expect(fixture.saved[0]?.finalityStatus).toBe('FINALIZED');
+    expect(fixture.readObservation).toHaveBeenCalledOnce();
+  });
+
+  it('keeps unavailable public-chain finality unknown', async () => {
+    const fixture = ports(included, observation('SCANNED', 'MATCHED', 'CONSISTENT'), 'UNKNOWN');
+    await resumeJournalEntry(entry({ chainId: 137, currentTxHash: hash }), fixture.recoveryPorts);
+    expect(fixture.saved[0]?.finalityStatus).toBe('UNKNOWN');
+    expect(fixture.readObservation).not.toHaveBeenCalled();
+  });
   it('turns a lost wallet response into actionable UNKNOWN without reading or submitting', async () => {
     const fixture = ports(included);
     expect(

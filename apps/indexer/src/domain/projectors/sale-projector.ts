@@ -5,6 +5,7 @@ export interface SaleProjection {
   readonly saleId: string;
   readonly tokenId: string;
   readonly seller: string;
+  readonly allowedBuyer: string;
   readonly buyer: string | null;
   readonly priceWei: string;
   readonly fundedAt: string | null;
@@ -23,6 +24,7 @@ export function projectSale(
       saleId: event.saleId,
       tokenId: event.tokenId,
       seller: event.seller,
+      allowedBuyer: event.allowedBuyer,
       buyer: null,
       priceWei: event.priceWei,
       fundedAt: null,
@@ -45,6 +47,8 @@ export function projectSale(
   switch (event.kind) {
     case 'SaleFunded':
       if (current.status !== 'LISTED') throw new Error('SaleFunded requires LISTED');
+      if (event.buyer.toLowerCase() !== current.allowedBuyer.toLowerCase())
+        throw new ProjectionIntegrityError('sale', event.saleId, event.kind, 'allowedBuyer');
       return {
         ...current,
         buyer: event.buyer,

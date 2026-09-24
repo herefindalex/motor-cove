@@ -25,3 +25,7 @@ RPC 的歷史狀態可能無法使用。在這種情況下報告 `UNVERIFIABLE`�
 ## 不可用的最新頭部觀察
 
 如果在檢查點可用後最新磁頭讀取失敗，則該指令仍將目前嘗試保留為 `UNVERIFIABLE` 和 `HEAD_UNKNOWN`，記錄 RPC 原因，並以非零值退出。它不會重複使用先前的報告或標題作為新運行的證據。開啟或寫入資料庫失敗仍然是外部命令失敗，因為在這種情況下不能保證持久的報告。
+
+## 獨立 finalized 來源稽核
+
+`pnpm ops:audit-source -- --from <block> --to <block> --secondary-rpc-url <url>` 唯讀比對本地保留的區塊／log 證據與獨立設定的次要 RPC。範圍必須符合所選鏈 profile 的 finalized 邊界。命令回傳 `MATCH`、`MISMATCH` 或 `UNVERIFIABLE`；非相符結果會以非零碼退出。將次要來源視為獨立證據前，須核對 chain ID、部署與執行時合約程式碼身分。稽核不修復投影，也不送交易。本專案驗證只使用 loopback 或模擬供應商；未宣稱執行公網 RPC 稽核。

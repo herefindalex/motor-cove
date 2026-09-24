@@ -83,6 +83,14 @@ export function Marketplace({
                     <dd>
                       <code>{sale.seller.slice(0, 8)}…</code>
                     </dd>
+                    <dt>Reserved for</dt>
+                    <dd>
+                      {sale.allowedBuyer ? (
+                        <code>{sale.allowedBuyer}</code>
+                      ) : (
+                        'Unknown (legacy sale)'
+                      )}
+                    </dd>
                     {sale.buyer && (
                       <>
                         <dt>Buyer</dt>
@@ -103,13 +111,20 @@ export function Marketplace({
                   <div className="actions">
                     {sale.status === 'LISTED' && !same(account, sale.seller) && (
                       <button
-                        disabled={!actions || pending('FUND_SALE')}
+                        disabled={
+                          !actions || !same(account, sale.allowedBuyer) || pending('FUND_SALE')
+                        }
                         aria-busy={pending('FUND_SALE')}
                         onClick={() => void actions?.fund(sale)}
                       >
                         {pending('FUND_SALE') ? 'Funding…' : 'Fund exactly'}
                       </button>
                     )}
+                    {sale.status === 'LISTED' &&
+                      !same(account, sale.seller) &&
+                      !same(account, sale.allowedBuyer) && (
+                        <p className="notice">Only the reserved buyer can fund this sale.</p>
+                      )}
                     {sale.status === 'LISTED' && same(account, sale.seller) && (
                       <button
                         disabled={!actions || pending('CANCEL_SALE')}

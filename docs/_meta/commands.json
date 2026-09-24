@@ -30,7 +30,7 @@
       "command": "pnpm dev:full",
       "status": "implemented",
       "effect": "starts API, Indexer, and Web",
-      "prerequisite": "bootstrap complete for the selected environment",
+      "prerequisite": "bootstrap complete for the selected environment; VITE_MOTORCOVE_CHAIN_ID=31337 and VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545",
       "runbook": "../runbooks/local-development.md"
     },
     {
@@ -38,7 +38,7 @@
       "command": "pnpm dev:ui",
       "status": "implemented",
       "effect": "starts only the Vite Web process",
-      "prerequisite": "bootstrap complete for the selected environment",
+      "prerequisite": "bootstrap complete for the selected environment; VITE_MOTORCOVE_CHAIN_ID=31337 and VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545",
       "runbook": "../runbooks/local-development.md"
     },
     {
@@ -183,6 +183,14 @@
       "status": "implemented",
       "effect": "writes an anchored chain/projection comparison report",
       "prerequisite": "MOTORCOVE_ENV set; Indexer stopped",
+      "runbook": "../runbooks/reconciliation.md"
+    },
+    {
+      "name": "ops:audit-source",
+      "command": "pnpm ops:audit-source -- --from <block> --to <block> --secondary-rpc-url <url>",
+      "status": "implemented",
+      "effect": "read-only finalized source comparison against an independently configured secondary RPC",
+      "prerequisite": "MOTORCOVE_ENV set; independent secondary RPC URL and finalized range; read-only local database",
       "runbook": "../runbooks/reconciliation.md"
     },
     {

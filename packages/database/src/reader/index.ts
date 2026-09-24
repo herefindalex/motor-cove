@@ -10,6 +10,8 @@ export type {
   ReadSnapshot,
   SaleRecord,
   SystemRecord,
+  SourceAuditBlock,
+  SourceAuditEvent,
   VehicleRecord,
 } from './types.js';
 export { createReadOnlyReader } from './sales-reader.js';

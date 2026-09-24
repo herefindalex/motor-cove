@@ -9,8 +9,8 @@ in `_meta/commands.json` owns the table.
 | `pnpm doctor` | implemented | read-only diagnostics | workspace dependencies installed |
 | `pnpm dev:chain` | implemented | starts loopback Anvil | port 8545 free |
 | `pnpm dev:bootstrap` | implemented | deploys contracts, registers the deployment, seeds catalog data, and catches up projections | loopback Anvil and a selected owned environment |
-| `pnpm dev:full` | implemented | starts API, Indexer, and Web | bootstrap complete for the selected environment |
-| `pnpm dev:ui` | implemented | starts only the Vite Web process | bootstrap complete for the selected environment |
+| `pnpm dev:full` | implemented | starts API, Indexer, and Web | bootstrap complete for the selected environment; VITE_MOTORCOVE_CHAIN_ID=31337 and VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545 |
+| `pnpm dev:ui` | implemented | starts only the Vite Web process | bootstrap complete for the selected environment; VITE_MOTORCOVE_CHAIN_ID=31337 and VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545 |
 | `pnpm dev:api` | implemented | starts only the readonly API process | initialized owned environment |
 | `pnpm dev:indexer` | implemented | starts only the normal Indexer writer | bootstrap complete; no maintenance operation |
 | `pnpm storybook` | implemented | starts isolated UI development server | workspace dependencies installed |
@@ -29,6 +29,7 @@ in `_meta/commands.json` owns the table.
 | `pnpm release:metadata` | implemented | writes local release-readiness metadata without publishing | verification commands completed |
 | `pnpm verify` | implemented | local generated, docs, architecture, test, and build gate | Foundry and Node toolchain |
 | `pnpm ops:reconcile` | implemented | writes an anchored chain/projection comparison report | MOTORCOVE_ENV set; Indexer stopped |
+| `pnpm ops:audit-source -- --from <block> --to <block> --secondary-rpc-url <url>` | implemented | read-only finalized source comparison against an independently configured secondary RPC | MOTORCOVE_ENV set; independent secondary RPC URL and finalized range; read-only local database |
 | `pnpm ops:rebuild` | implemented | atomically rebuilds projections from verified local evidence | MOTORCOVE_ENV set; API and Indexer stopped |
 | `pnpm demo:advance-time --seconds <n>` | implemented | advances and mines time on verified loopback Anvil | local Anvil running on chain ID 31337 |
 | `pnpm demo:reset -- --yes` | implemented | resets loopback Anvil and removes generated state from the selected owned environment | MOTORCOVE_ENV set; stopped services; disposable environment only |

@@ -11,8 +11,13 @@ Never reset an existing environment or present an unexecuted scenario as evidenc
 **Status:** implemented and exercised by Playwright against real local Anvil, Indexer, SQLite, API,
 and web processes. The connector uses unlocked Anvil test accounts; it is not a MetaMask test.
 
-Start `dev:full` with `VITE_MOTORCOVE_DEMO_WALLET=1`, then open
-<http://127.0.0.1:5173>.
+Start the local demo with explicit chain and RPC settings:
+
+```bash
+VITE_MOTORCOVE_CHAIN_ID=31337 VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545 VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
+```
+
+Then open <http://127.0.0.1:5173>.
 
 1. Choose **Use local buyer**.
 2. Find **Apex GT** in `LISTED` state and click **Fund exactly**.

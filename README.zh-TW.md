@@ -90,7 +90,7 @@ Anvil ready 後，在第二個 terminal：
 nvm use
 export MOTORCOVE_ENV=demo-local
 pnpm dev:bootstrap
-VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
+VITE_MOTORCOVE_CHAIN_ID=31337 VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545 VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
 ```
 
 開啟 <http://127.0.0.1:5173>，選擇 **Use local buyer** 或 **Use local seller**。此開發模式只
@@ -127,8 +127,10 @@ pnpm db:check
 
 ## 邊界
 
-MotorCove 不處理實體產權、交付、融資、稅務、登入、SIWE、後端錢包保管、公開鏈部署或
-正式資料庫服務。執行範圍限單機 SQLite 與 loopback Anvil。完整 non-goals 與仍待完成的
+MotorCove 不處理實體產權、交付、融資、稅務、登入、SIWE、後端錢包保管、已驗證的公開鏈部署或
+正式資料庫服務。已實作 Anvil、Ethereum、Polygon 的明確鏈 profile，以及公鏈只投影 finalized 區塊的政策；
+公鏈 profile 目前僅通過 loopback 與模擬驗證。完整堆疊的已驗證範圍仍是單機 SQLite 與 loopback Anvil。
+Sale 現在須指定賣家選定的預留買家。完整 non-goals 與仍待完成的
 產品缺口見[專案範圍](docs/project-scope.zh-TW.md)。
 
 ## 授權

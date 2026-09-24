@@ -1,12 +1,12 @@
 {
   "formatVersion": 1,
   "sourceContext": {
-    "revision": "47defaab752941ce26dc9cbe8e436ac588f5b4c1",
+    "revision": "327fcd2bae523220bc934517770ecb928d958085",
     "dirty": true,
-    "capturedAt": "2026-09-23T08:08:30Z",
-    "sourceFingerprint": "sha256:e6e6021d695bdff7abbb4e2cb60e20e1ac641bb4c83524a445c16b52500d7783",
-    "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry 1.8.3; better-sqlite3 13.0.3; SQLite 3.53.4",
-    "limits": "R25 verification used pinned local toolchain, synthetic Anvil accounts and loopback services. Browser E2E did not use a wallet extension or public RPC. Fingerprint is SHA-256 over sorted changed and untracked repository-relative paths and their bytes, each NUL-delimited, excluding this verification file.",
+    "capturedAt": "2026-09-23T16:59:06Z",
+    "sourceFingerprint": "sha256:a45ac24fc4c0015dfe80cab8f0e4f54cf22219c2c4e90f20a530d7819477b3eb",
+    "profile": "Linux x86_64; Node 24.21.0; pnpm 12.5.1; Foundry/Anvil 1.8.3; better-sqlite3 13.0.3",
+    "limits": "Public-chain readiness candidate uses synthetic accounts, harness-owned loopback Anvil, temporary SQLite, and mocked provider fixtures. No public RPC, mainnet/testnet deployment, real wallet, or valuable asset was used. Fingerprint follows sourceFingerprintMethod and excludes this verification file.",
     "sourceFingerprintMethod": "SHA-256 over each sorted repository-relative path, NUL, file bytes, NUL from git ls-files --cached --others --exclude-standard, excluding docs/evidence/verification.json"
   },
   "runs": [
@@ -613,6 +613,54 @@
       "limitations": "GitHub-hosted deterministic local stack; no existing user database, manual wallet, or public network was used.",
       "executedAt": "2026-09-23T09:02:08Z",
       "url": "https://github.com/herefindalex/motor-cove/actions/runs/35840091000"
+    },
+
+    {
+      "id": "RUN-PUBLIC-CHAIN-READINESS",
+      "scenarios": ["SALE-001", "SALE-002", "TX-001", "IDX-001", "REL-001"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm exec vitest run apps/indexer/src/cli/audit-source.test.ts tests/integration/source-audit-reader.test.ts",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Source-audit CLI report and exit-code checks passed 3/3; real SQLite reader plus controlled secondary provider checks passed 2/2. Focused browser finality tests passed 18/18, Observer coordination tests passed 8/8, and reserved-buyer backup/restore test passed 1/1 in separate commands.",
+      "limitations": "Candidate starts from 327fcd2bae523220bc934517770ecb928d958085 with uncommitted implementation. Secondary providers were mocked, and all SQLite environments were temporary. No public RPC, mainnet/testnet deployment, real wallet, or public-chain asset was used.",
+      "executedAt": "2026-09-23T16:54:13Z"
+    },
+
+    {
+      "id": "RUN-PUBLIC-CHAIN-GATES",
+      "scenarios": ["SALE-001", "SALE-002", "TX-001", "IDX-001", "REL-001"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm test:contracts; pnpm test:components; pnpm test:migrations; pnpm test:db; pnpm test:seeds; pnpm test:recovery; pnpm test:integration; pnpm docs:check; pnpm check:architecture",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Each command exited 0 with the pinned local toolchain: Foundry 19 tests; components 8; migrations 26; database 43; seeds 6; recovery 33; integration 81; documentation workspace and 8 negative fixtures; architecture graph valid for 182 source files.",
+      "limitations": "Source base 327fcd2bae523220bc934517770ecb928d958085; dirty candidate fingerprint is recorded in sourceContext. Synthetic accounts, loopback Anvil, temporary SQLite, and mocked providers only. No public RPC, mainnet/testnet deployment, real wallet extension, valuable asset, or external security review.",
+      "executedAt": "2026-09-23T17:05:06Z"
+    },
+
+    {
+      "id": "RUN-PUBLIC-CHAIN-VERIFY",
+      "scenarios": ["SALE-001", "SALE-002", "TX-001", "IDX-001", "REL-001"],
+      "level": "LOCAL-TEST",
+      "command": "pnpm verify",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Generation and schema drift checks, formatting, docs, architecture, typecheck, lint, Foundry 19 tests, 75 unit/component files (495 tests), 20 integration files (81 tests), and production build passed.",
+      "limitations": "Source base 327fcd2bae523220bc934517770ecb928d958085; dirty candidate fingerprint is recorded in sourceContext. Synthetic accounts, loopback Anvil, temporary SQLite, and mocked providers only. No public RPC, mainnet/testnet deployment, real wallet extension, valuable asset, or external security review.",
+      "executedAt": "2026-09-23T17:05:06Z"
+    },
+
+    {
+      "id": "RUN-PUBLIC-CHAIN-E2E",
+      "scenarios": ["SALE-001", "SALE-002", "TX-001", "IDX-001"],
+      "level": "LOCAL-E2E",
+      "command": "pnpm test:e2e",
+      "workingDirectory": "workspace root",
+      "status": "executed/pass",
+      "result": "Playwright passed 12/12 scenarios on a fresh harness-owned local Anvil, Indexer, API, Web, and managed database, including reserved-buyer listing, outsider funding refusal, selected-buyer funding, and read-only recovery.",
+      "limitations": "Source base 327fcd2bae523220bc934517770ecb928d958085; dirty candidate fingerprint is recorded in sourceContext. Synthetic accounts, loopback Anvil, temporary SQLite, and mocked providers only. No public RPC, mainnet/testnet deployment, real wallet extension, valuable asset, or external security review. WebServer teardown printed messages after the tests; the command exited 0.",
+      "executedAt": "2026-09-23T17:05:06Z"
     }
   ]
 }

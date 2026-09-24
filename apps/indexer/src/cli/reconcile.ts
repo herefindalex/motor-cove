@@ -51,7 +51,7 @@ try {
     if (before.hash !== checkpoint.blockHash) throw new Error('ANCHOR_HASH_MISMATCH');
     const sales = db
       .prepare(
-        'SELECT sale_id AS saleId,token_id AS tokenId,seller,buyer,price_wei AS priceWei,CAST(funded_at AS TEXT) AS fundedAt,CAST(expires_at AS TEXT) AS expiresAt,status,token_reclaimed AS tokenReclaimed FROM sales WHERE deployment_id=? ORDER BY length(sale_id),sale_id',
+        'SELECT sale_id AS saleId,token_id AS tokenId,seller,allowed_buyer AS allowedBuyer,buyer,price_wei AS priceWei,CAST(funded_at AS TEXT) AS fundedAt,CAST(expires_at AS TEXT) AS expiresAt,status,token_reclaimed AS tokenReclaimed FROM sales WHERE deployment_id=? ORDER BY length(sale_id),sale_id',
       )
       .all(config.manifest.deploymentId) as Array<Record<string, unknown>>;
     const claims = db
@@ -113,6 +113,7 @@ try {
       const expected = {
         tokenId: String(chainSale.tokenId),
         seller: chainSale.seller.toLowerCase(),
+        allowedBuyer: chainSale.allowedBuyer.toLowerCase(),
         buyer:
           chainSale.buyer === '0x0000000000000000000000000000000000000000'
             ? null

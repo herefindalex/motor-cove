@@ -60,6 +60,11 @@ export const motorCoveEscrowAbi = [
         "name": "priceWei",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "allowedBuyer",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
@@ -206,6 +211,11 @@ export const motorCoveEscrowAbi = [
           },
           {
             "name": "seller",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "allowedBuyer",
             "type": "address",
             "internalType": "address"
           },
@@ -494,6 +504,12 @@ export const motorCoveEscrowAbi = [
         "internalType": "address"
       },
       {
+        "name": "allowedBuyer",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
         "name": "priceWei",
         "type": "uint256",
         "indexed": false,
@@ -683,6 +699,22 @@ export const motorCoveEscrowAbi = [
     "type": "error",
     "name": "LiabilityInvariantBroken",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotAllowedBuyer",
+    "inputs": [
+      {
+        "name": "caller",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "allowedBuyer",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
   },
   {
     "type": "error",

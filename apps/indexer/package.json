@@ -9,6 +9,7 @@
     "bootstrap": "tsx src/cli/bootstrap.ts",
     "rebuild": "tsx src/cli/rebuild.ts",
     "reconcile": "tsx src/cli/reconcile.ts",
+    "audit-source": "tsx src/cli/audit-source.ts",
     "reindex": "tsx src/cli/reindex.ts",
     "reset": "tsx src/cli/reset.ts",
     "typecheck": "tsc -p tsconfig.json",

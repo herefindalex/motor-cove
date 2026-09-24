@@ -7,10 +7,33 @@ const assets = [
   { tokenId: '1', name: 'Roadster', currentOwner: null },
   { tokenId: '2', name: 'Coupe', currentOwner: null },
 ];
+const reservedBuyer = `0x${'2'.repeat(40)}`;
 
 afterEach(cleanup);
 
 describe('MyAssets approval and listing workflow', () => {
+  it('requires a distinct nonzero reserved buyer before creating a listing', () => {
+    const seller = `0x${'1'.repeat(40)}`;
+    const onCreate = vi.fn(async () => {});
+    render(
+      <MyAssets
+        assets={[{ ...assets[0]!, currentOwner: seller }]}
+        enabled
+        approvalStates={new Map([['1', 'approved']])}
+        onApprove={vi.fn()}
+        onCreate={onCreate}
+      />,
+    );
+    const input = screen.getByLabelText('Reserved buyer for token #1');
+    const create = screen.getByRole('button', { name: 'Create sale' });
+    expect(create.hasAttribute('disabled')).toBe(true);
+    fireEvent.change(input, { target: { value: seller } });
+    expect(create.hasAttribute('disabled')).toBe(true);
+    fireEvent.change(input, { target: { value: `0x${'0'.repeat(40)}` } });
+    expect(create.hasAttribute('disabled')).toBe(true);
+    fireEvent.change(input, { target: { value: reservedBuyer } });
+    expect(create.hasAttribute('disabled')).toBe(false);
+  });
   it('requires confirmed on-chain approval before enabling create sale', () => {
     const onApprove = vi.fn(async () => {});
     const onCreate = vi.fn(async () => {});
@@ -65,8 +88,11 @@ describe('MyAssets approval and listing workflow', () => {
       />,
     );
     expect(screen.getByText('Approved on-chain')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Reserved buyer for token #1'), {
+      target: { value: reservedBuyer },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Create sale' }));
-    expect(onCreate).toHaveBeenCalledWith('1', '1');
+    expect(onCreate).toHaveBeenCalledWith('1', '1', reservedBuyer);
   });
 
   it('keeps price drafts per asset and shows action progress', () => {
@@ -91,8 +117,11 @@ describe('MyAssets approval and listing workflow', () => {
     fireEvent.change(screen.getByLabelText('Listing price for token #2 (test ETH)'), {
       target: { value: '2' },
     });
+    fireEvent.change(screen.getByLabelText('Reserved buyer for token #2'), {
+      target: { value: reservedBuyer },
+    });
     fireEvent.click(screen.getAllByRole('button', { name: 'Create sale' })[1]!);
-    expect(onCreate).toHaveBeenCalledWith('2', '2');
+    expect(onCreate).toHaveBeenCalledWith('2', '2', reservedBuyer);
 
     rerender(
       <MyAssets

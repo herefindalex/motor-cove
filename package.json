@@ -32,6 +32,7 @@
     "release:metadata": "tsx tooling/scripts/release-metadata.ts",
     "verify": "corepack pnpm generate:check && corepack pnpm db:check && corepack pnpm check && corepack pnpm test:contracts && corepack pnpm test:unit && corepack pnpm test:integration && corepack pnpm build",
     "ops:reconcile": "corepack pnpm --filter @motorcove/indexer run reconcile",
+    "ops:audit-source": "corepack pnpm --filter @motorcove/indexer run audit-source",
     "ops:rebuild": "corepack pnpm --filter @motorcove/indexer run rebuild",
     "demo:advance-time": "tsx tooling/scripts/advance-time.ts",
     "demo:reset": "corepack pnpm --filter @motorcove/indexer run reset",

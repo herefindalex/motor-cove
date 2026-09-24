@@ -1,0 +1,1399 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "a0ea59a3-3307-4859-96eb-ab2168fed466",
+  "prevId": "16f44197-bfaf-45b8-a649-28dd608ae040",
+  "tables": {
+    "catalog_asset_bindings": {
+      "name": "catalog_asset_bindings",
+      "columns": {
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "collection_address": {
+          "name": "collection_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token_id": {
+          "name": "token_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "catalog_id": {
+          "name": "catalog_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "binding_source": {
+          "name": "binding_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "seed_set_id": {
+          "name": "seed_set_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "seed_set_version": {
+          "name": "seed_set_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "catalog_asset_bindings_deployment_id_deployments_deployment_id_fk": {
+          "name": "catalog_asset_bindings_deployment_id_deployments_deployment_id_fk",
+          "tableFrom": "catalog_asset_bindings",
+          "tableTo": "deployments",
+          "columnsFrom": ["deployment_id"],
+          "columnsTo": ["deployment_id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "catalog_asset_bindings_catalog_id_catalog_vehicles_catalog_id_fk": {
+          "name": "catalog_asset_bindings_catalog_id_catalog_vehicles_catalog_id_fk",
+          "tableFrom": "catalog_asset_bindings",
+          "tableTo": "catalog_vehicles",
+          "columnsFrom": ["catalog_id"],
+          "columnsTo": ["catalog_id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "catalog_asset_bindings_deployment_id_collection_address_token_id_pk": {
+          "columns": ["deployment_id", "collection_address", "token_id"],
+          "name": "catalog_asset_bindings_deployment_id_collection_address_token_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "binding_address_check": {
+          "name": "binding_address_check",
+          "value": "length(\"collection_address\") = 42 AND substr(\"collection_address\", 1, 2) = '0x' AND lower(\"collection_address\") = \"collection_address\" AND substr(\"collection_address\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "binding_token_id_check": {
+          "name": "binding_token_id_check",
+          "value": "length(\"token_id\") BETWEEN 1 AND 78\n    AND (\"token_id\" = '0' OR substr(\"token_id\", 1, 1) BETWEEN '1' AND '9')\n    AND \"token_id\" NOT GLOB '*[^0-9]*'\n    AND (length(\"token_id\") < 78 OR \"token_id\" <= '115792089237316195423570985008687907853269984665640564039457584007913129639935')"
+        },
+        "binding_source_check": {
+          "name": "binding_source_check",
+          "value": "\"catalog_asset_bindings\".\"binding_source\" IN ('SEED','MANUAL')"
+        }
+      }
+    },
+    "catalog_vehicles": {
+      "name": "catalog_vehicles",
+      "columns": {
+        "catalog_id": {
+          "name": "catalog_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "model_year": {
+          "name": "model_year",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "image_path": {
+          "name": "image_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "seed_set_id": {
+          "name": "seed_set_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "seed_set_version": {
+          "name": "seed_set_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "catalog_origin_check": {
+          "name": "catalog_origin_check",
+          "value": "\"catalog_vehicles\".\"origin\" IN ('SEEDED','MANUAL')"
+        }
+      }
+    },
+    "deployments": {
+      "name": "deployments",
+      "columns": {
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "chain_id": {
+          "name": "chain_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nft_address": {
+          "name": "nft_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "escrow_address": {
+          "name": "escrow_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "protocol_version": {
+          "name": "protocol_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "abi_bundle_hash": {
+          "name": "abi_bundle_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scan_start_block": {
+          "name": "scan_start_block",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nft_deployment_block": {
+          "name": "nft_deployment_block",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nft_deployment_hash": {
+          "name": "nft_deployment_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nft_runtime_code_hash": {
+          "name": "nft_runtime_code_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "escrow_deployment_block": {
+          "name": "escrow_deployment_block",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "escrow_deployment_hash": {
+          "name": "escrow_deployment_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "escrow_runtime_code_hash": {
+          "name": "escrow_runtime_code_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "manifest_hash": {
+          "name": "manifest_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "manifest_json": {
+          "name": "manifest_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "registered_at": {
+          "name": "registered_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "deployment_id_check": {
+          "name": "deployment_id_check",
+          "value": "length(\"deployment_id\") = 66 AND substr(\"deployment_id\", 1, 2) = '0x' AND lower(\"deployment_id\") = \"deployment_id\" AND substr(\"deployment_id\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "deployment_chain_id_check": {
+          "name": "deployment_chain_id_check",
+          "value": "length(\"chain_id\") BETWEEN 1 AND 78\n    AND (\"chain_id\" = '0' OR substr(\"chain_id\", 1, 1) BETWEEN '1' AND '9')\n    AND \"chain_id\" NOT GLOB '*[^0-9]*'\n    AND (length(\"chain_id\") < 78 OR \"chain_id\" <= '115792089237316195423570985008687907853269984665640564039457584007913129639935')"
+        },
+        "deployment_nft_address_check": {
+          "name": "deployment_nft_address_check",
+          "value": "length(\"nft_address\") = 42 AND substr(\"nft_address\", 1, 2) = '0x' AND lower(\"nft_address\") = \"nft_address\" AND substr(\"nft_address\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "deployment_escrow_address_check": {
+          "name": "deployment_escrow_address_check",
+          "value": "length(\"escrow_address\") = 42 AND substr(\"escrow_address\", 1, 2) = '0x' AND lower(\"escrow_address\") = \"escrow_address\" AND substr(\"escrow_address\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "deployment_scan_start_check": {
+          "name": "deployment_scan_start_check",
+          "value": "\"scan_start_block\" >= 0 AND \"scan_start_block\" <= 9007199254740991"
+        },
+        "deployment_nft_block_check": {
+          "name": "deployment_nft_block_check",
+          "value": "\"nft_deployment_block\" >= 0 AND \"nft_deployment_block\" <= 9007199254740991"
+        },
+        "deployment_escrow_block_check": {
+          "name": "deployment_escrow_block_check",
+          "value": "\"escrow_deployment_block\" >= 0 AND \"escrow_deployment_block\" <= 9007199254740991"
+        }
+      }
+    },
+    "chain_events": {
+      "name": "chain_events",
+      "columns": {
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "block_hash": {
+          "name": "block_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "log_index": {
+          "name": "log_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "block_number": {
+          "name": "block_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tx_hash": {
+          "name": "tx_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "transaction_index": {
+          "name": "transaction_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "contract_address": {
+          "name": "contract_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "topics_json": {
+          "name": "topics_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "data": {
+          "name": "data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "raw_envelope_digest": {
+          "name": "raw_envelope_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "decoded_json": {
+          "name": "decoded_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "decoder_version": {
+          "name": "decoder_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source_record_digest": {
+          "name": "source_record_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "first_seen_at": {
+          "name": "first_seen_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "chain_events_order": {
+          "name": "chain_events_order",
+          "columns": ["deployment_id", "block_number", "transaction_index", "log_index"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "chain_events_deployment_id_deployments_deployment_id_fk": {
+          "name": "chain_events_deployment_id_deployments_deployment_id_fk",
+          "tableFrom": "chain_events",
+          "tableTo": "deployments",
+          "columnsFrom": ["deployment_id"],
+          "columnsTo": ["deployment_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "chain_events_deployment_id_block_hash_log_index_pk": {
+          "columns": ["deployment_id", "block_hash", "log_index"],
+          "name": "chain_events_deployment_id_block_hash_log_index_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "event_block_number_check": {
+          "name": "event_block_number_check",
+          "value": "\"block_number\" >= 0 AND \"block_number\" <= 9007199254740991"
+        },
+        "event_tx_index_check": {
+          "name": "event_tx_index_check",
+          "value": "\"transaction_index\" >= 0 AND \"transaction_index\" <= 9007199254740991"
+        },
+        "event_log_index_check": {
+          "name": "event_log_index_check",
+          "value": "\"log_index\" >= 0 AND \"log_index\" <= 9007199254740991"
+        },
+        "event_contract_address_check": {
+          "name": "event_contract_address_check",
+          "value": "length(\"contract_address\") = 42 AND substr(\"contract_address\", 1, 2) = '0x' AND lower(\"contract_address\") = \"contract_address\" AND substr(\"contract_address\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "event_block_hash_check": {
+          "name": "event_block_hash_check",
+          "value": "length(\"block_hash\") = 66 AND substr(\"block_hash\", 1, 2) = '0x' AND lower(\"block_hash\") = \"block_hash\" AND substr(\"block_hash\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "event_tx_hash_check": {
+          "name": "event_tx_hash_check",
+          "value": "length(\"tx_hash\") = 66 AND substr(\"tx_hash\", 1, 2) = '0x' AND lower(\"tx_hash\") = \"tx_hash\" AND substr(\"tx_hash\", 3) NOT GLOB '*[^0-9a-f]*'"
+        }
+      }
+    },
+    "indexed_blocks": {
+      "name": "indexed_blocks",
+      "columns": {
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "block_hash": {
+          "name": "block_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "block_number": {
+          "name": "block_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "parent_hash": {
+          "name": "parent_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "block_timestamp": {
+          "name": "block_timestamp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_canonical": {
+          "name": "is_canonical",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scan_complete": {
+          "name": "scan_complete",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "log_scope_hash": {
+          "name": "log_scope_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "observed_log_count": {
+          "name": "observed_log_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "observed_log_digest": {
+          "name": "observed_log_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "indexed_blocks_canonical_number": {
+          "name": "indexed_blocks_canonical_number",
+          "columns": ["deployment_id", "block_number"],
+          "isUnique": true,
+          "where": "\"indexed_blocks\".\"is_canonical\" = 1"
+        }
+      },
+      "foreignKeys": {
+        "indexed_blocks_deployment_id_deployments_deployment_id_fk": {
+          "name": "indexed_blocks_deployment_id_deployments_deployment_id_fk",
+          "tableFrom": "indexed_blocks",
+          "tableTo": "deployments",
+          "columnsFrom": ["deployment_id"],
+          "columnsTo": ["deployment_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "indexed_blocks_deployment_id_block_hash_pk": {
+          "columns": ["deployment_id", "block_hash"],
+          "name": "indexed_blocks_deployment_id_block_hash_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "indexed_block_number_check": {
+          "name": "indexed_block_number_check",
+          "value": "\"block_number\" >= 0 AND \"block_number\" <= 9007199254740991"
+        },
+        "indexed_block_timestamp_check": {
+          "name": "indexed_block_timestamp_check",
+          "value": "\"block_timestamp\" >= 0 AND \"block_timestamp\" <= 9007199254740991"
+        },
+        "indexed_block_log_count_check": {
+          "name": "indexed_block_log_count_check",
+          "value": "\"observed_log_count\" >= 0 AND \"observed_log_count\" <= 9007199254740991"
+        },
+        "indexed_block_hash_check": {
+          "name": "indexed_block_hash_check",
+          "value": "length(\"block_hash\") = 66 AND substr(\"block_hash\", 1, 2) = '0x' AND lower(\"block_hash\") = \"block_hash\" AND substr(\"block_hash\", 3) NOT GLOB '*[^0-9a-f]*'"
+        }
+      }
+    },
+    "payment_claims": {
+      "name": "payment_claims",
+      "columns": {
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sale_id": {
+          "name": "sale_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "beneficiary": {
+          "name": "beneficiary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "amount_wei": {
+          "name": "amount_wei",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "withdrawal_recipient": {
+          "name": "withdrawal_recipient",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "creation_block_hash": {
+          "name": "creation_block_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "creation_log_index": {
+          "name": "creation_log_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "withdrawal_block_hash": {
+          "name": "withdrawal_block_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "withdrawal_log_index": {
+          "name": "withdrawal_log_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "payment_claims_deployment_id_deployments_deployment_id_fk": {
+          "name": "payment_claims_deployment_id_deployments_deployment_id_fk",
+          "tableFrom": "payment_claims",
+          "tableTo": "deployments",
+          "columnsFrom": ["deployment_id"],
+          "columnsTo": ["deployment_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "payment_claims_deployment_id_sale_id_pk": {
+          "columns": ["deployment_id", "sale_id"],
+          "name": "payment_claims_deployment_id_sale_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "claim_sale_id_check": {
+          "name": "claim_sale_id_check",
+          "value": "length(\"sale_id\") BETWEEN 1 AND 78\n    AND (\"sale_id\" = '0' OR substr(\"sale_id\", 1, 1) BETWEEN '1' AND '9')\n    AND \"sale_id\" NOT GLOB '*[^0-9]*'\n    AND (length(\"sale_id\") < 78 OR \"sale_id\" <= '115792089237316195423570985008687907853269984665640564039457584007913129639935')"
+        },
+        "claim_amount_check": {
+          "name": "claim_amount_check",
+          "value": "\"amount_wei\" <> '0' AND length(\"amount_wei\") BETWEEN 1 AND 78\n    AND (\"amount_wei\" = '0' OR substr(\"amount_wei\", 1, 1) BETWEEN '1' AND '9')\n    AND \"amount_wei\" NOT GLOB '*[^0-9]*'\n    AND (length(\"amount_wei\") < 78 OR \"amount_wei\" <= '115792089237316195423570985008687907853269984665640564039457584007913129639935')"
+        },
+        "claim_kind_check": {
+          "name": "claim_kind_check",
+          "value": "\"payment_claims\".\"kind\" IN ('SELLER_PROCEEDS','BUYER_REFUND')"
+        },
+        "claim_status_check": {
+          "name": "claim_status_check",
+          "value": "\"payment_claims\".\"status\" IN ('CLAIMABLE','WITHDRAWN')"
+        },
+        "claim_beneficiary_check": {
+          "name": "claim_beneficiary_check",
+          "value": "length(\"beneficiary\") = 42 AND substr(\"beneficiary\", 1, 2) = '0x' AND lower(\"beneficiary\") = \"beneficiary\" AND substr(\"beneficiary\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "claim_creation_log_check": {
+          "name": "claim_creation_log_check",
+          "value": "\"creation_log_index\" >= 0 AND \"creation_log_index\" <= 9007199254740991"
+        }
+      }
+    },
+    "sales": {
+      "name": "sales",
+      "columns": {
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sale_id": {
+          "name": "sale_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "collection_address": {
+          "name": "collection_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token_id": {
+          "name": "token_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "seller": {
+          "name": "seller",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "allowed_buyer": {
+          "name": "allowed_buyer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "buyer": {
+          "name": "buyer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "price_wei": {
+          "name": "price_wei",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "funded_at": {
+          "name": "funded_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_block": {
+          "name": "created_block",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_block": {
+          "name": "updated_block",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_event_block_hash": {
+          "name": "last_event_block_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_event_log_index": {
+          "name": "last_event_log_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token_reclaimed": {
+          "name": "token_reclaimed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "sales_status": {
+          "name": "sales_status",
+          "columns": ["deployment_id", "status"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "sales_deployment_id_deployments_deployment_id_fk": {
+          "name": "sales_deployment_id_deployments_deployment_id_fk",
+          "tableFrom": "sales",
+          "tableTo": "deployments",
+          "columnsFrom": ["deployment_id"],
+          "columnsTo": ["deployment_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "sales_deployment_id_sale_id_pk": {
+          "columns": ["deployment_id", "sale_id"],
+          "name": "sales_deployment_id_sale_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "sale_id_check": {
+          "name": "sale_id_check",
+          "value": "length(\"sale_id\") BETWEEN 1 AND 78\n    AND (\"sale_id\" = '0' OR substr(\"sale_id\", 1, 1) BETWEEN '1' AND '9')\n    AND \"sale_id\" NOT GLOB '*[^0-9]*'\n    AND (length(\"sale_id\") < 78 OR \"sale_id\" <= '115792089237316195423570985008687907853269984665640564039457584007913129639935')"
+        },
+        "sale_token_id_check": {
+          "name": "sale_token_id_check",
+          "value": "length(\"token_id\") BETWEEN 1 AND 78\n    AND (\"token_id\" = '0' OR substr(\"token_id\", 1, 1) BETWEEN '1' AND '9')\n    AND \"token_id\" NOT GLOB '*[^0-9]*'\n    AND (length(\"token_id\") < 78 OR \"token_id\" <= '115792089237316195423570985008687907853269984665640564039457584007913129639935')"
+        },
+        "sale_price_check": {
+          "name": "sale_price_check",
+          "value": "\"price_wei\" <> '0' AND length(\"price_wei\") BETWEEN 1 AND 78\n    AND (\"price_wei\" = '0' OR substr(\"price_wei\", 1, 1) BETWEEN '1' AND '9')\n    AND \"price_wei\" NOT GLOB '*[^0-9]*'\n    AND (length(\"price_wei\") < 78 OR \"price_wei\" <= '115792089237316195423570985008687907853269984665640564039457584007913129639935')"
+        },
+        "sale_status_check": {
+          "name": "sale_status_check",
+          "value": "\"sales\".\"status\" IN ('LISTED','FUNDED','COMPLETED','CANCELLED','EXPIRED')"
+        },
+        "sale_collection_check": {
+          "name": "sale_collection_check",
+          "value": "length(\"collection_address\") = 42 AND substr(\"collection_address\", 1, 2) = '0x' AND lower(\"collection_address\") = \"collection_address\" AND substr(\"collection_address\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "sale_seller_check": {
+          "name": "sale_seller_check",
+          "value": "length(\"seller\") = 42 AND substr(\"seller\", 1, 2) = '0x' AND lower(\"seller\") = \"seller\" AND substr(\"seller\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "sale_allowed_buyer_check": {
+          "name": "sale_allowed_buyer_check",
+          "value": "\"sales\".\"allowed_buyer\" IS NULL OR (length(\"allowed_buyer\") = 42 AND substr(\"allowed_buyer\", 1, 2) = '0x' AND lower(\"allowed_buyer\") = \"allowed_buyer\" AND substr(\"allowed_buyer\", 3) NOT GLOB '*[^0-9a-f]*')"
+        },
+        "sale_buyer_check": {
+          "name": "sale_buyer_check",
+          "value": "\"sales\".\"buyer\" IS NULL OR (length(\"sales\".\"buyer\")=42 AND substr(\"sales\".\"buyer\",1,2)='0x' AND lower(\"sales\".\"buyer\")=\"sales\".\"buyer\" AND substr(\"sales\".\"buyer\",3) NOT GLOB '*[^0-9a-f]*')"
+        },
+        "sale_created_block_check": {
+          "name": "sale_created_block_check",
+          "value": "\"created_block\" >= 0 AND \"created_block\" <= 9007199254740991"
+        },
+        "sale_updated_block_check": {
+          "name": "sale_updated_block_check",
+          "value": "\"updated_block\" >= 0 AND \"updated_block\" <= 9007199254740991"
+        },
+        "sale_log_index_check": {
+          "name": "sale_log_index_check",
+          "value": "\"last_event_log_index\" >= 0 AND \"last_event_log_index\" <= 9007199254740991"
+        }
+      }
+    },
+    "token_ownership": {
+      "name": "token_ownership",
+      "columns": {
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "collection_address": {
+          "name": "collection_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "token_id": {
+          "name": "token_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "owner": {
+          "name": "owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_transfer_block_hash": {
+          "name": "last_transfer_block_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_transfer_log_index": {
+          "name": "last_transfer_log_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_block": {
+          "name": "updated_block",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "token_ownership_deployment_id_deployments_deployment_id_fk": {
+          "name": "token_ownership_deployment_id_deployments_deployment_id_fk",
+          "tableFrom": "token_ownership",
+          "tableTo": "deployments",
+          "columnsFrom": ["deployment_id"],
+          "columnsTo": ["deployment_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "token_ownership_deployment_id_collection_address_token_id_pk": {
+          "columns": ["deployment_id", "collection_address", "token_id"],
+          "name": "token_ownership_deployment_id_collection_address_token_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "ownership_token_id_check": {
+          "name": "ownership_token_id_check",
+          "value": "length(\"token_id\") BETWEEN 1 AND 78\n    AND (\"token_id\" = '0' OR substr(\"token_id\", 1, 1) BETWEEN '1' AND '9')\n    AND \"token_id\" NOT GLOB '*[^0-9]*'\n    AND (length(\"token_id\") < 78 OR \"token_id\" <= '115792089237316195423570985008687907853269984665640564039457584007913129639935')"
+        },
+        "ownership_collection_check": {
+          "name": "ownership_collection_check",
+          "value": "length(\"collection_address\") = 42 AND substr(\"collection_address\", 1, 2) = '0x' AND lower(\"collection_address\") = \"collection_address\" AND substr(\"collection_address\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "ownership_owner_check": {
+          "name": "ownership_owner_check",
+          "value": "length(\"owner\") = 42 AND substr(\"owner\", 1, 2) = '0x' AND lower(\"owner\") = \"owner\" AND substr(\"owner\", 3) NOT GLOB '*[^0-9a-f]*'"
+        },
+        "ownership_log_index_check": {
+          "name": "ownership_log_index_check",
+          "value": "\"last_transfer_log_index\" >= 0 AND \"last_transfer_log_index\" <= 9007199254740991"
+        },
+        "ownership_block_check": {
+          "name": "ownership_block_check",
+          "value": "\"updated_block\" >= 0 AND \"updated_block\" <= 9007199254740991"
+        }
+      }
+    },
+    "db_contract": {
+      "name": "db_contract",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "contract_version": {
+          "name": "contract_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "migration_bundle_digest": {
+          "name": "migration_bundle_digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "schema_fingerprint": {
+          "name": "schema_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "verified_at": {
+          "name": "verified_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "db_contract_singleton_check": {
+          "name": "db_contract_singleton_check",
+          "value": "\"db_contract\".\"id\"=1"
+        }
+      }
+    },
+    "indexer_checkpoint": {
+      "name": "indexer_checkpoint",
+      "columns": {
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_scanned_block": {
+          "name": "last_scanned_block",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_scanned_hash": {
+          "name": "last_scanned_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "projector_version": {
+          "name": "projector_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "projection_build_id": {
+          "name": "projection_build_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "log_scope_hash": {
+          "name": "log_scope_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "indexer_checkpoint_deployment_id_deployments_deployment_id_fk": {
+          "name": "indexer_checkpoint_deployment_id_deployments_deployment_id_fk",
+          "tableFrom": "indexer_checkpoint",
+          "tableTo": "deployments",
+          "columnsFrom": ["deployment_id"],
+          "columnsTo": ["deployment_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "checkpoint_block_check": {
+          "name": "checkpoint_block_check",
+          "value": "\"indexer_checkpoint\".\"last_scanned_block\" IS NULL OR (\"last_scanned_block\" >= 0 AND \"last_scanned_block\" <= 9007199254740991)"
+        },
+        "checkpoint_hash_check": {
+          "name": "checkpoint_hash_check",
+          "value": "\"indexer_checkpoint\".\"last_scanned_hash\" IS NULL OR (length(\"last_scanned_hash\") = 66 AND substr(\"last_scanned_hash\", 1, 2) = '0x' AND lower(\"last_scanned_hash\") = \"last_scanned_hash\" AND substr(\"last_scanned_hash\", 3) NOT GLOB '*[^0-9a-f]*')"
+        },
+        "checkpoint_pair_check": {
+          "name": "checkpoint_pair_check",
+          "value": "(\"indexer_checkpoint\".\"last_scanned_block\" IS NULL) = (\"indexer_checkpoint\".\"last_scanned_hash\" IS NULL)"
+        }
+      }
+    },
+    "indexer_runtime_status": {
+      "name": "indexer_runtime_status",
+      "columns": {
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "projection_status": {
+          "name": "projection_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "recovery_reason": {
+          "name": "recovery_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "worker_heartbeat_at": {
+          "name": "worker_heartbeat_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_rpc_success_at": {
+          "name": "last_rpc_success_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_observed_head": {
+          "name": "last_observed_head",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_eligible_head": {
+          "name": "last_eligible_head",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_head_advanced_at": {
+          "name": "last_head_advanced_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_observed_at": {
+          "name": "last_observed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "indexer_runtime_status_deployment_id_deployments_deployment_id_fk": {
+          "name": "indexer_runtime_status_deployment_id_deployments_deployment_id_fk",
+          "tableFrom": "indexer_runtime_status",
+          "tableTo": "deployments",
+          "columnsFrom": ["deployment_id"],
+          "columnsTo": ["deployment_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "runtime_projection_status_check": {
+          "name": "runtime_projection_status_check",
+          "value": "\"indexer_runtime_status\".\"projection_status\" IN ('UNINITIALIZED','SYNCING','CURRENT','STALE','REBUILD_REQUIRED','REBUILDING','RECOVERY_REQUIRED')"
+        },
+        "runtime_head_check": {
+          "name": "runtime_head_check",
+          "value": "\"indexer_runtime_status\".\"last_observed_head\" IS NULL OR (\"last_observed_head\" >= 0 AND \"last_observed_head\" <= 9007199254740991)"
+        },
+        "runtime_eligible_head_check": {
+          "name": "runtime_eligible_head_check",
+          "value": "\"indexer_runtime_status\".\"last_eligible_head\" IS NULL OR (\"last_eligible_head\" >= 0 AND \"last_eligible_head\" <= 9007199254740991)"
+        }
+      }
+    },
+    "reconciliation_runs": {
+      "name": "reconciliation_runs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "deployment_id": {
+          "name": "deployment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "run_sequence": {
+          "name": "run_sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "comparison": {
+          "name": "comparison",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "freshness": {
+          "name": "freshness",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "block_number": {
+          "name": "block_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "block_hash": {
+          "name": "block_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "projector_version": {
+          "name": "projector_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "projection_build_id": {
+          "name": "projection_build_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "log_scope_hash": {
+          "name": "log_scope_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scope_json": {
+          "name": "scope_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "differences_json": {
+          "name": "differences_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "reconciliation_deployment_sequence_unique": {
+          "name": "reconciliation_deployment_sequence_unique",
+          "columns": ["deployment_id", "run_sequence"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "reconciliation_runs_deployment_id_deployments_deployment_id_fk": {
+          "name": "reconciliation_runs_deployment_id_deployments_deployment_id_fk",
+          "tableFrom": "reconciliation_runs",
+          "tableTo": "deployments",
+          "columnsFrom": ["deployment_id"],
+          "columnsTo": ["deployment_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "reconciliation_run_sequence_positive": {
+          "name": "reconciliation_run_sequence_positive",
+          "value": "\"reconciliation_runs\".\"run_sequence\" > 0"
+        },
+        "reconciliation_comparison_check": {
+          "name": "reconciliation_comparison_check",
+          "value": "\"reconciliation_runs\".\"comparison\" IN ('MATCH','MISMATCH','UNVERIFIABLE')"
+        },
+        "reconciliation_freshness_check": {
+          "name": "reconciliation_freshness_check",
+          "value": "\"reconciliation_runs\".\"freshness\" IN ('CURRENT','PROJECTION_LAGGING','HEAD_UNKNOWN')"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

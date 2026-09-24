@@ -9,6 +9,7 @@ export interface SaleRecord {
   readonly saleId: string;
   readonly tokenId: string;
   readonly seller: string;
+  readonly allowedBuyer: string | null;
   readonly buyer: string | null;
   readonly priceWei: string;
   readonly fundedAt: string | null;
@@ -38,11 +39,35 @@ export interface SystemRecord {
   readonly observationFreshness: 'FRESH' | 'STALE' | 'UNKNOWN';
   readonly observationAgeSeconds: string | null;
   readonly lastObservedHead: string | null;
+  readonly lastEligibleHead: string | null;
+  readonly lastHeadAdvancedAt: string | null;
   readonly lagBlocks: string | null;
   readonly lastObservedAt: string | null;
   readonly lastRpcSuccessAt: string | null;
   readonly workerHeartbeatAt: string | null;
   readonly recoveryReason: string | null;
+}
+
+export interface SourceAuditEvent {
+  readonly blockNumber: string;
+  readonly blockHash: string;
+  readonly transactionHash: string;
+  readonly transactionIndex: number;
+  readonly logIndex: number;
+  readonly contractAddress: string;
+  readonly topics: readonly string[];
+  readonly data: string;
+}
+
+export interface SourceAuditBlock {
+  readonly blockNumber: string;
+  readonly blockHash: string;
+  readonly parentHash: string;
+  readonly scanComplete: boolean;
+  readonly logScopeHash: string;
+  readonly observedLogCount: number;
+  readonly observedLogDigest: string;
+  readonly events: readonly SourceAuditEvent[];
 }
 
 export interface ReconciliationRecord {
@@ -135,6 +160,7 @@ export interface ReadModelReader {
   listVehicles(): ReadSnapshot<readonly VehicleRecord[]>;
   systemStatus(): ReadSnapshot<SystemRecord>;
   recentEvents(limit?: number): ReadSnapshot<readonly EventRecord[]>;
+  sourceAuditRange(fromBlock: string, toBlock: string): ReadSnapshot<readonly SourceAuditBlock[]>;
   latestReconciliation(): ReadSnapshot<ReconciliationRecord | null>;
   close(): Promise<void>;
 }

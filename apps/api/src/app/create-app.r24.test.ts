@@ -6,7 +6,7 @@ import { createApp } from './create-app.js';
 const config: PublicConfig = {
   deploymentId: `0x${'1'.repeat(64)}`,
   chainId: '31337',
-  protocolVersion: '0.1.0',
+  protocolVersion: '0.2.0',
   nftAddress: `0x${'2'.repeat(40)}`,
   escrowAddress: `0x${'3'.repeat(40)}`,
   fundingPeriodSeconds: '300',

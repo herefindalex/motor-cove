@@ -11,8 +11,8 @@
 | `pnpm doctor`                                                | 已實施 | 唯讀診斷                                                                | 安裝工作區相依性                              |
 | `pnpm dev:chain`                                             | 已實施 | 開始環回 Anvil                                                          | 8545埠空閒                                    |
 | `pnpm dev:bootstrap`                                         | 已實施 | 部署合約、註冊部署、播種目錄資料並趕上投影                              | 環回 Anvil 和選定的擁有環境                   |
-| `pnpm dev:full`                                              | 已實施 | 啟動 API、Indexer 和 Web                                                | 所選環境的引導完成                            |
-| `pnpm dev:ui`                                                | 已實施 | 僅啟動 Vite Web 進程                                                    | 所選環境的引導完成                            |
+| `pnpm dev:full`                                              | 已實施 | 啟動 API、Indexer 和 Web                                                | 所選環境的引導完成；Web 設定見下文            |
+| `pnpm dev:ui`                                                | 已實施 | 僅啟動 Vite Web 進程                                                    | 所選環境的引導完成；Web 設定見下文            |
 | `pnpm dev:api`                                               | 已實施 | 僅啟動唯讀 API 進程                                                     | 初始化擁有的環境                              |
 | `pnpm dev:indexer`                                           | 已實施 | 僅啟動普通的 Indexer 編寫器                                             | 引導完成；無需維護操作                        |
 | `pnpm storybook`                                             | 已實施 | 啟動隔離的 UI 開發伺服器                                                | 安裝工作區相依性                              |
@@ -65,6 +65,8 @@
 - `gap`：腳本不在下游或不符合其記錄的合約。
 
 `db:restore` 和 `demo:reset` 是破壞性指令。記錄的 `--yes` 標誌僅是操作員確認；它絕不能繞過本地鏈、所有權、身分或路徑保護。快速入門不應在現有環境中使用它們。
+
+執行 `dev:full` 或 `dev:ui` 前，請明確設定 `VITE_MOTORCOVE_CHAIN_ID=31337` 與 `VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545`。
 
 `dev:full`獨立監理API、Indexer和Web。致命的 Indexer 完整性錯誤不會終止唯讀 API 或 Web 程序；檢查系統狀態，停止剩餘服務，然後執行記錄的復原指令。 `ops:rebuild` 和 `ops:reindex` 需要獨佔維護存取權限，並在中斷時留下失敗標記。
 

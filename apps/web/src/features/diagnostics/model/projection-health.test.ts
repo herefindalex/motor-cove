@@ -7,6 +7,8 @@ const status = (overrides: Partial<SystemStatus> = {}): SystemStatus => ({
   observationFreshness: 'FRESH',
   observationAgeSeconds: '1',
   lastObservedHead: '5',
+  lastEligibleHead: '5',
+  lastHeadAdvancedAt: '2026-09-22T00:00:00.000Z',
   lagBlocks: '0',
   lastObservedAt: '2026-09-22T00:00:00.000Z',
   lastRpcSuccessAt: '2026-09-22T00:00:00.000Z',
@@ -16,6 +18,18 @@ const status = (overrides: Partial<SystemStatus> = {}): SystemStatus => ({
 });
 
 describe('projection health presentation', () => {
+  it('distinguishes a stalled public head from a healthy idle Anvil chain', () => {
+    const snapshot = status({ lastHeadAdvancedAt: '2026-09-22T00:00:00.000Z' });
+    const now = new Date('2026-09-22T01:00:00.000Z');
+    expect(presentProjectionHealth(snapshot, '5', null, { chainId: '1', now })).toEqual({
+      healthy: false,
+      text: 'CHAIN_HEAD_STALLED · no observed head advance · indexed 5 · current lag unknown',
+    });
+    expect(presentProjectionHealth(snapshot, '5', null, { chainId: '31337', now })).toEqual({
+      healthy: true,
+      text: 'Indexed block 5',
+    });
+  });
   it('does not present an expired CURRENT observation as current', () => {
     expect(
       presentProjectionHealth(

@@ -13,6 +13,7 @@ export const sales = sqliteTable(
     collectionAddress: text('collection_address').notNull(),
     tokenId: text('token_id').notNull(),
     seller: text('seller').notNull(),
+    allowedBuyer: text('allowed_buyer'),
     buyer: text('buyer'),
     priceWei: text('price_wei').notNull(),
     status: text('status').notNull(),
@@ -36,6 +37,10 @@ export const sales = sqliteTable(
     ),
     check('sale_collection_check', hexLength('collection_address', 40)),
     check('sale_seller_check', hexLength('seller', 40)),
+    check(
+      'sale_allowed_buyer_check',
+      sql`${t.allowedBuyer} IS NULL OR (${hexLength('allowed_buyer', 40)})`,
+    ),
     check(
       'sale_buyer_check',
       sql`${t.buyer} IS NULL OR (length(${t.buyer})=42 AND substr(${t.buyer},1,2)='0x' AND lower(${t.buyer})=${t.buyer} AND substr(${t.buyer},3) NOT GLOB '*[^0-9a-f]*')`,

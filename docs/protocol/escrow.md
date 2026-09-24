@@ -14,6 +14,10 @@ seller proceeds claim; expiry creates a buyer refund claim. `withdrawPayment` is
 but permits a safe alternate recipient. Pull claims and reclaim are independently retryable.
 Escrow liability counts each principal exactly once and balance may exceed it through forced ETH.
 
+Each new sale records the seller-selected `allowedBuyer`. Only that address can fund the sale with
+the exact `priceWei`; `buyer` records who actually funded it. Zero and seller addresses are invalid
+reservations. Listings remain custodial rather than open first-come offers.
+
 `VehicleNFT` has a one-time escrow binding finalized by bootstrap before minting or listing. A
 transfer whose destination is the bound escrow is accepted only when the escrow contract itself is
 the authorized ERC-721 operator. This keeps ordinary EOA-to-EOA transfers available while rejecting

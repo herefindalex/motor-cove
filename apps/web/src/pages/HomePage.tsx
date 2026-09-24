@@ -13,7 +13,7 @@ import {
   useJournalEntries,
   type SubmissionResult,
 } from '../capabilities/transactions/index.js';
-import { parseEth } from '../features/trading/index.js';
+import { parseEth, parseReservedBuyer } from '../features/trading/index.js';
 import { useChainTime } from '../integrations/evm/use-chain-time.js';
 import { useTokenApprovals } from '../integrations/evm/use-token-approvals.js';
 import { presentProjectionHealth } from '../features/diagnostics/index.js';
@@ -170,6 +170,7 @@ export function HomePage() {
   const indexedBlock = salesQuery.data?.provenance.indexedBlockNumber;
   const latestIncludedBlock = journalEntries.reduce<bigint | null>((latest, entry) => {
     if (entry.status !== 'INCLUDED_SUCCESS' || !entry.receiptBlockNumber) return latest;
+    if (entry.chainId !== 31337 && entry.finalityStatus !== 'FINALIZED') return latest;
     const block = BigInt(entry.receiptBlockNumber);
     return latest === null || block > latest ? block : latest;
   }, null);
@@ -177,6 +178,12 @@ export function HomePage() {
     latestIncludedBlock !== null &&
     indexedBlock !== undefined &&
     latestIncludedBlock > BigInt(indexedBlock);
+  const receiptWaitingForFinality = journalEntries.some(
+    (entry) =>
+      entry.status === 'INCLUDED_SUCCESS' &&
+      entry.chainId !== 31337 &&
+      entry.finalityStatus !== 'FINALIZED',
+  );
   const receiptLag =
     receiptAheadOfProjection && indexedBlock !== undefined
       ? String(latestIncludedBlock - BigInt(indexedBlock))
@@ -185,6 +192,7 @@ export function HomePage() {
     systemQuery.data?.data,
     indexedBlock,
     receiptLag,
+    configQuery.data ? { chainId: configQuery.data.chainId, now: new Date() } : undefined,
   );
   return (
     <>
@@ -202,6 +210,11 @@ export function HomePage() {
       </section>
       {configQuery.data && <TransactionObserver config={configQuery.data} journal={journal} />}
       {deploymentId && <TransactionTimeline deploymentId={deploymentId} journal={journal} />}
+      {receiptWaitingForFinality && (
+        <p className="notice" role="status">
+          Transaction included; waiting for chain finality.
+        </p>
+      )}
       {receiptAheadOfProjection && (
         <p className="notice" role="status">
           {systemQuery.data?.data.projectionStatus === 'RECOVERY_REQUIRED'
@@ -235,10 +248,14 @@ export function HomePage() {
           if (gateway)
             await submit(`APPROVE_TOKEN:${tokenId}`, () => gateway.approveToken(BigInt(tokenId)));
         }}
-        onCreate={async (tokenId, priceEth) => {
-          if (gateway)
+        onCreate={async (tokenId, priceEth, allowedBuyer) => {
+          if (gateway && account)
             await submit(`CREATE_SALE:${tokenId}`, () =>
-              gateway.createSale(BigInt(tokenId), parseEth(priceEth)),
+              gateway.createSale(
+                BigInt(tokenId),
+                parseEth(priceEth),
+                parseReservedBuyer(allowedBuyer, account),
+              ),
             );
         }}
       />

@@ -3,6 +3,11 @@
 Status reconciled on 2026-09-23 through the R26 commit. Capability metadata and the
 verification JSON are the machine-readable sources; this page is the human summary.
 
+Public-chain readiness adds explicit Anvil, Ethereum, and Polygon profiles, finalized-only public
+projection, a read-only secondary source audit, and reserved-buyer escrow sales. Local tests use
+loopback Anvil and mocked provider fixtures. No public RPC, public deployment, or real wallet has
+been exercised; executed gate results are recorded in the verification JSON.
+
 | Area      | Required behavior                                                                                                                                                         | Implemented                                                                                                                                                                                                                                 | Current local evidence                                                                                                                                                                                                                                                      |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Contracts | ERC-721 custody, sale transitions, pull claims, refund, withdrawal, reclaim, independently calculated liability invariants                                                | `chain/src` and generated ABI                                                                                                                                                                                                               | Stateful Foundry checks independently sum funded Sales and claimable Claims before checking balance coverage; local EVM only.                                                                                                                                               |
@@ -10,6 +15,15 @@ verification JSON are the machine-readable sources; this page is the human summa
 | API       | Read-only query API with validated wire schemas, uint256 request boundaries, historical report scope, observation freshness, and per-event provenance                     | Database reader plus Zod and generated OpenAPI contracts                                                                                                                                                                                    | Fastify and reader contracts distinguish raw canonical and orphan event rows through `canonical`, `scanComplete`, and `sourceLogScopeHash`.                                                                                                                                 |
 | Indexer   | Ordered source evidence, atomic commit, catch-up, replay, rebuild/reindex, version gates, and interpretable raw history                                                   | Pure projectors plus EVM and SQLite adapters; rebuild source preflight; fixed-target reindex resume; explicit failed-rebuild to full-reindex transition; verified pre-refresh evidence archives                                             | SQLite and loopback Anvil tests cover replay, reorg, source reacquisition, long catch-up, and restart boundaries. Public archive-provider behavior remains unverified.                                                                                                      |
 | Database  | Native migration history, operation markers, owned maintenance, seed/bootstrap lifecycle, backup/restore identity, and generation-safe recovery                           | `@motorcove/database`; bootstrap-owned snapshots and restores; post-lock destructive-path containment; staged-copy checksum verification; unique marker publication temps; source-ready standard backups; operation-bound evidence archives | Real temporary-filesystem tests reject reset child symlinks before chain mutation and preserve lock reuse. Real SQLite fixtures reject changed backup bytes before active quarantine. Hardware power loss remains unverified.                                               |
+
+## Public-chain review closure evidence
+
+The public-chain run entries in [historical verification records](evidence/verification.json) were
+captured from a dirty candidate based on `327fcd2`; their counts are historical, not proof for the
+current branch head. The separate [review closure record](evidence/public-chain-review-closure.json)
+identifies the clean implementation revision, executed gates, and limits. The current code uses one
+source-log scope, projector version `2`, and reserved-buyer protocol version `0.2.0`. Public-chain
+behavior remains verified only with loopback and controlled providers.
 
 ## Current executed gates
 

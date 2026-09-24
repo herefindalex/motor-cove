@@ -1,5 +1,6 @@
 import { decodeEventLog, decodeFunctionData, type Address, type PublicClient } from 'viem';
 import { motorCoveEscrowAbi } from '@motorcove/chain-artifacts';
+import { chainProfileForId } from '@motorcove/chain-artifacts/profiles';
 import type {
   TransactionChainReader,
   InspectedTransaction,
@@ -60,7 +61,24 @@ export function createTransactionChainReader(
   expected: TransactionVerificationContext,
 ): TransactionChainReader {
   return {
-    async inspectTransaction(entry, transactionHash) {
+    async observeFinality(entry, blockNumber, blockHash) {
+      try {
+        if (entry.chainId !== expected.chainId || (await client.getChainId()) !== expected.chainId)
+          return { status: 'UNKNOWN' };
+        const profile = chainProfileForId(entry.chainId);
+        if (profile.finality.kind === 'IMMEDIATE')
+          return { status: 'FINALIZED', headNumber: blockNumber, headHash: blockHash };
+        const finalized = await client.getBlock({ blockTag: 'finalized' });
+        if (finalized.number === null || !finalized.hash) return { status: 'UNKNOWN' };
+        if (finalized.number < blockNumber) return { status: 'UNFINALIZED' };
+        const canonical = await client.getBlock({ blockNumber });
+        if (!equalHex(canonical.hash, blockHash)) return { status: 'UNKNOWN' };
+        return { status: 'FINALIZED', headNumber: finalized.number, headHash: finalized.hash };
+      } catch {
+        return { status: 'UNKNOWN' };
+      }
+    },
+    async inspectTransaction(entry, transactionHash, mode) {
       try {
         if (entry.chainId !== expected.chainId)
           return unavailable(transactionHash, 'SAVED_CHAIN_ID_MISMATCH');
@@ -86,6 +104,37 @@ export function createTransactionChainReader(
 
         if (entry.action === 'FUND_SALE' && !entry.saleId)
           return mismatch(transactionHash, 'FUNDING_SALE_ID_MISSING');
+        if (
+          mode === 'AUTOMATIC' &&
+          (entry.status === 'INCLUDED_SUCCESS' || entry.status === 'INCLUDED_REVERTED') &&
+          entry.finalityStatus === 'FINALIZED' &&
+          entry.finalizedHeadNumber &&
+          entry.finalizedHeadHash &&
+          entry.receiptBlockNumber &&
+          entry.receiptBlockHash &&
+          BigInt(entry.finalizedHeadNumber) >= BigInt(entry.receiptBlockNumber) &&
+          equalHex(entry.currentTxHash ?? entry.originalTxHash, transactionHash)
+        ) {
+          const finalizedReceipt = {
+            transactionHash,
+            blockNumber: BigInt(entry.receiptBlockNumber),
+            blockHash: entry.receiptBlockHash as `0x${string}`,
+          };
+          if (entry.receiptStatus === 'REVERTED')
+            return { kind: 'INCLUDED_REVERTED', ...finalizedReceipt };
+          if (entry.receiptStatus === 'SUCCESS') {
+            if (entry.action !== 'FUND_SALE')
+              return { kind: 'INCLUDED_SUCCESS', ...finalizedReceipt };
+            if (entry.eventLogIndex !== undefined && entry.eventBuyer && entry.eventAmountWei)
+              return {
+                kind: 'INCLUDED_SUCCESS',
+                ...finalizedReceipt,
+                logIndex: entry.eventLogIndex,
+                buyer: entry.eventBuyer as `0x${string}`,
+                amountWei: BigInt(entry.eventAmountWei),
+              };
+          }
+        }
         let transaction;
         try {
           transaction = await client.getTransaction({ hash: transactionHash });

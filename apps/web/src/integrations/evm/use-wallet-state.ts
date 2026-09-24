@@ -1,4 +1,11 @@
-import { useAccount, useConnect, useConnectors, useDisconnect, useSwitchChain } from 'wagmi';
+import {
+  useAccount,
+  useConfig,
+  useConnect,
+  useConnectors,
+  useDisconnect,
+  useSwitchChain,
+} from 'wagmi';
 import type { WalletConnectorChoice, WalletState } from '../../capabilities/wallet/index.js';
 
 interface ConnectorSummary {
@@ -24,11 +31,13 @@ function connectorButtonLabel(connector: ConnectorSummary): string {
 }
 
 export function useWalletState(requiredChainId: number) {
+  const configuredChains = useConfig().chains;
   const account = useAccount();
   const connectors = useConnectors();
   const connect = useConnect();
   const disconnect = useDisconnect();
   const switchChain = useSwitchChain();
+  const requiredChainRegistered = configuredChains.some((chain) => chain.id === requiredChainId);
   const injectedProviderAvailable =
     typeof window !== 'undefined' &&
     Boolean((window as typeof window & { ethereum?: unknown }).ethereum);
@@ -51,14 +60,18 @@ export function useWalletState(requiredChainId: number) {
   return {
     state,
     connectors: connectorChoices,
-    error: connect.error?.message ?? switchChain.error?.message,
+    error: requiredChainRegistered
+      ? (connect.error?.message ?? switchChain.error?.message)
+      : `UNSUPPORTED_CHAIN_PROFILE: ${requiredChainId} is not configured in this Web build`,
     connect: (connectorId: string) => {
       const connector = usableConnectors.find((candidate) => candidate.uid === connectorId);
       connect.reset();
       if (connector) connect.mutate({ connector });
     },
     disconnect: () => disconnect.disconnect(),
-    switchNetwork: () => switchChain.switchChain({ chainId: requiredChainId }),
+    switchNetwork: () => {
+      if (requiredChainRegistered) switchChain.switchChain({ chainId: requiredChainId });
+    },
     pending: connect.isPending || switchChain.isPending,
   };
 }

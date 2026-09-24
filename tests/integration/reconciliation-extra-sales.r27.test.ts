@@ -45,7 +45,7 @@ function databaseFixture(): Database.Database {
       projector_version TEXT, projection_build_id TEXT, log_scope_hash TEXT
     );
     CREATE TABLE sales (
-      deployment_id TEXT, sale_id TEXT, token_id TEXT, seller TEXT, buyer TEXT,
+      deployment_id TEXT, sale_id TEXT, token_id TEXT, seller TEXT, allowed_buyer TEXT, buyer TEXT,
       price_wei TEXT, funded_at TEXT, expires_at TEXT, status TEXT, token_reclaimed INTEGER
     );
     CREATE TABLE payment_claims (
@@ -65,8 +65,8 @@ function databaseFixture(): Database.Database {
     .prepare('INSERT INTO indexer_checkpoint VALUES (?,?,?,?,?,?)')
     .run(deploymentId, 5, blockHash, '1', 'fixture-build', `0x${'d'.repeat(64)}`);
   database
-    .prepare('INSERT INTO sales VALUES (?,?,?,?,?,?,?,?,?,?)')
-    .run(deploymentId, '999', '1', contractAddress, null, '1', null, null, 'LISTED', 0);
+    .prepare('INSERT INTO sales VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+    .run(deploymentId, '999', '1', contractAddress, null, null, '1', null, null, 'LISTED', 0);
   return database;
 }
 
@@ -144,8 +144,8 @@ describe('R27 reconciliation extra sales', () => {
   it('records an extra sale before an in-range contract read can fail', async () => {
     state.saleCount = 1n;
     state.database
-      .prepare('INSERT INTO sales VALUES (?,?,?,?,?,?,?,?,?,?)')
-      .run(deploymentId, '1', '1', contractAddress, null, '1', null, null, 'LISTED', 0);
+      .prepare('INSERT INTO sales VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+      .run(deploymentId, '1', '1', contractAddress, null, null, '1', null, null, 'LISTED', 0);
     await import('../../apps/indexer/src/cli/reconcile.js');
     const report = latestReport();
     expect(report.comparison).toBe('MISMATCH');

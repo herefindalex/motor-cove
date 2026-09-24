@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { PROJECTOR_VERSION } from '../types/index.js';
 import {
   migrationBundle,
   migrationBundleDigest,
@@ -27,7 +28,7 @@ try {
     migrationBundleDigest: migrationBundleDigest(migrations),
     schemaFingerprint: schemaFingerprint(db),
     schemaSourceDigest: schemaSourceDigest(),
-    requiredProjectorVersion: '1',
+    requiredProjectorVersion: PROJECTOR_VERSION,
   } as const;
   db.close();
   writeFileSync(schemaContractPath, `${JSON.stringify(contract, null, 2)}\n`);

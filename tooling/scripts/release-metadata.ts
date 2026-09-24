@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { protocolVersion } from '@motorcove/chain-artifacts';
 const root = process.cwd();
 const pkg = JSON.parse(readFileSync(`${root}/package.json`, 'utf8')) as { version: string };
 let revision: string | null = null;
@@ -16,8 +17,8 @@ const manifest = {
   buildIdentification: `motorcove-${pkg.version}`,
   revision,
   dirty,
-  protocolVersion: '0.1.0',
-  abiVersion: '0.1.0',
+  protocolVersion,
+  abiVersion: protocolVersion,
   apiContractVersion: '0.1.0',
   databaseSchemaVersion: 1,
   node: process.versions.node,

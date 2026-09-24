@@ -41,7 +41,7 @@ describe('database boundaries', () => {
       chainId: '31337',
       nftAddress: hashes.address,
       escrowAddress: hashes.escrow,
-      protocolVersion: '0.1.0',
+      protocolVersion: '0.2.0',
       manifestHash: hashes.manifest,
     });
     expect(reader.getSale(huge).data.priceWei).toBe(uint256Max.toString());

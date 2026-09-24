@@ -11,8 +11,13 @@
 **状态：**Playwright 已对真实本机 Anvil、Indexer、SQLite、API 与 Web 进程运行此路径。
 Connector 使用 Anvil 已解锁的测试帐号；这不是 MetaMask 测试。
 
-以 `VITE_MOTORCOVE_DEMO_WALLET=1` 启动 `dev:full`，然后打开
-<http://127.0.0.1:5173>。
+明确指定链与 RPC 设置后启动本地 demo：
+
+```bash
+VITE_MOTORCOVE_CHAIN_ID=31337 VITE_MOTORCOVE_RPC_URL=http://127.0.0.1:8545 VITE_MOTORCOVE_DEMO_WALLET=1 pnpm dev:full
+```
+
+然后打开 <http://127.0.0.1:5173>。
 
 1. 选择 **Use local buyer**。
 2. 找到 `LISTED` 状态的 **Apex GT**，按下 **Fund exactly**。

@@ -30,7 +30,50 @@ import {
   verifyBackup,
 } from '@motorcove/database/maintenance';
 import { databaseFixture, hashes } from '../helpers/database.js';
+import { PROJECTOR_VERSION } from '@motorcove/database/types';
 const roots: string[] = [];
+
+function downgradeToPriorMigration(db: Database.Database): void {
+  const prior = new Database(':memory:');
+  for (const name of [
+    '0000_initial.sql',
+    '0001_source-record-integrity.sql',
+    '0002_reconciliation_sequence.sql',
+  ]) {
+    prior.exec(
+      readFileSync(join(import.meta.dirname, '../../packages/database/drizzle', name), 'utf8'),
+    );
+  }
+  db.pragma('foreign_keys = OFF');
+  for (const table of ['sales', 'indexer_runtime_status']) {
+    const row = prior
+      .prepare("SELECT sql FROM sqlite_schema WHERE type='table' AND name=?")
+      .get(table) as { sql: string };
+    const columns = (prior.pragma(`table_info(${table})`) as Array<{ name: string }>)
+      .map(({ name }) => `"${name}"`)
+      .join(',');
+    db.exec(`CREATE TEMP TABLE __prior_rows AS SELECT ${columns} FROM ${table}`);
+    db.exec(`DROP TABLE ${table}`);
+    db.exec(row.sql);
+    db.exec(`INSERT INTO ${table}(${columns}) SELECT ${columns} FROM __prior_rows`);
+    db.exec('DROP TABLE __prior_rows');
+    for (const index of prior
+      .prepare(
+        "SELECT sql FROM sqlite_schema WHERE type='index' AND tbl_name=? AND sql IS NOT NULL",
+      )
+      .all(table) as Array<{ sql: string }>) {
+      db.exec(index.sql);
+    }
+  }
+  prior.close();
+  db.prepare(
+    'DELETE FROM __drizzle_migrations WHERE created_at=(SELECT MAX(created_at) FROM __drizzle_migrations)',
+  ).run();
+  db.prepare(
+    'UPDATE db_contract SET migration_bundle_digest=?,schema_fingerprint=? WHERE id=1',
+  ).run(migrationBundleDigest(migrationBundle().slice(0, 3)), schemaFingerprint(db));
+  db.pragma('foreign_keys = ON');
+}
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -72,6 +115,7 @@ function removeReconciliationSequence(db: Database.Database): void {
 
 function downgradeToFirstMigration(databasePath: string): void {
   const db = new Database(databasePath);
+  downgradeToPriorMigration(db);
   removeReconciliationSequence(db);
   db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
   db.prepare(
@@ -84,6 +128,60 @@ function downgradeToFirstMigration(databasePath: string): void {
 }
 
 describe('native migration path', () => {
+  it('requires the same projector version as the runtime', () => {
+    expect(loadSchemaContract().requiredProjectorVersion).toBe(PROJECTOR_VERSION);
+  });
+
+  it('preserves a projector-v1 sale without inventing a reserved buyer', async () => {
+    const { root, paths } = await databaseFixture();
+    roots.push(root);
+    const db = new Database(paths.databasePath);
+    db.prepare(
+      `INSERT INTO sales(deployment_id,sale_id,collection_address,token_id,seller,price_wei,status,created_block,updated_block,last_event_block_hash,last_event_log_index,token_reclaimed)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,0)`,
+    ).run(
+      hashes.deployment,
+      '7',
+      hashes.address,
+      '9',
+      hashes.address,
+      '100',
+      'LISTED',
+      1,
+      1,
+      hashes.block,
+      0,
+    );
+    downgradeToPriorMigration(db);
+    db.prepare('UPDATE indexer_checkpoint SET projector_version=? WHERE deployment_id=?').run(
+      '1',
+      hashes.deployment,
+    );
+    db.close();
+
+    expect((await migrateEnvironment(paths)).changed).toBe(true);
+    const upgraded = new Database(paths.databasePath);
+    expect(
+      upgraded
+        .prepare(
+          'SELECT sale_id AS saleId,token_id AS tokenId,price_wei AS priceWei,allowed_buyer AS allowedBuyer FROM sales WHERE deployment_id=? AND sale_id=?',
+        )
+        .get(hashes.deployment, '7'),
+    ).toEqual({
+      saleId: '7',
+      tokenId: '9',
+      priceWei: '100',
+      allowedBuyer: null,
+    });
+    expect(
+      upgraded
+        .prepare(
+          'SELECT projector_version AS projectorVersion FROM indexer_checkpoint WHERE deployment_id=?',
+        )
+        .get(hashes.deployment),
+    ).toEqual({ projectorVersion: '1' });
+    upgraded.close();
+  });
   it('DB-01/02 creates a fresh database and reruns as a no-op', async () => {
     const { root, paths } = await databaseFixture();
     roots.push(root);
@@ -138,6 +236,7 @@ describe('native migration path', () => {
       null,
       '2026-09-21T00:00:00.000Z',
     );
+    downgradeToPriorMigration(db);
     removeReconciliationSequence(db);
     db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
     db.prepare(
@@ -165,7 +264,7 @@ describe('native migration path', () => {
           count: number;
         }
       ).count,
-    ).toBe(3);
+    ).toBe(4);
     upgraded.close();
   });
 
@@ -173,6 +272,7 @@ describe('native migration path', () => {
     const { root, paths } = await databaseFixture('r27-sequence-backfill');
     roots.push(root);
     const db = new Database(paths.databasePath);
+    downgradeToPriorMigration(db);
     removeReconciliationSequence(db);
     db.prepare(
       'UPDATE db_contract SET migration_bundle_digest=?,schema_fingerprint=? WHERE id=1',
@@ -423,6 +523,7 @@ describe('native migration path', () => {
     db.prepare(
       `INSERT INTO catalog_vehicles VALUES ('predeploy','Predeploy','kept','M','2026','/p.svg','MANUAL',NULL,NULL,'x','x')`,
     ).run();
+    downgradeToPriorMigration(db);
     removeReconciliationSequence(db);
     db.exec('ALTER TABLE chain_events DROP COLUMN source_record_digest');
     db.prepare(

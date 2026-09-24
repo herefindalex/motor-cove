@@ -14,7 +14,7 @@ afterEach(() => {
 const config = publicConfigSchema.parse({
   deploymentId: hashes.deployment,
   chainId: '31337',
-  protocolVersion: '0.1.0',
+  protocolVersion: '0.2.0',
   nftAddress: hashes.address,
   escrowAddress: hashes.escrow,
   fundingPeriodSeconds: '300',
@@ -77,7 +77,7 @@ describe('API with the real SQLite reader', () => {
     const heartbeat = new Date('2026-09-22T00:00:00.000Z');
     const db = new Database(paths.databasePath);
     db.prepare(
-      `UPDATE indexer_runtime_status SET projection_status='CURRENT',last_observed_head=1,
+      `UPDATE indexer_runtime_status SET projection_status='CURRENT',last_observed_head=1,last_eligible_head=1,
        last_observed_at=?,last_rpc_success_at=?,worker_heartbeat_at=?,recovery_reason=NULL
        WHERE deployment_id=?`,
     ).run(

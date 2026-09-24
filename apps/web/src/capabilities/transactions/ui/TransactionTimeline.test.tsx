@@ -10,6 +10,41 @@ const deploymentId = `0x${'1'.repeat(64)}` as const;
 
 describe('TransactionTimeline', () => {
   afterEach(cleanup);
+
+  it('labels included public transaction as awaiting finality without premature projection lag', () => {
+    const included: JournalEntry = {
+      schemaVersion: 1,
+      clientOperationId: 'public-included',
+      createdAt: '2026-09-21T00:00:00.000Z',
+      updatedAt: '2026-09-21T00:00:01.000Z',
+      deploymentId,
+      chainId: 1,
+      account: `0x${'2'.repeat(40)}`,
+      protocolVersion: '1',
+      action: 'FUND_SALE',
+      saleId: '1',
+      intendedContract: `0x${'3'.repeat(40)}`,
+      intendedCalldata: '0x1234',
+      calldataSummary: 'fundSale(1)',
+      valueWei: '1',
+      status: 'INCLUDED_SUCCESS',
+      receiptBlockNumber: '123',
+      finalityStatus: 'UNFINALIZED',
+      projectionObservation: 'NOT_REACHED',
+    };
+    const journal: TransactionJournal = {
+      load: () => [included],
+      loadIssues: () => [],
+      save: (value) => value,
+      subscribe: () => () => undefined,
+    };
+    render(<TransactionTimeline deploymentId={deploymentId} journal={journal} />);
+    expect(screen.getByText('Included; waiting for chain finality.')).toBeTruthy();
+    expect(screen.getByText('Finalized marketplace projection is not expected yet.')).toBeTruthy();
+    expect(
+      screen.queryByText('Transaction included; marketplace data is still syncing.'),
+    ).toBeNull();
+  });
   it('keeps raw state visible alongside inclusion and projection-lag meaning', () => {
     const included: JournalEntry = {
       schemaVersion: 1,
